@@ -131,11 +131,41 @@ export const ui = {
   checkout: { az: 'Sifarişi rəsmiləşdir', ru: 'Оформить заказ', en: 'Checkout' },
   remove: { az: 'Sil', ru: 'Удалить', en: 'Remove' },
   quantity: { az: 'Say', ru: 'Кол-во', en: 'Qty' },
-  checkout_soon: {
-    az: 'Ödəniş funksiyası tezliklə əlavə olunacaq 💳',
-    ru: 'Оплата будет добавлена в ближайшее время 💳',
-    en: 'Checkout will be added soon 💳',
+  // Checkout / sifariş
+  checkout_title: { az: 'Sifarişin rəsmiləşdirilməsi', ru: 'Оформление заказа', en: 'Checkout' },
+  your_details: { az: 'Əlaqə məlumatlarınız', ru: 'Ваши контакты', en: 'Your details' },
+  order_summary: { az: 'Sifarişiniz', ru: 'Ваш заказ', en: 'Your order' },
+  field_name: { az: 'Ad və soyad', ru: 'Имя и фамилия', en: 'Full name' },
+  field_phone: { az: 'Telefon', ru: 'Телефон', en: 'Phone' },
+  field_address: { az: 'Çatdırılma ünvanı', ru: 'Адрес доставки', en: 'Delivery address' },
+  field_note: { az: 'Qeyd (istəyə bağlı)', ru: 'Комментарий (необязательно)', en: 'Note (optional)' },
+  note_placeholder: {
+    az: 'Rəng, ölçü və ya çatdırılma vaxtı barədə istəyiniz',
+    ru: 'Пожелания по цвету, размеру или времени доставки',
+    en: 'Any wishes about colour, size or delivery time',
   },
+  required_field: { az: 'Bu xana doldurulmalıdır', ru: 'Заполните это поле', en: 'This field is required' },
+  phone_hint: { az: 'Məsələn: +994 50 123 45 67', ru: 'Например: +994 50 123 45 67', en: 'e.g. +994 50 123 45 67' },
+  order_via_whatsapp: { az: 'WhatsApp ilə sifariş et', ru: 'Заказать через WhatsApp', en: 'Order via WhatsApp' },
+  whatsapp_explain: {
+    az: 'Düyməyə basdıqda WhatsApp açılacaq və sifarişiniz hazır mesaj kimi görünəcək. Göndərdikdən sonra sizinlə əlaqə saxlayacağıq.',
+    ru: 'После нажатия откроется WhatsApp с готовым сообщением о заказе. Отправьте его — и мы свяжемся с вами.',
+    en: 'Tapping the button opens WhatsApp with your order ready as a message. Send it and we will contact you.',
+  },
+  back_to_cart: { az: '← Səbətə qayıt', ru: '← Назад в корзину', en: '← Back to cart' },
+  remember_me: {
+    az: 'Məlumatlarımı yadda saxla',
+    ru: 'Запомнить мои данные',
+    en: 'Remember my details',
+  },
+  order_sent: {
+    az: 'WhatsApp açıldı. Mesajı göndərməyi unutmayın!',
+    ru: 'WhatsApp открыт. Не забудьте отправить сообщение!',
+    en: 'WhatsApp opened. Don’t forget to send the message!',
+  },
+  wa_greeting: { az: 'Salam! Yeni sifariş', ru: 'Здравствуйте! Новый заказ', en: 'Hello! New order' },
+  wa_total: { az: 'Cəmi', ru: 'Итого', en: 'Total' },
+  wa_customer: { az: 'Müştəri', ru: 'Покупатель', en: 'Customer' },
 
   // Favorites
   fav_title: { az: 'Sevimliləriniz', ru: 'Избранное', en: 'Favorites' },

@@ -97,12 +97,9 @@ export default function CartPage() {
             <span>{t('total')}</span>
             <span>{total} ₼</span>
           </div>
-          <button
-            className="btn btn-primary btn-lg full"
-            onClick={() => alert(t('checkout_soon'))}
-          >
+          <Link to="/checkout" className="btn btn-primary btn-lg full">
             {t('checkout')}
-          </button>
+          </Link>
           <Link to="/catalog" className="continue-link">{t('back_to_catalog')}</Link>
         </aside>
       </div>
