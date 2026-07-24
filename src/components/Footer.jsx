@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconInstagram, IconFacebook, IconTiktok } from './Icons.jsx'
+import { CONTACT, WHATSAPP_NUMBER } from '../config.js'
 
 export default function Footer() {
   const { t } = useI18n()
@@ -67,9 +68,14 @@ export default function Footer() {
           <div>
             <h4>{t('contact')}</h4>
             <ul>
-              <li><a href="tel:+994500000000">+994 50 000 00 00</a></li>
-              <li><a href="mailto:salam@elvalaventa.az">salam@elvalaventa.az</a></li>
-              <li><a href="#contact">Bakı, Azərbaycan</a></li>
+              <li>
+                <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer">
+                  WhatsApp: {CONTACT.phone}
+                </a>
+              </li>
+              <li><a href={`tel:+${WHATSAPP_NUMBER}`}>{CONTACT.phone}</a></li>
+              <li><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></li>
+              <li><a href="#contact">{t(CONTACT.address)}</a></li>
             </ul>
           </div>
         </div>
