@@ -11,11 +11,9 @@ update public.products
    set code = (1000 + id)::text
  where code is null or btrim(code) = '';
 
--- 3) Код обязателен и уникален
-alter table public.products alter column code set not null;
-create unique index if not exists products_code_uidx on public.products (upper(code));
-
--- 4) Если код не указан — генерируем сами
+-- 3) Если код не указан — генерируем сами.
+--    Триггер создаём ДО ограничения not null, иначе новый товар
+--    с пустым кодом упадёт с ошибкой ещё до генерации.
 create or replace function public.set_product_code()
 returns trigger language plpgsql as $$
 begin
@@ -30,6 +28,10 @@ drop trigger if exists products_set_code on public.products;
 create trigger products_set_code
   before insert or update on public.products
   for each row execute function public.set_product_code();
+
+-- 4) Код обязателен и уникален
+alter table public.products alter column code set not null;
+create unique index if not exists products_code_uidx on public.products (upper(code));
 
 -- 5) Витрина отдаёт код вместе с товаром
 create or replace view public.products_public as
