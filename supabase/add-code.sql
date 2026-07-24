@@ -33,8 +33,13 @@ create trigger products_set_code
 alter table public.products alter column code set not null;
 create unique index if not exists products_code_uidx on public.products (upper(code));
 
--- 5) Витрина отдаёт код вместе с товаром
-create or replace view public.products_public as
+-- 5) Витрина отдаёт код вместе с товаром.
+--    CREATE OR REPLACE не умеет менять порядок/имена колонок существующего
+--    представления, поэтому сначала удаляем его. Данные не теряются —
+--    представление это просто сохранённый запрос.
+drop view if exists public.products_public;
+
+create view public.products_public as
 select
   p.id, p.code, p.brand, p.name, p.description,
   p.category_id, c.label as category_label,
