@@ -7,6 +7,7 @@ import CatalogPage from './pages/CatalogPage.jsx'
 import ProductPage from './pages/ProductPage.jsx'
 import CartPage from './pages/CartPage.jsx'
 import FavoritesPage from './pages/FavoritesPage.jsx'
+import AdminPage from './pages/AdminPage.jsx'
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -28,6 +29,8 @@ export default function App() {
           <Route path="/product/:id" element={<ProductPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
+          {/* Gizli idarə paneli — menyuda göstərilmir */}
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </main>
