@@ -158,9 +158,9 @@ export const ui = {
   phone_hint: { az: 'Məsələn: +994 50 123 45 67', ru: 'Например: +994 50 123 45 67', en: 'e.g. +994 50 123 45 67' },
   order_via_whatsapp: { az: 'WhatsApp ilə sifariş et', ru: 'Заказать через WhatsApp', en: 'Order via WhatsApp' },
   whatsapp_explain: {
-    az: 'Düyməyə basdıqda WhatsApp açılacaq və sifarişiniz hazır mesaj kimi görünəcək. Göndərdikdən sonra sizinlə əlaqə saxlayacağıq.',
-    ru: 'После нажатия откроется WhatsApp с готовым сообщением о заказе. Отправьте его — и мы свяжемся с вами.',
-    en: 'Tapping the button opens WhatsApp with your order ready as a message. Send it and we will contact you.',
+    az: 'WhatsApp hazır mesajla açılacaq — sadəcə «Göndər» düyməsinə basın. Sifarişi aldıqdan sonra sizinlə əlaqə saxlayacağıq.',
+    ru: 'WhatsApp откроется с готовым сообщением — вам останется нажать «Отправить». После получения заказа мы свяжемся с вами.',
+    en: 'WhatsApp opens with the message ready — just press “Send”. We will contact you once we receive the order.',
   },
   back_to_cart: { az: '← Səbətə qayıt', ru: '← Назад в корзину', en: '← Back to cart' },
   remember_me: {

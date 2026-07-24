@@ -91,7 +91,7 @@ export default function CheckoutPage() {
 
     // Boş sətirlər bloklar arasında qalmalıdır — mesaj daha oxunaqlı olur
     return [
-      `${t('wa_greeting')} 🛍`,
+      `${t('wa_greeting')}`,
       '',
       rows.join('\n'),
       '',
@@ -109,7 +109,15 @@ export default function CheckoutPage() {
     if (remember) localStorage.setItem(BUYER_KEY, JSON.stringify(buyer))
     else localStorage.removeItem(BUYER_KEY)
 
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildMessage())}`
+    const text = encodeURIComponent(buildMessage())
+
+    // Mobil: wa.me birbaşa tətbiqi açır — bir toxunuş qalır.
+    // Kompüter: web.whatsapp.com aralıq "Open app?" pəncərəsini atlayır.
+    const isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent)
+    const url = isMobile
+      ? `https://wa.me/${WHATSAPP_NUMBER}?text=${text}`
+      : `https://web.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${text}`
+
     window.open(url, '_blank', 'noopener')
     setSent(true)
   }
