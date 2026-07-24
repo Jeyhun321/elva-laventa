@@ -10,7 +10,7 @@ export const WHATSAPP_NUMBER = '994556071700'
 // Saytda göstərilən əlaqə məlumatları
 export const CONTACT = {
   phone: '+994 55 607 17 00',
-  email: 'salam@elvalaventa.az',
+  email: 'elvalaventa@gmail.com',
   address: { az: 'Bakı, Azərbaycan', ru: 'Баку, Азербайджан', en: 'Baku, Azerbaijan' },
 }
 
