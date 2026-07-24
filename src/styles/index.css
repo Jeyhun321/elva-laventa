@@ -1842,6 +1842,12 @@ a.product-media {
   font-weight: 600;
   color: var(--sale);
 }
+.fld-note {
+  font-style: normal;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
 
 .wa-btn {
   background: #25d366;

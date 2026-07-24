@@ -136,7 +136,17 @@ export const ui = {
   your_details: { az: 'Əlaqə məlumatlarınız', ru: 'Ваши контакты', en: 'Your details' },
   order_summary: { az: 'Sifarişiniz', ru: 'Ваш заказ', en: 'Your order' },
   field_name: { az: 'Ad və soyad', ru: 'Имя и фамилия', en: 'Full name' },
-  field_phone: { az: 'Telefon', ru: 'Телефон', en: 'Phone' },
+  field_phone: { az: 'WhatsApp nömrəsi', ru: 'Номер WhatsApp', en: 'WhatsApp number' },
+  whatsapp_invalid: {
+    az: 'Nömrəni düzgün yazın: +994 50 123 45 67',
+    ru: 'Введите номер правильно: +994 50 123 45 67',
+    en: 'Enter a valid number: +994 50 123 45 67',
+  },
+  whatsapp_note: {
+    az: 'Sifarişi təsdiqləmək üçün bu nömrədən sizinlə WhatsApp-da əlaqə saxlayacağıq. Nömrə işlək olmalıdır.',
+    ru: 'Мы свяжемся с вами в WhatsApp по этому номеру, чтобы подтвердить заказ. Номер должен быть рабочим.',
+    en: 'We will contact you on WhatsApp at this number to confirm your order. It must be a working number.',
+  },
   field_address: { az: 'Çatdırılma ünvanı', ru: 'Адрес доставки', en: 'Delivery address' },
   field_note: { az: 'Qeyd (istəyə bağlı)', ru: 'Комментарий (необязательно)', en: 'Note (optional)' },
   note_placeholder: {

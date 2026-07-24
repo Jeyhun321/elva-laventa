@@ -9,6 +9,25 @@ import { IconArrow } from '../components/Icons.jsx'
 
 const BUYER_KEY = 'elva_buyer'
 
+// --- WhatsApp nömrəsinin yoxlanması ---
+const onlyDigits = (s) => String(s).replace(/\D/g, '')
+
+// Azərbaycan: 994 + 9 rəqəm, və ya 0 ilə yerli format. Xaricilər üçün 9–15 rəqəm.
+export const isValidWhatsApp = (raw) => {
+  const d = onlyDigits(raw)
+  if (d.startsWith('994')) return d.length === 12
+  if (d.startsWith('0')) return d.length === 10
+  return d.length >= 9 && d.length <= 15
+}
+
+// Mesajda beynəlxalq formatda göstərilsin: 0501234567 -> +994 50 123 45 67
+export const normalizeWhatsApp = (raw) => {
+  let d = onlyDigits(raw)
+  if (d.startsWith('0')) d = '994' + d.slice(1)
+  else if (d.length === 9) d = '994' + d
+  return '+' + d
+}
+
 export default function CheckoutPage() {
   const { t, lang } = useI18n()
   const { cart, clearCart } = useShop()
@@ -42,7 +61,9 @@ export default function CheckoutPage() {
 
   const errors = {
     name: buyer.name.trim() ? '' : t('required_field'),
-    phone: buyer.phone.trim() ? '' : t('required_field'),
+    phone: !buyer.phone.trim()
+      ? t('required_field')
+      : isValidWhatsApp(buyer.phone) ? '' : t('whatsapp_invalid'),
     address: buyer.address.trim() ? '' : t('required_field'),
   }
   const valid = !errors.name && !errors.phone && !errors.address
@@ -61,7 +82,7 @@ export default function CheckoutPage() {
     const customer = [
       `${t('wa_customer')}:`,
       `${t('field_name')}: ${buyer.name.trim()}`,
-      `${t('field_phone')}: ${buyer.phone.trim()}`,
+      `${t('field_phone')}: ${normalizeWhatsApp(buyer.phone)}`,
       `${t('field_address')}: ${buyer.address.trim()}`,
     ]
     if (buyer.note.trim()) {
@@ -147,7 +168,9 @@ export default function CheckoutPage() {
               placeholder={t('phone_hint')}
               className={touched.phone && errors.phone ? 'invalid' : ''}
             />
-            {touched.phone && errors.phone && <em className="fld-err">{errors.phone}</em>}
+            {touched.phone && errors.phone
+              ? <em className="fld-err">{errors.phone}</em>
+              : <em className="fld-note">{t('whatsapp_note')}</em>}
           </label>
 
           <label className="fld">
