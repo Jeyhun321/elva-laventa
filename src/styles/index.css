@@ -1226,6 +1226,85 @@ ul {
   place-items: center;
 }
 
+/* Giriş / istifadəçi menyusu */
+.user-menu { position: relative; }
+.user-menu > .header-icon { background: none; }
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--lavender-light);
+}
+.user-avatar.lg { width: 42px; height: 42px; }
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 268px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  padding: 16px;
+  z-index: 200;
+  animation: menuIn 0.18s ease;
+  text-align: left;
+}
+.user-dropdown h4 {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  color: var(--plum);
+  margin-bottom: 6px;
+}
+.user-dropdown p {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  transition: all 0.18s ease;
+}
+.google-btn:hover { border-color: var(--lavender); background: var(--bg); }
+.google-btn:disabled { opacity: 0.6; }
+.user-err {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sale);
+}
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.user-card b { display: block; font-size: 0.95rem; color: var(--ink); }
+.user-card span {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  word-break: break-all;
+}
+.btn-sm.full { width: 100%; justify-content: center; }
+
 /* Product card additions */
 .product-brand {
   font-size: 0.74rem;

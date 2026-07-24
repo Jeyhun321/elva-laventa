@@ -17,6 +17,27 @@ export const ui = {
     en: 'Search products...',
   },
   favorites: { az: 'Sevimlilər', ru: 'Избранное', en: 'Favorites' },
+
+  // Giriş / qeydiyyat
+  sign_in: { az: 'Giriş', ru: 'Войти', en: 'Sign in' },
+  sign_out: { az: 'Çıxış', ru: 'Выйти', en: 'Sign out' },
+  continue_with_google: {
+    az: 'Google ilə davam et',
+    ru: 'Продолжить через Google',
+    en: 'Continue with Google',
+  },
+  sign_in_title: { az: 'Hesaba giriş', ru: 'Вход в аккаунт', en: 'Sign in' },
+  sign_in_why: {
+    az: 'Giriş etsəniz, sifariş zamanı məlumatlarınız avtomatik dolacaq.',
+    ru: 'После входа ваши данные будут подставляться в заказ автоматически.',
+    en: 'Once signed in, your details are filled in automatically at checkout.',
+  },
+  sign_in_failed: {
+    az: 'Giriş alınmadı. Bir azdan yenidən cəhd edin.',
+    ru: 'Не удалось войти. Попробуйте ещё раз.',
+    en: 'Sign-in failed. Please try again.',
+  },
+  my_account: { az: 'Hesabım', ru: 'Мой аккаунт', en: 'My account' },
   cart: { az: 'Səbət', ru: 'Корзина', en: 'Cart' },
   sale: { az: 'Endirimlər', ru: 'Скидки', en: 'Sale' },
   about: { az: 'Haqqımızda', ru: 'О нас', en: 'About' },

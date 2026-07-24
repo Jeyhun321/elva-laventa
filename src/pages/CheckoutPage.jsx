@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCatalog } from '../context/CatalogContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { WHATSAPP_NUMBER, CURRENCY } from '../config.js'
@@ -31,6 +32,7 @@ export const normalizeWhatsApp = (raw) => {
 export default function CheckoutPage() {
   const { t } = useI18n()
   const { getProduct } = useCatalog()
+  const { profile } = useAuth()
   const { cart, clearCart } = useShop()
   const navigate = useNavigate()
 
@@ -57,6 +59,13 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (lines.length === 0 && !sent) navigate('/cart', { replace: true })
   }, [lines.length, sent, navigate])
+
+  // Google ilə girişdən sonra adı avtomatik dolduraq (boşdursa)
+  useEffect(() => {
+    if (profile?.name) {
+      setBuyer((b) => (b.name.trim() ? b : { ...b, name: profile.name }))
+    }
+  }, [profile?.name])
 
   const set = (k, v) => setBuyer((b) => ({ ...b, [k]: v }))
 

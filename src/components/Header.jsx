@@ -4,6 +4,7 @@ import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { IconSearch, IconHeart, IconBag, IconMenu, IconClose } from './Icons.jsx'
+import UserMenu from './UserMenu.jsx'
 
 export default function Header() {
   const { t, lang, setLang, langs } = useI18n()
@@ -95,6 +96,8 @@ export default function Header() {
               </button>
             ))}
           </div>
+
+          <UserMenu />
 
           <Link to="/favorites" className="header-icon" aria-label={t('favorites')}>
             <IconHeart />
