@@ -43,6 +43,7 @@ export default function CheckoutPage() {
     }
   })
   const [remember, setRemember] = useState(true)
+  const [sameNumber, setSameNumber] = useState(true) // zəng nömrəsi = WhatsApp
   const [touched, setTouched] = useState({})
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(null) // {order_no}
@@ -72,9 +73,12 @@ export default function CheckoutPage() {
     phone: !buyer.phone.trim()
       ? t('required_field')
       : isValidWhatsApp(buyer.phone) ? '' : t('whatsapp_invalid'),
-    phoneCall: !buyer.phoneCall.trim()
+    // Zəng nömrəsi yalnız ayrıca olduqda yoxlanılır
+    phoneCall: sameNumber
       ? ''
-      : isValidWhatsApp(buyer.phoneCall) ? '' : t('whatsapp_invalid'),
+      : !buyer.phoneCall.trim()
+        ? t('required_field')
+        : isValidWhatsApp(buyer.phoneCall) ? '' : t('whatsapp_invalid'),
     address: buyer.address.trim() ? '' : t('required_field'),
   }
   const valid = !errors.name && !errors.phone && !errors.phoneCall && !errors.address
@@ -91,7 +95,10 @@ export default function CheckoutPage() {
         buyer: {
           ...buyer,
           phone: normalizeWhatsApp(buyer.phone),
-          phoneCall: buyer.phoneCall.trim() ? normalizeWhatsApp(buyer.phoneCall) : '',
+          // Eynidirsə — WhatsApp nömrəsini zəng nömrəsi kimi yazırıq
+          phoneCall: sameNumber
+            ? normalizeWhatsApp(buyer.phone)
+            : buyer.phoneCall.trim() ? normalizeWhatsApp(buyer.phoneCall) : '',
         },
         lines,
         userId: user?.id ?? null,
@@ -166,20 +173,29 @@ export default function CheckoutPage() {
               : <em className="fld-note">{t('whatsapp_note')}</em>}
           </label>
 
-          <label className="fld">
-            <span>{t('field_phone_call')}</span>
+          <label className="checkbox-row">
             <input
-              type="tel" inputMode="tel"
-              value={buyer.phoneCall}
-              onChange={(e) => set('phoneCall', e.target.value)}
-              onBlur={() => setTouched((s) => ({ ...s, phoneCall: true }))}
-              placeholder={t('phone_hint')}
-              className={touched.phoneCall && errors.phoneCall ? 'invalid' : ''}
+              type="checkbox"
+              checked={sameNumber}
+              onChange={(e) => setSameNumber(e.target.checked)}
             />
-            {touched.phoneCall && errors.phoneCall
-              ? <em className="fld-err">{errors.phoneCall}</em>
-              : <em className="fld-note">{t('phone_call_hint')}</em>}
+            <span>{t('same_as_whatsapp')}</span>
           </label>
+
+          {!sameNumber && (
+            <label className="fld">
+              <span>{t('field_phone_call')} *</span>
+              <input
+                type="tel" inputMode="tel"
+                value={buyer.phoneCall}
+                onChange={(e) => set('phoneCall', e.target.value)}
+                onBlur={() => setTouched((s) => ({ ...s, phoneCall: true }))}
+                placeholder={t('phone_hint')}
+                className={touched.phoneCall && errors.phoneCall ? 'invalid' : ''}
+              />
+              {touched.phoneCall && errors.phoneCall && <em className="fld-err">{errors.phoneCall}</em>}
+            </label>
+          )}
 
           <label className="fld">
             <span>{t('field_address')} *</span>

@@ -4,42 +4,29 @@ import { supabase } from './supabase.js'
 //  Sifarişlər — bazaya yazılır, WhatsApp-a yönləndirmə yoxdur
 // ============================================================
 
-export const createOrder = async ({ buyer, lines, userId = null, email = null }) => {
+export const createOrder = async ({ buyer, lines, email = null }) => {
   if (!supabase) throw new Error('NO_DB')
 
-  const total = lines.reduce((s, l) => s + l.product.price * l.item.qty, 0)
-
-  const { data: order, error: oe } = await supabase
-    .from('orders')
-    .insert({
-      user_id: userId,
-      customer_name: buyer.name.trim(),
-      phone: buyer.phone.trim(),
-      phone_call: buyer.phoneCall?.trim() || null,
-      email: email || buyer.email?.trim() || null,
-      address: buyer.address.trim(),
-      note: buyer.note?.trim() || null,
-      total,
-    })
-    .select()
-    .single()
-
-  if (oe) throw oe
-
+  // Brauzer yalnız id, ölçü və sayı göndərir — qiyməti baza özü qoyur
   const items = lines.map(({ item, product }) => ({
-    order_id: order.id,
     product_id: product.id,
-    product_code: product.code || '',
-    product_name: product.name?.az || '',
-    size: item.size || null,
+    size: item.size || '',
     qty: item.qty,
-    price: product.price,
   }))
 
-  const { error: ie } = await supabase.from('order_items').insert(items)
-  if (ie) throw ie
+  const { data, error } = await supabase.rpc('place_order', {
+    p_customer_name: buyer.name.trim(),
+    p_phone: buyer.phone.trim(),
+    p_phone_call: buyer.phoneCall?.trim() || null,
+    p_email: email || buyer.email?.trim() || null,
+    p_address: buyer.address.trim(),
+    p_note: buyer.note?.trim() || null,
+    p_items: items,
+  })
 
-  return order
+  if (error) throw error
+  // rpc bir sətir qaytarır: { order_no, order_id }
+  return Array.isArray(data) ? data[0] : data
 }
 
 // Admin: sifarişlərin siyahısı

@@ -261,11 +261,11 @@ export const ui = {
   phone_hint: { az: 'Məsələn: +994 50 123 45 67', ru: 'Например: +994 50 123 45 67', en: 'e.g. +994 50 123 45 67' },
   order_via_whatsapp: { az: 'WhatsApp ilə sifariş et', ru: 'Заказать через WhatsApp', en: 'Order via WhatsApp' },
   // Sifariş göndərildi
-  field_phone_call: { az: 'Zəng üçün nömrə', ru: 'Номер для звонка', en: 'Phone for calls' },
-  phone_call_hint: {
-    az: 'WhatsApp nömrəsi ilə eynidirsə, boş buraxın',
-    ru: 'Если совпадает с WhatsApp — оставьте пустым',
-    en: 'Leave empty if same as WhatsApp',
+  field_phone_call: { az: 'Zəng üçün mobil nömrə', ru: 'Мобильный для звонка', en: 'Mobile for calls' },
+  same_as_whatsapp: {
+    az: 'Zəng nömrəsi WhatsApp nömrəsi ilə eynidir',
+    ru: 'Номер для звонка совпадает с WhatsApp',
+    en: 'Call number is the same as WhatsApp',
   },
   place_order: { az: 'Sifarişi göndər', ru: 'Отправить заказ', en: 'Place order' },
   order_sending: { az: 'Göndərilir…', ru: 'Отправляем…', en: 'Sending…' },
