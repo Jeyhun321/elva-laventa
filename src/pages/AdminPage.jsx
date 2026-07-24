@@ -17,6 +17,7 @@ const TAGS = [
 
 const emptyProduct = (catId) => ({
   id: null,
+  code: '',
   brand: 'Elva LaVenta',
   name: { az: '', ru: '', en: '' },
   description: { az: '', ru: '', en: '' },
@@ -222,7 +223,7 @@ function Dashboard({ session }) {
             <div className="admin-row-main">
               <b>{p.name.az || '(без названия)'}</b>
               <span className="admin-row-meta">
-                {p.brand} · {catLabel(p.category)}
+                код {p.code || '—'} · {p.brand} · {catLabel(p.category)}
                 {!p.isActive && ' · скрыт'}
               </span>
             </div>
@@ -335,9 +336,17 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
 
           <div className="fld-2">
             <label className="fld">
+              <span>Код товара</span>
+              <input value={p.code} onChange={(e) => set({ code: e.target.value })}
+                placeholder="пусто = создастся сам" />
+            </label>
+            <label className="fld">
               <span>Бренд</span>
               <input value={p.brand} onChange={(e) => set({ brand: e.target.value })} />
             </label>
+          </div>
+
+          <div className="fld-2">
             <label className="fld">
               <span>Категория</span>
               <select value={p.category} onChange={(e) => set({ category: e.target.value })}>

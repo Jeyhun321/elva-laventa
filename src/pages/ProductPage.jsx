@@ -74,7 +74,10 @@ export default function ProductPage() {
         </div>
 
         <div className="product-detail-info">
-          <span className="product-brand">{product.brand}</span>
+          <span className="product-brand">
+            {product.brand}
+            {product.code && <em className="product-code">{t('field_code')}: {product.code}</em>}
+          </span>
           <h1 className="product-detail-name">{t(product.name)}</h1>
 
           <Rating value={product.rating} reviews={product.reviews} reviewsLabel={t('reviews')} />

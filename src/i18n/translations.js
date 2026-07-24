@@ -95,6 +95,9 @@ export const ui = {
   reviews: { az: 'rəy', ru: 'отзывов', en: 'reviews' },
   select_size: { az: 'Ölçü seçin', ru: 'Выберите размер', en: 'Select size' },
   size: { az: 'Ölçü', ru: 'Размер', en: 'Size' },
+  field_code: { az: 'Kod', ru: 'Код', en: 'Code' },
+  wa_code: { az: 'kod', ru: 'код', en: 'code' },
+  wa_phone: { az: 'Telefon nömrəsi', ru: 'Номер телефона', en: 'Phone number' },
   color: { az: 'Rəng', ru: 'Цвет', en: 'Color' },
   description: { az: 'Təsvir', ru: 'Описание', en: 'Description' },
   product_desc_generic: {

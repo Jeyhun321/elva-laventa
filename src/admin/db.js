@@ -15,6 +15,7 @@ const need = () => {
 // Baza sətri → panelin gözlədiyi forma
 export const fromRow = (r) => ({
   id: r.id,
+  code: r.code || '',
   brand: r.brand,
   name: r.name,
   description: r.description || { az: '', ru: '', en: '' },
@@ -34,6 +35,8 @@ export const fromRow = (r) => ({
 const toRow = (p) => {
   const az = (p.name.az || '').trim()
   return {
+    // boş buraxsan, baza özü kod verir (1000 + id)
+    code: (p.code || '').trim() || null,
     brand: (p.brand || '').trim() || 'Elva LaVenta',
     name: {
       az,

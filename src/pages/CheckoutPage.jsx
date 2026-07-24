@@ -70,14 +70,13 @@ export default function CheckoutPage() {
   const valid = !errors.name && !errors.phone && !errors.address
 
   const buildMessage = () => {
+    // Qiymət yazılmır — mesajda dəyişdirilə bilər.
+    // Məhsul kodu isə dəqiq göstərir hansı modeldir.
     const rows = lines.map(({ item, product }, i) => {
-      const parts = [`${i + 1}. ${t(product.name)}`]
       const meta = []
       if (item.size) meta.push(`${t('size')}: ${item.size}`)
       meta.push(`${t('quantity')}: ${item.qty}`)
-      meta.push(`${product.price * item.qty} ${CURRENCY}`)
-      parts.push(`   ${meta.join(' · ')}`)
-      return parts.join('\n')
+      return `${i + 1}. ${t(product.name)} (${t('wa_code')}: ${product.code})\n   ${meta.join(' · ')}`
     })
 
     // Mesaj müştərinin adından yazılır
@@ -85,7 +84,7 @@ export default function CheckoutPage() {
 
     const customer = [
       `${t('wa_customer')}:`,
-      `${t('field_phone')}: ${normalizeWhatsApp(buyer.phone)}`,
+      `${t('wa_phone')}: ${normalizeWhatsApp(buyer.phone)}`,
       `${t('field_address')}: ${buyer.address.trim()}`,
     ]
     if (buyer.note.trim()) {
@@ -97,8 +96,6 @@ export default function CheckoutPage() {
       intro,
       '',
       rows.join('\n'),
-      '',
-      `${t('wa_total')}: ${total} ${CURRENCY}`,
       '',
       customer.join('\n'),
       '',

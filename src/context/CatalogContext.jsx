@@ -5,8 +5,12 @@ import localCatalog from '../data/catalog.json'
 const CatalogContext = createContext(null)
 
 // Baza sətrini saytın gözlədiyi formata çevirir
+// Kod yoxdursa (yerli ehtiyat nüsxə), id-dən düzəldirik: 1 -> 1001
+export const makeCode = (id) => String(1000 + Number(id))
+
 const fromRow = (r) => ({
   id: r.id,
+  code: r.code || makeCode(r.id),
   brand: r.brand,
   name: r.name,
   description: r.description || { az: '', ru: '', en: '' },
@@ -25,7 +29,9 @@ const ALL = { id: 'all', label: { az: 'Hamısı', ru: 'Все', en: 'All' } }
 
 export function CatalogProvider({ children }) {
   // Baza cavab verməsə, sayt boş qalmasın deyə yerli fayl ehtiyatdır
-  const [products, setProducts] = useState(localCatalog.products)
+  const [products, setProducts] = useState(
+    localCatalog.products.map((p) => ({ ...p, code: p.code || makeCode(p.id) }))
+  )
   const [categories, setCategories] = useState(localCatalog.categories)
   const [loading, setLoading] = useState(isConfigured)
   const [source, setSource] = useState('local')
