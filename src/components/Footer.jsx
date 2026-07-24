@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconInstagram, IconFacebook, IconTiktok } from './Icons.jsx'
@@ -6,10 +6,19 @@ import { IconInstagram, IconFacebook, IconTiktok } from './Icons.jsx'
 export default function Footer() {
   const { t } = useI18n()
   const [subscribed, setSubscribed] = useState(false)
+  const [email, setEmail] = useState('')
+  const timerRef = useRef(null)
 
+  useEffect(() => () => clearTimeout(timerRef.current), [])
+
+  // Abunə olduqdan sonra sahə yenidən boşalır ki,
+  // ikinci e-poçtu da yazmaq mümkün olsun
   const subscribe = (e) => {
     e.preventDefault()
     setSubscribed(true)
+    setEmail('')
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setSubscribed(false), 2500)
   }
 
   return (
@@ -26,9 +35,10 @@ export default function Footer() {
               <input
                 type="email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('newsletter_placeholder')}
                 aria-label={t('newsletter_placeholder')}
-                disabled={subscribed}
               />
               <button type="submit">{subscribed ? t('subscribed') : t('subscribe')}</button>
             </form>

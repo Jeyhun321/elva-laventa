@@ -1030,26 +1030,31 @@ ul {
    ============================================================ */
 
 /* Brand wordmark */
+/* Brend loqosu — bitişik yazı, qalınlıq kontrastı ilə (ElvaLaVenta) */
 .brand {
   display: inline-flex;
   align-items: baseline;
-  gap: 5px;
   line-height: 1;
+  white-space: nowrap;
 }
 .brand-elva {
   font-family: var(--serif);
-  font-style: italic;
-  font-weight: 600;
-  font-size: 1.7rem;
+  font-weight: 400;
+  font-size: 1.72rem;
+  letter-spacing: 0;
   color: var(--lavender);
 }
 .brand-la {
   font-family: var(--serif);
   font-weight: 700;
-  font-size: 1.5rem;
-  letter-spacing: 0.02em;
+  font-size: 1.72rem;
+  letter-spacing: 0;
   color: var(--plum);
 }
+
+/* Tünd çəhrayı futerdə brend oxunaqlı olsun */
+.footer .brand-elva { color: var(--lavender-light); }
+.footer .brand-la { color: #fff; }
 
 /* Header */
 .header {
@@ -1820,8 +1825,8 @@ a.product-media {
   .sidebar-block { flex: 1; min-width: 220px; }
 }
 @media (max-width: 560px) {
-  .brand-elva { font-size: 1.4rem; }
-  .brand-la { font-size: 1.25rem; }
+  .brand-elva { font-size: 1.36rem; }
+  .brand-la { font-size: 1.36rem; }
   .cart-line { grid-template-columns: 76px 1fr; }
   .cart-line-controls { grid-column: 1 / -1; justify-content: space-between; }
   .cart-thumb { width: 76px; }
