@@ -4,8 +4,18 @@ import { supabase, isConfigured } from '../lib/supabase.js'
 import {
   loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin,
 } from '../admin/db.js'
+import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { IconTrash, IconPlus, IconClose } from '../components/Icons.jsx'
+
+const ORDER_STATUSES = [
+  { value: 'new', label: 'Новый' },
+  { value: 'contacted', label: 'Связались' },
+  { value: 'confirmed', label: 'Подтверждён' },
+  { value: 'shipped', label: 'Отправлен' },
+  { value: 'done', label: 'Выполнен' },
+  { value: 'cancelled', label: 'Отменён' },
+]
 
 const SIZE_PRESETS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One size']
 const TAGS = [
@@ -75,10 +85,11 @@ function LoginScreen() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [msg, setMsg] = useState('')
 
   const submit = async (e) => {
     e.preventDefault()
-    setBusy(true); setErr('')
+    setBusy(true); setErr(''); setMsg('')
     try {
       await signIn(email.trim(), password)
     } catch (e2) {
@@ -87,6 +98,22 @@ function LoginScreen() {
           ? 'Неверная почта или пароль'
           : e2.message
       )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const forgot = async () => {
+    setErr(''); setMsg('')
+    if (!email.trim()) { setErr('Сначала впиши почту выше'); return }
+    setBusy(true)
+    try {
+      const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'reset'
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+      if (error) throw error
+      setMsg('Ссылка для сброса отправлена на почту. Проверь «Спам».')
+    } catch (e2) {
+      setErr(e2.message)
     } finally {
       setBusy(false)
     }
@@ -122,7 +149,12 @@ function LoginScreen() {
             />
           </label>
 
+          <button type="button" className="link-btn forgot-link" onClick={forgot}>
+            Забыли пароль?
+          </button>
+
           {err && <div className="admin-msg err">{err}</div>}
+          {msg && <div className="admin-msg ok">{msg}</div>}
 
           <button className="btn btn-primary full" disabled={busy}>
             {busy ? 'Проверяю…' : 'Войти'}
@@ -138,6 +170,7 @@ function LoginScreen() {
 /* ---------------- Панель ---------------- */
 function Dashboard({ session }) {
   const { reload: reloadSite } = useCatalog()
+  const [tab, setTab] = useState('products')
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [form, setForm] = useState(null)
@@ -205,13 +238,29 @@ function Dashboard({ session }) {
         <div className="admin-head-actions">
           <Link to="/" className="btn btn-ghost btn-sm">На сайт</Link>
           <button className="btn btn-ghost btn-sm" onClick={signOutAdmin}>Выйти</button>
-          <button className="btn btn-primary" onClick={() => setForm(emptyProduct(categories[0]?.id))}>
-            <IconPlus /> Добавить товар
-          </button>
+          {tab === 'products' && (
+            <button className="btn btn-primary" onClick={() => setForm(emptyProduct(categories[0]?.id))}>
+              <IconPlus /> Добавить товар
+            </button>
+          )}
         </div>
       </div>
 
+      <div className="admin-tabs">
+        <button className={`admin-tab${tab === 'products' ? ' active' : ''}`} onClick={() => setTab('products')}>
+          Товары
+        </button>
+        <button className={`admin-tab${tab === 'orders' ? ' active' : ''}`} onClick={() => setTab('orders')}>
+          Заказы
+        </button>
+      </div>
+
       {msg && <div className={`admin-msg ${msg.type}`}>{msg.text}</div>}
+
+      {tab === 'orders' ? (
+        <OrdersPanel onNotify={say} />
+      ) : (
+      <>
       {busy === 'load' && <p className="admin-sub">Загружаю…</p>}
 
       <div className="admin-list">
@@ -253,7 +302,108 @@ function Dashboard({ session }) {
           onNotify={say}
         />
       )}
+      </>
+      )}
     </div>
+  )
+}
+
+/* ---------------- Заказы ---------------- */
+const STATUS_LABEL = Object.fromEntries(ORDER_STATUSES.map((s) => [s.value, s.label]))
+
+function OrdersPanel({ onNotify }) {
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
+
+  const refresh = async () => {
+    setLoading(true)
+    try {
+      setOrders(await listOrders())
+    } catch (e) {
+      onNotify('err', `Не удалось загрузить заказы: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => { refresh() }, [])
+
+  const changeStatus = async (id, status) => {
+    setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)))
+    try {
+      await setOrderStatus(id, status)
+    } catch (e) {
+      onNotify('err', `Не удалось изменить статус: ${e.message}`)
+      refresh()
+    }
+  }
+
+  const shown = filter === 'all' ? orders : orders.filter((o) => o.status === filter)
+
+  if (loading) return <p className="admin-sub">Загружаю заказы…</p>
+  if (orders.length === 0) return <p className="admin-sub">Заказов пока нет.</p>
+
+  return (
+    <>
+      <div className="order-filters">
+        <button className={`filter-chip${filter === 'all' ? ' active' : ''}`} onClick={() => setFilter('all')}>
+          Все ({orders.length})
+        </button>
+        {ORDER_STATUSES.map((s) => {
+          const n = orders.filter((o) => o.status === s.value).length
+          if (!n) return null
+          return (
+            <button key={s.value} className={`filter-chip${filter === s.value ? ' active' : ''}`}
+              onClick={() => setFilter(s.value)}>
+              {s.label} ({n})
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="orders-list">
+        {shown.map((o) => (
+          <div className={`order-card status-${o.status}`} key={o.id}>
+            <div className="order-card-head">
+              <div>
+                <b className="order-no-lbl">{o.order_no}</b>
+                <span className="order-date">
+                  {new Date(o.created_at).toLocaleString('ru-RU')}
+                </span>
+              </div>
+              <select className="status-select" value={o.status}
+                onChange={(e) => changeStatus(o.id, e.target.value)}>
+                {ORDER_STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="order-items">
+              {(o.order_items || []).map((it) => (
+                <div key={it.id} className="order-item-line">
+                  <span>{it.product_name} <em>(код {it.product_code})</em></span>
+                  <span>{it.size ? `${it.size} · ` : ''}×{it.qty} · {it.price * it.qty} ₼</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="order-customer">
+              <div><b>{o.customer_name}</b> · итого {o.total} ₼</div>
+              <div className="order-contacts">
+                <a href={`https://wa.me/${(o.phone || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer">
+                  WhatsApp: {o.phone}
+                </a>
+                {o.phone_call && <a href={`tel:${o.phone_call}`}>Звонок: {o.phone_call}</a>}
+                {o.email && <a href={`mailto:${o.email}`}>{o.email}</a>}
+              </div>
+              <div className="order-address">{o.address}</div>
+              {o.note && <div className="order-note">📝 {o.note}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 

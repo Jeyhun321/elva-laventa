@@ -9,6 +9,8 @@ import CartPage from './pages/CartPage.jsx'
 import CheckoutPage from './pages/CheckoutPage.jsx'
 import FavoritesPage from './pages/FavoritesPage.jsx'
 import AdminPage from './pages/AdminPage.jsx'
+import AuthPage from './pages/AuthPage.jsx'
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -31,6 +33,8 @@ export default function App() {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/reset" element={<ResetPasswordPage />} />
           {/* Gizli idarə paneli — menyuda göstərilmir */}
           <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<HomePage />} />

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconUser, IconGoogle } from './Icons.jsx'
@@ -55,6 +56,16 @@ export default function UserMenu() {
               {busy ? '…' : t('continue_with_google')}
             </button>
             {err && <span className="user-err">{err}</span>}
+
+            <div className="auth-divider"><span>{t('or_divider')}</span></div>
+
+            <Link to="/auth" className="btn btn-ghost btn-sm full" onClick={() => setOpen(false)}>
+              {t('sign_in')}
+            </Link>
+            <Link to="/auth?mode=signup" className="btn btn-primary btn-sm full"
+              style={{ marginTop: 8 }} onClick={() => setOpen(false)}>
+              {t('sign_up')}
+            </Link>
           </div>
         )}
       </div>

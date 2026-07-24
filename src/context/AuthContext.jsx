@@ -36,6 +36,53 @@ export function AuthProvider({ children }) {
     if (supabase) await supabase.auth.signOut()
   }, [])
 
+  // E-poçt + şifrə ilə qeydiyyat.
+  // Ad, nömrə və doğum tarixi metadata-ya yazılır — trigger onları
+  // profiles cədvəlinə köçürür.
+  const signUp = useCallback(async ({ email, password, fullName, phone, birthDate }) => {
+    if (!supabase) throw new Error('NOT_CONFIGURED')
+    const emailRedirectTo = window.location.origin + import.meta.env.BASE_URL
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        emailRedirectTo,
+        data: {
+          full_name: fullName.trim(),
+          phone: phone.trim(),
+          birth_date: birthDate || '',
+        },
+      },
+    })
+    if (error) throw error
+    // session boşdursa — təsdiq məktubu gözlənilir
+    return { needsConfirm: !data.session }
+  }, [])
+
+  const signInWithPassword = useCallback(async (email, password) => {
+    if (!supabase) throw new Error('NOT_CONFIGURED')
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
+    if (error) throw error
+  }, [])
+
+  // «Şifrəni unutdum» — poçta bərpa linki göndərir
+  const sendPasswordReset = useCallback(async (email) => {
+    if (!supabase) throw new Error('NOT_CONFIGURED')
+    const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'reset'
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+    if (error) throw error
+  }, [])
+
+  // Bərpa linkindən sonra yeni şifrəni təyin edir
+  const updatePassword = useCallback(async (newPassword) => {
+    if (!supabase) throw new Error('NOT_CONFIGURED')
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) throw error
+  }, [])
+
   // Google profilindən ad və şəkil
   const profile = user
     ? {
@@ -49,7 +96,13 @@ export function AuthProvider({ children }) {
     : null
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, loginWithGoogle, logout }}>
+    <AuthContext.Provider
+      value={{
+        user, profile, loading,
+        loginWithGoogle, logout, signUp, signInWithPassword,
+        sendPasswordReset, updatePassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
