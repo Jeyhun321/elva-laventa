@@ -181,6 +181,37 @@ export const ui = {
   required_field: { az: 'Bu xana doldurulmalıdır', ru: 'Заполните это поле', en: 'This field is required' },
   phone_hint: { az: 'Məsələn: +994 50 123 45 67', ru: 'Например: +994 50 123 45 67', en: 'e.g. +994 50 123 45 67' },
   order_via_whatsapp: { az: 'WhatsApp ilə sifariş et', ru: 'Заказать через WhatsApp', en: 'Order via WhatsApp' },
+  // Sifariş göndərildi
+  field_phone_call: { az: 'Zəng üçün nömrə', ru: 'Номер для звонка', en: 'Phone for calls' },
+  phone_call_hint: {
+    az: 'WhatsApp nömrəsi ilə eynidirsə, boş buraxın',
+    ru: 'Если совпадает с WhatsApp — оставьте пустым',
+    en: 'Leave empty if same as WhatsApp',
+  },
+  place_order: { az: 'Sifarişi göndər', ru: 'Отправить заказ', en: 'Place order' },
+  order_sending: { az: 'Göndərilir…', ru: 'Отправляем…', en: 'Sending…' },
+  order_ok_title: {
+    az: 'Sifarişiniz qəbul edildi!',
+    ru: 'Заказ принят!',
+    en: 'Order received!',
+  },
+  order_ok_text: {
+    az: '5 dəqiqə ərzində WhatsApp vasitəsilə sizinlə əlaqə saxlayacağıq.',
+    ru: 'В течение 5 минут мы свяжемся с вами в WhatsApp.',
+    en: 'We will contact you on WhatsApp within 5 minutes.',
+  },
+  order_number: { az: 'Sifariş nömrəsi', ru: 'Номер заказа', en: 'Order number' },
+  order_failed: {
+    az: 'Sifariş göndərilmədi. Yenidən cəhd edin.',
+    ru: 'Не удалось отправить заказ. Попробуйте ещё раз.',
+    en: 'Could not send the order. Please try again.',
+  },
+  order_explain: {
+    az: 'Sifarişi göndərdikdən sonra operatorumuz WhatsApp-dan yazacaq və detalları dəqiqləşdirəcək.',
+    ru: 'После отправки наш оператор напишет вам в WhatsApp и уточнит детали.',
+    en: 'After you send the order, our operator will message you on WhatsApp to confirm details.',
+  },
+
   whatsapp_explain: {
     az: 'WhatsApp hazır mesajla açılacaq — sadəcə «Göndər» düyməsinə basın. Sifarişi aldıqdan sonra sizinlə əlaqə saxlayacağıq.',
     ru: 'WhatsApp откроется с готовым сообщением — вам останется нажать «Отправить». После получения заказа мы свяжемся с вами.',
