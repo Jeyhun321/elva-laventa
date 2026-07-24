@@ -80,9 +80,11 @@ export default function CheckoutPage() {
       return parts.join('\n')
     })
 
+    // Mesaj müştərinin adından yazılır
+    const intro = t('wa_intro').replace('{name}', buyer.name.trim())
+
     const customer = [
       `${t('wa_customer')}:`,
-      `${t('field_name')}: ${buyer.name.trim()}`,
       `${t('field_phone')}: ${normalizeWhatsApp(buyer.phone)}`,
       `${t('field_address')}: ${buyer.address.trim()}`,
     ]
@@ -92,13 +94,15 @@ export default function CheckoutPage() {
 
     // Boş sətirlər bloklar arasında qalmalıdır — mesaj daha oxunaqlı olur
     return [
-      `${t('wa_greeting')}`,
+      intro,
       '',
       rows.join('\n'),
       '',
       `${t('wa_total')}: ${total} ${CURRENCY}`,
       '',
       customer.join('\n'),
+      '',
+      t('wa_thanks'),
     ].join('\n')
   }
 

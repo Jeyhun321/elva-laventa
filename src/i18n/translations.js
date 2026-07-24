@@ -173,9 +173,19 @@ export const ui = {
     ru: 'WhatsApp открыт. Не забудьте отправить сообщение!',
     en: 'WhatsApp opened. Don’t forget to send the message!',
   },
-  wa_greeting: { az: 'Salam! Yeni sifariş', ru: 'Здравствуйте! Новый заказ', en: 'Hello! New order' },
+  // {name} müştərinin adı ilə əvəz olunur
+  wa_intro: {
+    az: 'Salam! Mənim adım {name}. Aşağıdakı məhsulları sifariş etmək istəyirəm:',
+    ru: 'Здравствуйте! Меня зовут {name}. Хочу заказать следующие товары:',
+    en: 'Hello! My name is {name}. I would like to order the following items:',
+  },
   wa_total: { az: 'Cəmi', ru: 'Итого', en: 'Total' },
-  wa_customer: { az: 'Müştəri', ru: 'Покупатель', en: 'Customer' },
+  wa_customer: { az: 'Əlaqə məlumatlarım', ru: 'Мои контакты', en: 'My contact details' },
+  wa_thanks: {
+    az: 'Sifarişi təsdiqləməyinizi xahiş edirəm. Təşəkkürlər!',
+    ru: 'Прошу подтвердить заказ. Спасибо!',
+    en: 'Please confirm my order. Thank you!',
+  },
 
   // Favorites
   fav_title: { az: 'Sevimliləriniz', ru: 'Избранное', en: 'Favorites' },
