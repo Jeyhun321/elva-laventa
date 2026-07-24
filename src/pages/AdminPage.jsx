@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import catalog from '../data/catalog.json'
+import { supabase, isConfigured } from '../lib/supabase.js'
 import {
-  getToken, setToken, clearToken,
-  checkAccess, uploadImage, publishCatalog, latestRun,
-} from '../admin/github.js'
+  loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin,
+} from '../admin/db.js'
+import { useCatalog } from '../context/CatalogContext.jsx'
 import { IconTrash, IconPlus, IconClose } from '../components/Icons.jsx'
 
-const DRAFT_KEY = 'elva_admin_draft'
 const SIZE_PRESETS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One size']
 const TAGS = [
   { value: '', label: 'Без метки' },
@@ -16,12 +15,12 @@ const TAGS = [
   { value: 'sale', label: 'Скидка' },
 ]
 
-const emptyProduct = () => ({
+const emptyProduct = (catId) => ({
   id: null,
   brand: 'Elva LaVenta',
   name: { az: '', ru: '', en: '' },
   description: { az: '', ru: '', en: '' },
-  category: 'donlar',
+  category: catId || 'donlar',
   price: '',
   oldPrice: '',
   image: '',
@@ -30,101 +29,168 @@ const emptyProduct = () => ({
   rating: 5,
   reviews: 0,
   tag: '',
+  isActive: true,
 })
 
 export default function AdminPage() {
-  const [data, setData] = useState(() => {
-    const draft = localStorage.getItem(DRAFT_KEY)
-    if (draft) {
-      try { return JSON.parse(draft) } catch { /* pozulub */ }
-    }
-    return structuredClone(catalog)
-  })
-  const [form, setForm] = useState(null)
-  const [tokenInput, setTokenInput] = useState('')
-  const [authed, setAuthed] = useState(false)
-  const [busy, setBusy] = useState('')
-  const [msg, setMsg] = useState(null)
+  const [session, setSession] = useState(null)
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(data))
-  }, [data])
-
-  useEffect(() => {
-    if (!getToken()) return
-    checkAccess()
-      .then((r) => setAuthed(r.ok))
-      .catch(() => setAuthed(false))
+    if (!isConfigured || !supabase) { setChecking(false); return }
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setChecking(false)
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    return () => sub.subscription.unsubscribe()
   }, [])
 
-  const dirty = useMemo(
-    () => JSON.stringify(data) !== JSON.stringify(catalog),
-    [data]
+  if (!isConfigured) {
+    return (
+      <div className="container admin">
+        <h1 className="page-title">Панель управления</h1>
+        <div className="admin-msg err">База данных не подключена.</div>
+      </div>
+    )
+  }
+
+  if (checking) {
+    return (
+      <div className="container admin">
+        <p className="admin-sub">Проверяю вход…</p>
+      </div>
+    )
+  }
+
+  if (!session) return <LoginScreen />
+
+  return <Dashboard session={session} />
+}
+
+/* ---------------- Вход ---------------- */
+function LoginScreen() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setBusy(true); setErr('')
+    try {
+      await signIn(email.trim(), password)
+    } catch (e2) {
+      setErr(
+        /invalid/i.test(e2.message)
+          ? 'Неверная почта или пароль'
+          : e2.message
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="container admin">
+      <div className="login-box">
+        <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Вход в панель</h1>
+        <p className="admin-sub" style={{ marginBottom: 18 }}>
+          Панель управления товарами Elva LaVenta
+        </p>
+
+        <form onSubmit={submit} className="login-form">
+          <label className="fld">
+            <span>Почта</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
+              required
+            />
+          </label>
+          <label className="fld">
+            <span>Пароль</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </label>
+
+          {err && <div className="admin-msg err">{err}</div>}
+
+          <button className="btn btn-primary full" disabled={busy}>
+            {busy ? 'Проверяю…' : 'Войти'}
+          </button>
+        </form>
+
+        <Link to="/" className="continue-link">← На сайт</Link>
+      </div>
+    </div>
   )
+}
+
+/* ---------------- Панель ---------------- */
+function Dashboard({ session }) {
+  const { reload: reloadSite } = useCatalog()
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
+  const [form, setForm] = useState(null)
+  const [busy, setBusy] = useState('')
+  const [msg, setMsg] = useState(null)
 
   const say = (type, text) => {
     setMsg({ type, text })
     setTimeout(() => setMsg(null), 6000)
   }
 
-  const connect = async () => {
-    setBusy('auth')
+  const refresh = async () => {
+    setBusy('load')
     try {
-      setToken(tokenInput)
-      const r = await checkAccess()
-      if (!r.ok) throw new Error('Нет прав на запись в репозиторий')
-      setAuthed(true)
-      setTokenInput('')
-      say('ok', 'Подключено к GitHub ✓')
+      const data = await loadAll()
+      setProducts(data.products)
+      setCategories(data.categories)
     } catch (e) {
-      clearToken()
-      setAuthed(false)
-      say('err', `Не вышло: ${e.message}`)
+      say('err', `Не удалось загрузить: ${e.message}`)
     } finally {
       setBusy('')
     }
   }
 
-  const saveProduct = (p) => {
-    const norm = normalize(p, data.products)
-    setData((d) => {
-      const exists = d.products.some((x) => x.id === norm.id)
-      return {
-        ...d,
-        products: exists
-          ? d.products.map((x) => (x.id === norm.id ? norm : x))
-          : [...d.products, norm],
-      }
-    })
-    setForm(null)
-    say('ok', 'Сохранено локально. Не забудь «Опубликовать».')
-  }
+  useEffect(() => { refresh() }, [])
 
-  const removeProduct = (id) => {
-    const p = data.products.find((x) => x.id === id)
-    if (!confirm(`Удалить «${p?.name?.az || id}»?`)) return
-    setData((d) => ({ ...d, products: d.products.filter((x) => x.id !== id) }))
-  }
-
-  const publish = async () => {
-    setBusy('publish')
+  const onSave = async (p) => {
+    setBusy('save')
     try {
-      await publishCatalog(data)
-      say('ok', 'Опубликовано! Сайт обновится через 1–2 минуты.')
-      setTimeout(async () => {
-        try {
-          const run = await latestRun()
-          if (run) say('ok', `Сборка: ${run.status} ${run.conclusion || ''}`)
-        } catch { /* vacib deyil */ }
-      }, 8000)
+      await saveProduct(p)
+      setForm(null)
+      await refresh()
+      reloadSite()
+      say('ok', 'Сохранено. Товар уже на сайте.')
     } catch (e) {
-      say('err', e.message === 'NO_TOKEN'
-        ? 'Сначала подключи GitHub (ключ доступа).'
-        : `Ошибка публикации: ${e.message}`)
+      say('err', `Ошибка сохранения: ${e.message}`)
     } finally {
       setBusy('')
     }
   }
+
+  const onDelete = async (p) => {
+    if (!confirm(`Удалить «${p.name.az || p.id}»?`)) return
+    try {
+      await deleteProduct(p.id)
+      await refresh()
+      reloadSite()
+      say('ok', 'Товар удалён.')
+    } catch (e) {
+      say('err', `Ошибка удаления: ${e.message}`)
+    }
+  }
+
+  const catLabel = (id) => categories.find((c) => c.id === id)?.label?.ru || id
 
   return (
     <div className="container admin">
@@ -132,90 +198,32 @@ export default function AdminPage() {
         <div>
           <h1 className="page-title">Панель управления</h1>
           <p className="admin-sub">
-            {data.products.length} товаров
-            {dirty && <em className="dirty"> · есть неопубликованные изменения</em>}
+            {products.length} товаров · вошли как {session.user.email}
           </p>
         </div>
         <div className="admin-head-actions">
           <Link to="/" className="btn btn-ghost btn-sm">На сайт</Link>
-          <button
-            className="btn btn-primary"
-            onClick={publish}
-            disabled={busy === 'publish' || !authed || !dirty}
-          >
-            {busy === 'publish' ? 'Публикую…' : 'Опубликовать на сайт'}
+          <button className="btn btn-ghost btn-sm" onClick={signOutAdmin}>Выйти</button>
+          <button className="btn btn-primary" onClick={() => setForm(emptyProduct(categories[0]?.id))}>
+            <IconPlus /> Добавить товар
           </button>
         </div>
       </div>
 
       {msg && <div className={`admin-msg ${msg.type}`}>{msg.text}</div>}
-
-      {!authed && (
-        <div className="admin-card auth-card">
-          <h3>Подключение к GitHub</h3>
-          <p>
-            Чтобы публиковать товары одним кликом, нужен ключ доступа.
-            Он сохранится только в этом браузере.
-          </p>
-          <ol className="auth-steps">
-            <li>Открой <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">эту страницу GitHub</a></li>
-            <li>Repository access → Only select repositories → <b>elva-laventa</b></li>
-            <li>Permissions → Repository permissions → <b>Contents</b> → <b>Read and write</b></li>
-            <li>Generate token → скопируй и вставь сюда</li>
-          </ol>
-          <div className="auth-row">
-            <input
-              type="password"
-              placeholder="github_pat_..."
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-            />
-            <button
-              className="btn btn-primary"
-              onClick={connect}
-              disabled={!tokenInput.trim() || busy === 'auth'}
-            >
-              {busy === 'auth' ? 'Проверяю…' : 'Подключить'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {authed && (
-        <div className="admin-connected">
-          Подключено к GitHub ✓
-          <button className="link-btn" onClick={() => { clearToken(); setAuthed(false) }}>
-            отключить
-          </button>
-        </div>
-      )}
-
-      <div className="admin-toolbar">
-        <button className="btn btn-primary" onClick={() => setForm(emptyProduct())}>
-          <IconPlus /> Добавить товар
-        </button>
-        {dirty && (
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => { if (confirm('Отменить все неопубликованные правки?')) setData(structuredClone(catalog)) }}
-          >
-            Сбросить правки
-          </button>
-        )}
-      </div>
+      {busy === 'load' && <p className="admin-sub">Загружаю…</p>}
 
       <div className="admin-list">
-        {data.products.map((p) => (
-          <div className="admin-row" key={p.id}>
+        {products.map((p) => (
+          <div className={`admin-row${p.isActive ? '' : ' inactive'}`} key={p.id}>
             <div className="admin-thumb">
-              {p.image
-                ? <img src={p.image} alt="" />
-                : <span className="no-photo">нет фото</span>}
+              {p.image ? <img src={p.image} alt="" /> : <span className="no-photo">нет фото</span>}
             </div>
             <div className="admin-row-main">
               <b>{p.name.az || '(без названия)'}</b>
               <span className="admin-row-meta">
-                {p.brand} · {catLabel(data.categories, p.category)}
+                {p.brand} · {catLabel(p.category)}
+                {!p.isActive && ' · скрыт'}
               </span>
             </div>
             <div className="admin-row-price">
@@ -226,7 +234,7 @@ export default function AdminPage() {
               <button className="btn-ghost btn-sm" onClick={() => setForm(structuredClone(p))}>
                 Изменить
               </button>
-              <button className="cart-remove" onClick={() => removeProduct(p.id)} aria-label="Удалить">
+              <button className="cart-remove" onClick={() => onDelete(p)} aria-label="Удалить">
                 <IconTrash />
               </button>
             </div>
@@ -237,9 +245,10 @@ export default function AdminPage() {
       {form && (
         <ProductForm
           value={form}
-          categories={data.categories}
+          categories={categories}
+          saving={busy === 'save'}
           onCancel={() => setForm(null)}
-          onSave={saveProduct}
+          onSave={onSave}
           onNotify={say}
         />
       )}
@@ -247,39 +256,8 @@ export default function AdminPage() {
   )
 }
 
-const catLabel = (cats, id) =>
-  cats.find((c) => c.id === id)?.label?.ru || id
-
-// Boş sahələri doldurur, tipləri düzəldir
-function normalize(p, existing) {
-  const az = p.name.az.trim()
-  const id = p.id ?? (existing.reduce((m, x) => Math.max(m, x.id), 0) + 1)
-  return {
-    id,
-    brand: p.brand.trim() || 'Elva LaVenta',
-    name: {
-      az,
-      ru: p.name.ru.trim() || az,
-      en: p.name.en.trim() || az,
-    },
-    description: {
-      az: p.description.az.trim(),
-      ru: p.description.ru.trim() || p.description.az.trim(),
-      en: p.description.en.trim() || p.description.az.trim(),
-    },
-    category: p.category,
-    price: Number(p.price) || 0,
-    oldPrice: p.oldPrice === '' || p.oldPrice == null ? null : Number(p.oldPrice),
-    image: p.image.trim(),
-    colors: p.colors.filter(Boolean),
-    sizes: p.sizes.length ? p.sizes : ['One size'],
-    rating: Number(p.rating) || 5,
-    reviews: Number(p.reviews) || 0,
-    tag: p.tag || null,
-  }
-}
-
-function ProductForm({ value, categories, onCancel, onSave, onNotify }) {
+/* ---------------- Форма товара ---------------- */
+function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) {
   const [p, setP] = useState(value)
   const [uploading, setUploading] = useState(false)
 
@@ -298,12 +276,11 @@ function ProductForm({ value, categories, onCancel, onSave, onNotify }) {
     }
     setUploading(true)
     try {
-      const url = await uploadImage(file)
-      set({ image: url })
-      onNotify('ok', 'Фото загружено в репозиторий ✓')
+      set({ image: await uploadImage(file) })
+      onNotify('ok', 'Фото загружено ✓')
     } catch (e) {
-      onNotify('err', e.message === 'NO_TOKEN'
-        ? 'Сначала подключи GitHub.'
+      onNotify('err', e.message === 'BUCKET_MISSING'
+        ? 'Хранилище фото ещё не создано — запусти supabase/storage.sql'
         : `Не удалось загрузить фото: ${e.message}`)
     } finally {
       setUploading(false)
@@ -364,7 +341,7 @@ function ProductForm({ value, categories, onCancel, onSave, onNotify }) {
             <label className="fld">
               <span>Категория</span>
               <select value={p.category} onChange={(e) => set({ category: e.target.value })}>
-                {categories.filter((c) => c.id !== 'all').map((c) => (
+                {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.label.ru}</option>
                 ))}
               </select>
@@ -379,7 +356,7 @@ function ProductForm({ value, categories, onCancel, onSave, onNotify }) {
             </label>
             <label className="fld">
               <span>Старая цена, ₼ (для скидки)</span>
-              <input type="number" min="0" value={p.oldPrice ?? ''}
+              <input type="number" min="0" value={p.oldPrice}
                 onChange={(e) => set({ oldPrice: e.target.value })}
                 placeholder="пусто = без скидки" />
             </label>
@@ -441,12 +418,18 @@ function ProductForm({ value, categories, onCancel, onSave, onNotify }) {
                 onChange={(e) => set({ rating: e.target.value })} />
             </label>
           </div>
+
+          <label className="checkbox-row">
+            <input type="checkbox" checked={p.isActive}
+              onChange={(e) => set({ isActive: e.target.checked })} />
+            <span>Показывать на сайте</span>
+          </label>
         </div>
 
         <div className="admin-modal-foot">
           <button className="btn btn-ghost" onClick={onCancel}>Отмена</button>
-          <button className="btn btn-primary" disabled={!valid} onClick={() => onSave(p)}>
-            Сохранить
+          <button className="btn btn-primary" disabled={!valid || saving} onClick={() => onSave(p)}>
+            {saving ? 'Сохраняю…' : 'Сохранить'}
           </button>
         </div>
       </div>

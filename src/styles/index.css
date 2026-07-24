@@ -1986,6 +1986,39 @@ a.product-media {
 
 .admin-toolbar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
 
+/* Giriş ekranı */
+.login-box {
+  max-width: 420px;
+  margin: 40px auto;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+  margin-bottom: 14px;
+}
+.login-form .fld input {
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  width: 100%;
+}
+.login-form .fld input:focus-visible {
+  border-color: var(--lavender);
+  box-shadow: 0 0 0 3px rgba(229, 57, 154, 0.14);
+}
+.admin-row.inactive { opacity: 0.55; }
+
 .admin-list { display: flex; flex-direction: column; gap: 10px; }
 .admin-row {
   display: grid;
