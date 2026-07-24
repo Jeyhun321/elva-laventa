@@ -4,15 +4,18 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { I18nProvider } from './i18n/I18nContext.jsx'
 import { ShopProvider } from './context/ShopContext.jsx'
+import { CatalogProvider } from './context/CatalogContext.jsx'
 import './styles/index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <I18nProvider>
-        <ShopProvider>
-          <App />
-        </ShopProvider>
+        <CatalogProvider>
+          <ShopProvider>
+            <App />
+          </ShopProvider>
+        </CatalogProvider>
       </I18nProvider>
     </BrowserRouter>
   </React.StrictMode>,

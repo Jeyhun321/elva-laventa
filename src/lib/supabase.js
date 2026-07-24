@@ -7,8 +7,8 @@ import { createClient } from '@supabase/supabase-js'
 //  daxil olmuş istifadəçiyə icazəlidir. service_role açarı ASLA burada olmamalıdır.
 // ============================================================
 
-export const SUPABASE_URL = 'https://xvuwuxgzsgswlbwrrzsx.supabase.co'
-export const SUPABASE_ANON_KEY = '' // TODO: Settings → API → anon public
+export const SUPABASE_URL = 'https://njvlvceqkjsvlfyajmee.supabase.co'
+export const SUPABASE_ANON_KEY = 'sb_publishable_btLK4kgQowu111Gu1NULtQ_eh2OudI6'
 
 export const isConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
 

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { getProduct } from '../data/products.js'
+import { useCatalog } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { IconPlus, IconMinus, IconTrash } from '../components/Icons.jsx'
@@ -7,6 +7,7 @@ import ProductImage from '../components/ProductImage.jsx'
 
 export default function CartPage() {
   const { t } = useI18n()
+  const { getProduct } = useCatalog()
   const { cart, setQty, removeFromCart } = useShop()
 
   const lines = cart

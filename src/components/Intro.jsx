@@ -1,29 +1,35 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { saleProducts, discountPercent } from '../data/products.js'
+import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconArrow } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
 
-const SHOW = saleProducts.slice(0, 7)
 const AUTOPLAY_MS = 3600
 const HOVER_STEP_MS = 1500
 
 export default function Intro() {
   const { t } = useI18n()
+  const { saleProducts } = useCatalog()
+  const SHOW = useMemo(() => saleProducts.slice(0, 7), [saleProducts])
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
   const [hoverSide, setHoverSide] = useState(null) // 'left' | 'right' | null
 
   const step = (dir) =>
-    setActive((a) => (a + dir + SHOW.length) % SHOW.length)
+    setActive((a) => (SHOW.length ? (a + dir + SHOW.length) % SHOW.length : 0))
+
+  // Məhsullar bazadan gec gələ bilər — indeks siyahıdan kənara çıxmasın
+  useEffect(() => {
+    if (SHOW.length && active >= SHOW.length) setActive(0)
+  }, [SHOW.length, active])
 
   // Avtomatik dəyişmə
   useEffect(() => {
-    if (paused) return
+    if (paused || SHOW.length < 2) return
     const tm = setInterval(() => step(1), AUTOPLAY_MS)
     return () => clearInterval(tm)
-  }, [paused])
+  }, [paused, SHOW.length])
 
   // Yan zona: geri sayım HƏR addımdan sonra sıfırdan başlayır.
   // Klik etsən — dərhal bir addım atılır və saniyə yenidən başlayır.

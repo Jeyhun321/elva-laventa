@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { getProduct, products, discountPercent } from '../data/products.js'
+import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { tagLabels } from '../i18n/translations.js'
@@ -13,6 +13,7 @@ export default function ProductPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { t } = useI18n()
+  const { getProduct, products } = useCatalog()
   const { addToCart, toggleFavorite, isFavorite } = useShop()
 
   const product = getProduct(id)

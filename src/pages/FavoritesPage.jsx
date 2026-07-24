@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
-import { products } from '../data/products.js'
+import { useCatalog } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 
 export default function FavoritesPage() {
   const { t } = useI18n()
+  const { products } = useCatalog()
   const { favorites } = useShop()
 
   const items = products.filter((p) => favorites.includes(p.id))

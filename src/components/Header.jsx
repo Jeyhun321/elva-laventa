@@ -2,12 +2,13 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
-import { categories } from '../data/products.js'
+import { useCatalog } from '../context/CatalogContext.jsx'
 import { IconSearch, IconHeart, IconBag, IconMenu, IconClose } from './Icons.jsx'
 
 export default function Header() {
   const { t, lang, setLang, langs } = useI18n()
   const { cartCount, favCount } = useShop()
+  const { categories } = useCatalog()
   const navigate = useNavigate()
 
   const [query, setQuery] = useState('')

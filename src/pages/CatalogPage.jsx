@@ -1,13 +1,13 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { products, categories, discountPercent, priceBounds } from '../data/products.js'
+import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 
-const bounds = priceBounds()
-
 export default function CatalogPage() {
   const { t } = useI18n()
+  const { products, categories, priceBounds, loading } = useCatalog()
+  const bounds = useMemo(() => priceBounds(), [products])
   const [params, setParams] = useSearchParams()
 
   const cat = params.get('cat') || 'all'
@@ -25,12 +25,12 @@ export default function CatalogPage() {
   const applyMin = (n) => { setMinPrice(n); setMinText(String(n)) }
   const applyMax = (n) => { setMaxPrice(n); setMaxText(String(n)) }
 
-  // URL dəyişəndə filtrləri uyğunlaşdır
+  // URL dəyişəndə (və məhsullar bazadan gələndə) filtrləri uyğunlaşdır
   useEffect(() => {
     setMinPrice(bounds.min); setMinText(String(bounds.min))
     setMaxPrice(bounds.max); setMaxText(String(bounds.max))
     setOnlySale(saleParam === '1')
-  }, [cat, q, saleParam])
+  }, [cat, q, saleParam, bounds.min, bounds.max])
 
   // Yazarkən: mətni sərbəst qəbul et, amma filtri YALNIZ interval düzgün
   // olduqda tətbiq et (min ≤ maks). Yanlış interval qəbul edilmir.

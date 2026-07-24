@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { products } from '../data/products.js'
+import { useCatalog } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import Intro from '../components/Intro.jsx'
 import Marquee from '../components/Marquee.jsx'
@@ -9,6 +9,7 @@ import { IconArrow } from '../components/Icons.jsx'
 
 export default function HomePage() {
   const { t } = useI18n()
+  const { products } = useCatalog()
   const popular = [...products].sort((a, b) => b.rating - a.rating).slice(0, 8)
 
   return (

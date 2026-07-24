@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { discountPercent } from '../data/products.js'
+import { discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { tagLabels } from '../i18n/translations.js'
