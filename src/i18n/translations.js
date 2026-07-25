@@ -146,8 +146,6 @@ export const ui = {
     ru: 'Смотреть скидки',
     en: 'View deals',
   },
-  previous_product: { az: 'Əvvəlki məhsul', ru: 'Предыдущий товар', en: 'Previous product' },
-  next_product: { az: 'Növbəti məhsul', ru: 'Следующий товар', en: 'Next product' },
   stat_products: { az: 'Məhsul', ru: 'Товаров', en: 'Products' },
   stat_customers: { az: 'Məmnun müştəri', ru: 'Довольных клиентов', en: 'Happy customers' },
   stat_rating: { az: 'Reytinq', ru: 'Рейтинг', en: 'Rating' },

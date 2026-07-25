@@ -5,7 +5,7 @@ import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconArrow } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
 
-const AUTOPLAY_MS = 3600
+const AUTOPLAY_MS = 1000
 
 export default function Intro() {
   const { t } = useI18n()
@@ -30,7 +30,7 @@ export default function Intro() {
   // Avtomatik dəyişmə
   useEffect(() => {
     if (paused || SHOW.length < 2) return
-    const tm = setInterval(() => step(1), AUTOPLAY_MS)
+    const tm = setInterval(() => step(-1), AUTOPLAY_MS)
     return () => clearInterval(tm)
   }, [paused, SHOW.length])
 
@@ -71,26 +71,9 @@ export default function Intro() {
                 key={product.id}
                 product={product}
                 slot={slotName(i)}
-                onSelect={() => setActive(i)}
               />
             ))}
 
-            <button
-              type="button"
-              className="showcase-nav showcase-nav-prev"
-              onClick={() => step(-1)}
-              aria-label={t('previous_product')}
-            >
-              <IconArrow style={{ transform: 'rotate(180deg)' }} />
-            </button>
-            <button
-              type="button"
-              className="showcase-nav showcase-nav-next"
-              onClick={() => step(1)}
-              aria-label={t('next_product')}
-            >
-              <IconArrow />
-            </button>
           </div>
 
           <div className="showcase-dots" role="tablist" aria-label="Showcase">
@@ -110,7 +93,7 @@ export default function Intro() {
   )
 }
 
-function ShowcaseCard({ product, slot, onSelect }) {
+function ShowcaseCard({ product, slot }) {
   const { t } = useI18n()
   const cls = `sc-card slot-${slot}`
   const hasDiscount = Number(product.oldPrice) > Number(product.price)
@@ -132,7 +115,7 @@ function ShowcaseCard({ product, slot, onSelect }) {
   )
 
   // Mərkəzdəki karta klik → məhsul səhifəsi
-  if (slot === 'main') {
+  if (slot === 'main' || slot === 'left' || slot === 'right') {
     return (
       <Link to={`/product/${product.id}`} className={cls}>
         {inner}
@@ -141,20 +124,6 @@ function ShowcaseCard({ product, slot, onSelect }) {
   }
 
   // Yan kartlar: klaviatura ilə seçilə bilər (siçan üçün hover zonaları var)
-  if (slot === 'left' || slot === 'right') {
-    return (
-      <button
-        type="button"
-        className={cls}
-        onFocus={onSelect}
-        onClick={onSelect}
-        aria-label={t(product.name)}
-      >
-        {inner}
-      </button>
-    )
-  }
-
   return (
     <div className={cls} aria-hidden="true">
       {inner}

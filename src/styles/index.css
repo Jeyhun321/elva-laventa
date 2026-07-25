@@ -428,33 +428,6 @@ ul {
 }
 
 /* Видимые стрелки для ручного переключения карточек на главном экране. */
-.showcase-nav {
-  position: absolute;
-  top: 50%;
-  z-index: 6;
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgba(181, 15, 97, 0.18);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--plum);
-  box-shadow: 0 8px 20px rgba(111, 25, 70, 0.16);
-  cursor: pointer;
-  transform: translateY(-50%);
-  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
-}
-.showcase-nav:hover {
-  background: var(--plum);
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(111, 25, 70, 0.26);
-}
-.showcase-nav:focus-visible { outline: 3px solid var(--lavender); outline-offset: 3px; }
-.showcase-nav-prev { left: 2%; }
-.showcase-nav-next { right: 2%; }
-
 .discount-badge {
   position: absolute;
   top: 16px;
