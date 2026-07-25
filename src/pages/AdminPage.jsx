@@ -412,6 +412,7 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
   const [p, setP] = useState(value)
   const [uploading, setUploading] = useState(false)
   const [detecting, setDetecting] = useState(false)
+  const [attemptedSave, setAttemptedSave] = useState(false)
   const [suggestions, setSuggestions] = useState([]) // fotodan tapılan tonlar
 
   const toggleColor = (c) =>
@@ -488,7 +489,31 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
     }
   }
 
-  const valid = p.name.az.trim() && Number(p.price) > 0
+  const validation = {
+    name: !p.name.az.trim(),
+    category: !p.category,
+    price: !Number.isFinite(Number(p.price)) || Number(p.price) <= 0,
+    images: !(p.images || []).length && !p.image?.trim(),
+    sizes: !(p.sizes || []).length,
+    oldPrice: p.oldPrice !== '' && p.oldPrice !== null &&
+      (!Number.isFinite(Number(p.oldPrice)) || Number(p.oldPrice) <= Number(p.price)),
+  }
+  const validationMessages = [
+    validation.name && 'название на азербайджанском',
+    validation.category && 'категорию',
+    validation.price && 'цену больше 0',
+    validation.images && 'минимум одну фотографию',
+    validation.sizes && 'минимум один размер',
+    validation.oldPrice && 'старую цену больше текущей',
+  ].filter(Boolean)
+  const submit = () => {
+    setAttemptedSave(true)
+    if (validationMessages.length) {
+      onNotify('err', `Товар не сохранён. Заполните: ${validationMessages.join(', ')}.`)
+      return
+    }
+    onSave(p)
+  }
 
   return (
     <div className="admin-modal" role="dialog" aria-modal="true">
@@ -499,9 +524,14 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
         </div>
 
         <div className="admin-modal-body">
-          <label className="fld">
+          {attemptedSave && validationMessages.length > 0 && (
+            <div className="form-errors" role="alert">
+              <strong>Товар не сохранён.</strong> Заполните: {validationMessages.join(', ')}.
+            </div>
+          )}
+          <label className={`fld${attemptedSave && validation.name ? ' has-error' : ''}`}>
             <span>Название (азербайджанский) *</span>
-            <input value={p.name.az} onChange={(e) => setLang('name', 'az', e.target.value)} />
+            <input aria-invalid={attemptedSave && validation.name} value={p.name.az} onChange={(e) => setLang('name', 'az', e.target.value)} />
           </label>
           <div className="fld-2">
             <label className="fld">
@@ -549,7 +579,7 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
           <div className="fld-2">
             <label className="fld">
               <span>Категория</span>
-              <select value={p.category} onChange={(e) => set({ category: e.target.value })}>
+              <select className={attemptedSave && validation.category ? 'field-error' : ''} aria-invalid={attemptedSave && validation.category} value={p.category} onChange={(e) => set({ category: e.target.value })}>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.label.ru}</option>
                 ))}
@@ -558,14 +588,14 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
           </div>
 
           <div className="fld-2">
-            <label className="fld">
+            <label className={`fld${attemptedSave && validation.price ? ' has-error' : ''}`}>
               <span>Цена, ₼ *</span>
-              <input type="number" min="0" value={p.price}
+              <input aria-invalid={attemptedSave && validation.price} type="number" min="0" value={p.price}
                 onChange={(e) => set({ price: e.target.value })} />
             </label>
-            <label className="fld">
+            <label className={`fld${attemptedSave && validation.oldPrice ? ' has-error' : ''}`}>
               <span>Старая цена, ₼ (для скидки)</span>
-              <input type="number" min="0" value={p.oldPrice}
+              <input aria-invalid={attemptedSave && validation.oldPrice} type="number" min="0" value={p.oldPrice}
                 onChange={(e) => set({ oldPrice: e.target.value })}
                 placeholder="пусто = без скидки" />
             </label>
@@ -573,7 +603,7 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
 
           <div className="fld">
             <span>Фото товара <em className="fld-note" style={{ fontWeight: 400 }}>— первое будет главным</em></span>
-            <div className="photo-row">
+            <div className={`photo-row${attemptedSave && validation.images ? ' field-error' : ''}`}>
               <div className="photo-previews">
                 {(p.images || []).length ? p.images.map((image, index) => (
                   <div className="photo-preview" key={image}>
@@ -617,7 +647,7 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
 
           <div className="fld">
             <span>Размеры</span>
-            <div className="size-picks">
+            <div className={`size-picks${attemptedSave && validation.sizes ? ' field-error' : ''}`}>
               {SIZE_PRESETS.map((s) => (
                 <button key={s} type="button"
                   className={`size-btn${p.sizes.includes(s) ? ' active' : ''}`}
@@ -688,7 +718,7 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
 
         <div className="admin-modal-foot">
           <button className="btn btn-ghost" onClick={onCancel}>Отмена</button>
-          <button className="btn btn-primary" disabled={!valid || saving} onClick={() => onSave(p)}>
+          <button className="btn btn-primary" disabled={saving || uploading} onClick={submit}>
             {saving ? 'Сохраняю…' : 'Сохранить'}
           </button>
         </div>
