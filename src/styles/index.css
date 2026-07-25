@@ -1691,13 +1691,13 @@ a.product-media {
   border: 1px solid rgba(185, 16, 95, 0.2);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.94);
-  color: var(--pink-dark);
+  color: var(--plum);
   box-shadow: 0 4px 16px rgba(73, 25, 50, 0.16);
   cursor: pointer;
   transform: translateY(-50%);
   transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
-.gallery-nav:hover { background: var(--pink-dark); color: #fff; box-shadow: 0 6px 20px rgba(185, 16, 95, 0.3); }
+.gallery-nav:hover { background: var(--plum); color: #fff; box-shadow: 0 6px 20px rgba(185, 16, 95, 0.3); }
 .gallery-nav:active { transform: translateY(-50%) scale(0.94); }
 .gallery-nav:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
 .gallery-nav-prev { left: 14px; }
