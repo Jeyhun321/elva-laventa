@@ -8,6 +8,7 @@ import { IconHeart, IconBag, IconStar } from '../components/Icons.jsx'
 import ProductImage from '../components/ProductImage.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Rating from '../components/Rating.jsx'
+import { REAL_PRODUCT_GALLERIES } from '../data/realProducts.js'
 
 export default function ProductPage() {
   const { id } = useParams()
@@ -21,6 +22,7 @@ export default function ProductPage() {
   const [size, setSize] = useState(needsSize ? null : product?.sizes?.[0] ?? null)
   const [warn, setWarn] = useState(false)
   const [added, setAdded] = useState(false)
+  const [selectedImage, setSelectedImage] = useState(null)
 
   if (!product) {
     return (
@@ -32,6 +34,8 @@ export default function ProductPage() {
   }
 
   const onSale = Boolean(product.oldPrice)
+  const gallery = REAL_PRODUCT_GALLERIES[product.code] || (product.image ? [product.image] : [])
+  const mainImage = selectedImage || gallery[0] || product.image
   const fav = isFavorite(product.id)
   const related = products
     .filter((p) => p.category === product.category && p.id !== product.id)
@@ -63,7 +67,7 @@ export default function ProductPage() {
       <div className="product-detail">
         <div className="product-gallery">
           <div className="gallery-main">
-            <ProductImage product={{ ...product, name: t(product.name) }} />
+            <ProductImage product={{ ...product, image: mainImage, name: t(product.name) }} />
             {product.tag && (
               <span className="product-tag">{t(tagLabels[product.tag])}</span>
             )}
@@ -71,6 +75,15 @@ export default function ProductPage() {
               <span className="product-discount">-{discountPercent(product)}%</span>
             )}
           </div>
+          {gallery.length > 1 && (
+            <div className="gallery-thumbs" aria-label="Məhsul şəkilləri">
+              {gallery.map((image, index) => (
+                <button key={image} className={`gallery-thumb${mainImage === image ? ' active' : ''}`} onClick={() => setSelectedImage(image)} aria-label={`Şəkil ${index + 1}`}>
+                  <img src={image} alt="" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="product-detail-info">

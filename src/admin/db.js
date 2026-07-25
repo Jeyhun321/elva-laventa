@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { REAL_PRODUCTS } from '../data/realProducts.js'
 
 // ============================================================
 //  Admin paneli üçün baza əməliyyatları.
@@ -93,6 +94,14 @@ export const deleteProduct = async (id) => {
   const sb = need()
   const { error } = await sb.from('products').delete().eq('id', id)
   if (error) throw error
+}
+
+export const replaceWithRealProducts = async () => {
+  const sb = need()
+  const { error: deleteError } = await sb.from('products').delete().gt('id', 0)
+  if (deleteError) throw deleteError
+  const { error: insertError } = await sb.from('products').insert(REAL_PRODUCTS.map(toRow))
+  if (insertError) throw insertError
 }
 
 // Şəkli Supabase Storage-a yükləyir və ictimai linki qaytarır

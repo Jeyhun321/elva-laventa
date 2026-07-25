@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, isConfigured } from '../lib/supabase.js'
 import {
-  loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin,
+  loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin, replaceWithRealProducts,
 } from '../admin/db.js'
 import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
@@ -225,6 +225,21 @@ function Dashboard({ session }) {
     }
   }
 
+  const importRealProducts = async () => {
+    if (!confirm('Test məhsullar silinəcək və 14 real məhsul əlavə olunacaq. Davam edək?')) return
+    setBusy('import')
+    try {
+      await replaceWithRealProducts()
+      await refresh()
+      reloadSite()
+      say('ok', '14 real məhsul və bütün fotolar əlavə edildi.')
+    } catch (e) {
+      say('err', `İdxal xətası: ${e.message}`)
+    } finally {
+      setBusy('')
+    }
+  }
+
   const catLabel = (id) => categories.find((c) => c.id === id)?.label?.ru || id
 
   return (
@@ -239,6 +254,11 @@ function Dashboard({ session }) {
         <div className="admin-head-actions">
           <Link to="/" className="btn btn-ghost btn-sm">На сайт</Link>
           <button className="btn btn-ghost btn-sm" onClick={signOutAdmin}>Выйти</button>
+          {tab === 'products' && (
+            <button className="btn btn-ghost btn-sm" onClick={importRealProducts} disabled={busy === 'import'}>
+              {busy === 'import' ? 'Yüklənir…' : '14 məhsulu yüklə'}
+            </button>
+          )}
           {tab === 'products' && (
             <button className="btn btn-primary" onClick={() => setForm(emptyProduct(categories[0]?.id))}>
               <IconPlus /> Добавить товар
