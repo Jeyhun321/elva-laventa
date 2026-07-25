@@ -47,7 +47,7 @@ export default function ProductPage() {
   const fav = isFavorite(product.id)
   const related = products
     .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4)
+    .slice(0, 6)
 
   const handleAdd = () => {
     if (needsSize && !size) {
