@@ -169,17 +169,18 @@ export default function Intro() {
 function ShowcaseCard({ product, slot, onSelect }) {
   const { t } = useI18n()
   const cls = `sc-card slot-${slot}`
+  const hasDiscount = Number(product.oldPrice) > Number(product.price)
 
   const inner = (
     <>
-      <span className="discount-badge">-{discountPercent(product)}%</span>
+      {hasDiscount && <span className="discount-badge">-{discountPercent(product)}%</span>}
       <div className="sc-photo">
         <ProductImage product={{ ...product, name: t(product.name) }} />
       </div>
       <div className="showcase-price">
         <span className="name">{t(product.name)}</span>
         <span className="prices">
-          <span className="old">{product.oldPrice} ₼</span>
+          {hasDiscount && <span className="old">{product.oldPrice} ₼</span>}
           <span className="new">{product.price} ₼</span>
         </span>
       </div>
