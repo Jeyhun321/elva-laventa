@@ -34,12 +34,13 @@ export default function CheckoutPage() {
   const navigate = useNavigate()
 
   const [buyer, setBuyer] = useState(() => {
+    // Bütün sahələr həmişə mövcud olsun — köhnə yaddaşda phoneCall olmaya bilər
+    const empty = { name: '', phone: '', phoneCall: '', address: '', note: '' }
     try {
-      return JSON.parse(localStorage.getItem(BUYER_KEY)) || {
-        name: '', phone: '', phoneCall: '', address: '', note: '',
-      }
+      const saved = JSON.parse(localStorage.getItem(BUYER_KEY))
+      return { ...empty, ...(saved && typeof saved === 'object' ? saved : {}) }
     } catch {
-      return { name: '', phone: '', phoneCall: '', address: '', note: '' }
+      return empty
     }
   })
   const [remember, setRemember] = useState(true)
@@ -68,18 +69,21 @@ export default function CheckoutPage() {
 
   const set = (k, v) => setBuyer((b) => ({ ...b, [k]: v }))
 
+  // Hər sahəni təhlükəsiz oxuyuruq (undefined ola bilməz)
+  const g = (k) => (buyer[k] || '').trim()
+
   const errors = {
-    name: buyer.name.trim() ? '' : t('required_field'),
-    phone: !buyer.phone.trim()
+    name: g('name') ? '' : t('required_field'),
+    phone: !g('phone')
       ? t('required_field')
-      : isValidWhatsApp(buyer.phone) ? '' : t('whatsapp_invalid'),
+      : isValidWhatsApp(g('phone')) ? '' : t('whatsapp_invalid'),
     // Zəng nömrəsi yalnız ayrıca olduqda yoxlanılır
     phoneCall: sameNumber
       ? ''
-      : !buyer.phoneCall.trim()
+      : !g('phoneCall')
         ? t('required_field')
-        : isValidWhatsApp(buyer.phoneCall) ? '' : t('whatsapp_invalid'),
-    address: buyer.address.trim() ? '' : t('required_field'),
+        : isValidWhatsApp(g('phoneCall')) ? '' : t('whatsapp_invalid'),
+    address: g('address') ? '' : t('required_field'),
   }
   const valid = !errors.name && !errors.phone && !errors.phoneCall && !errors.address
 
@@ -94,14 +98,16 @@ export default function CheckoutPage() {
       const order = await createOrder({
         buyer: {
           ...buyer,
-          phone: normalizeWhatsApp(buyer.phone),
+          name: g('name'),
+          address: g('address'),
+          note: g('note'),
+          phone: normalizeWhatsApp(g('phone')),
           // Eynidirsə — WhatsApp nömrəsini zəng nömrəsi kimi yazırıq
           phoneCall: sameNumber
-            ? normalizeWhatsApp(buyer.phone)
-            : buyer.phoneCall.trim() ? normalizeWhatsApp(buyer.phoneCall) : '',
+            ? normalizeWhatsApp(g('phone'))
+            : g('phoneCall') ? normalizeWhatsApp(g('phoneCall')) : '',
         },
         lines,
-        userId: user?.id ?? null,
         email: user?.email ?? null,
       })
 
