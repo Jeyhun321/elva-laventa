@@ -39,6 +39,15 @@ function sessionForStorage(session) {
   }
 }
 
+function withTimeout(promise, timeoutMs = 6000) {
+  let timeoutId
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error('AUTH_TIMEOUT')), timeoutMs)
+  })
+
+  return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId))
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(isConfigured)
@@ -103,27 +112,27 @@ const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = 
   if (returnTo.startsWith('/')) sessionStorage.setItem('elva-laventa-auth-return-to', returnTo)
     // Google-dan sonra istifadəçi saytın öz ünvanına qayıdır
     const redirectTo = window.location.origin + import.meta.env.BASE_URL
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await withTimeout(supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
-        skipBrowserRedirect: true,
         ...((selectAccount || loginHint) ? { queryParams: { prompt: 'select_account', ...(loginHint ? { login_hint: loginHint } : {}) } } : {}),
       },
-    })
+    }))
     if (error) throw error
-    if (!data?.url) throw new Error('OAUTH_REDIRECT_MISSING')
-    window.location.assign(data.url)
+    // Обычно Supabase сразу переводит браузер на Google. Этот запасной
+    // переход нужен для браузеров, где автоматический редирект отключён.
+    if (data?.url) window.location.assign(data.url)
   }, [])
 
   const switchToSavedAccount = useCallback(async (account) => {
     if (!account?.session?.accessToken || !account?.session?.refreshToken) {
       throw new Error('SAVED_SESSION_MISSING')
     }
-    const { data, error } = await supabase.auth.setSession({
+    const { data, error } = await withTimeout(supabase.auth.setSession({
       access_token: account.session.accessToken,
       refresh_token: account.session.refreshToken,
-    })
+    }))
     if (error) throw error
     setUser(data.user ?? null)
     rememberAccount(data.user, data.session)

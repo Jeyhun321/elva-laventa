@@ -46,6 +46,8 @@ export default function UserMenu() {
     setBusy(true); setErr('')
     try {
       await switchToSavedAccount(account)
+      setOpen(false)
+      setBusy(false)
     } catch {
       try {
         await loginWithGoogle({ selectAccount: true, loginHint: account.email })
