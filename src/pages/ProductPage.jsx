@@ -184,6 +184,22 @@ export default function ProductPage() {
             <p className="detail-desc">{t('product_desc_generic')}</p>
           </div>
         </div>
+
+        {related.length > 0 && (
+          <aside className="product-aside" aria-label={t('related')}>
+            <span className="product-aside-title">{t('related')}</span>
+            <div className="product-aside-grid">
+              {related.map((p) => (
+                <Link key={p.id} to={`/product/${p.id}`} className="related-mini">
+                  <span className="related-mini-image">
+                    <ProductImage product={{ ...p, name: t(p.name) }} />
+                  </span>
+                  <span className="related-mini-price">{p.price} ₼</span>
+                </Link>
+              ))}
+            </div>
+          </aside>
+        )}
       </div>
 
       {related.length > 0 && (
