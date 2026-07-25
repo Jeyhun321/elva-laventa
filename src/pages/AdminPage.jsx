@@ -5,7 +5,7 @@ import { loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin 
 import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { extractColors } from '../admin/colors.js'
-import { IconTrash, IconPlus, IconClose } from '../components/Icons.jsx'
+import { IconTrash, IconPlus, IconClose, IconArrow } from '../components/Icons.jsx'
 
 const ORDER_STATUSES = [
   { value: 'new', label: 'Новый' },
@@ -463,6 +463,16 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
     })
   }
 
+  const moveImage = (index, direction) => {
+    setP((current) => {
+      const images = [...(current.images || [])]
+      const targetIndex = index + direction
+      if (targetIndex < 0 || targetIndex >= images.length) return current
+      ;[images[index], images[targetIndex]] = [images[targetIndex], images[index]]
+      return { ...current, images, image: images[0] || '' }
+    })
+  }
+
   // Şəkil linkindən (URL) rəngləri təyin et
   const detectFromUrl = async () => {
     if (!p.image.trim()) return
@@ -569,6 +579,28 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
                   <div className="photo-preview" key={image}>
                     <img src={image} alt="" />
                     <span className="photo-number">{index === 0 ? 'Главное' : index + 1}</span>
+                    {(p.images || []).length > 1 && (
+                      <div className="photo-move-controls" aria-label={`Порядок фото ${index + 1}`}>
+                        <button
+                          type="button"
+                          className="photo-move"
+                          onClick={() => moveImage(index, -1)}
+                          disabled={index === 0}
+                          aria-label="Передвинуть фото влево"
+                        >
+                          <IconArrow />
+                        </button>
+                        <button
+                          type="button"
+                          className="photo-move photo-move-right"
+                          onClick={() => moveImage(index, 1)}
+                          disabled={index === p.images.length - 1}
+                          aria-label="Передвинуть фото вправо"
+                        >
+                          <IconArrow />
+                        </button>
+                      </div>
+                    )}
                     <button type="button" className="photo-remove" onClick={() => removeImage(image)} aria-label="Удалить фото">×</button>
                   </div>
                 )) : (
