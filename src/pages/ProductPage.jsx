@@ -4,7 +4,7 @@ import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { tagLabels } from '../i18n/translations.js'
-import { IconHeart, IconBag, IconStar } from '../components/Icons.jsx'
+import { IconHeart, IconBag, IconStar, IconArrow } from '../components/Icons.jsx'
 import ProductImage from '../components/ProductImage.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Rating from '../components/Rating.jsx'
@@ -36,6 +36,11 @@ export default function ProductPage() {
   const onSale = Boolean(product.oldPrice)
   const gallery = REAL_PRODUCT_GALLERIES[product.code] || (product.image ? [product.image] : [])
   const mainImage = selectedImage || gallery[0] || product.image
+  const switchGalleryImage = (direction) => {
+    const currentIndex = Math.max(0, gallery.indexOf(mainImage))
+    const nextIndex = (currentIndex + direction + gallery.length) % gallery.length
+    setSelectedImage(gallery[nextIndex])
+  }
   const fav = isFavorite(product.id)
   const related = products
     .filter((p) => p.category === product.category && p.id !== product.id)
@@ -68,6 +73,26 @@ export default function ProductPage() {
         <div className="product-gallery">
           <div className="gallery-main">
             <ProductImage product={{ ...product, image: mainImage, name: t(product.name) }} />
+            {gallery.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="gallery-nav gallery-nav-prev"
+                  onClick={() => switchGalleryImage(-1)}
+                  aria-label="Əvvəlki şəkil"
+                >
+                  <IconArrow />
+                </button>
+                <button
+                  type="button"
+                  className="gallery-nav gallery-nav-next"
+                  onClick={() => switchGalleryImage(1)}
+                  aria-label="Növbəti şəkil"
+                >
+                  <IconArrow />
+                </button>
+              </>
+            )}
             {product.tag && (
               <span className="product-tag">{t(tagLabels[product.tag])}</span>
             )}
