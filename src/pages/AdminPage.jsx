@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, isConfigured } from '../lib/supabase.js'
 import { loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin } from '../admin/db.js'
@@ -24,6 +24,21 @@ const TAGS = [
   { value: 'sale', label: 'Скидка' },
 ]
 
+const ADMIN_OTP_TTL = 15 * 60 * 1000
+const adminOtpStorageKey = (userId) => `elva-admin-otp-verified:${userId}`
+
+function hasAdminOtpVerification(userId) {
+  try { return Number(sessionStorage.getItem(adminOtpStorageKey(userId))) > Date.now() } catch { return false }
+}
+
+function saveAdminOtpVerification(userId) {
+  try { sessionStorage.setItem(adminOtpStorageKey(userId), String(Date.now() + ADMIN_OTP_TTL)) } catch { /* storage unavailable */ }
+}
+
+function clearAdminOtpVerification(userId) {
+  try { sessionStorage.removeItem(adminOtpStorageKey(userId)) } catch { /* storage unavailable */ }
+}
+
 const emptyProduct = (catId) => ({
   id: null,
   code: '',
@@ -46,16 +61,43 @@ const emptyProduct = (catId) => ({
 export default function AdminPage() {
   const [session, setSession] = useState(null)
   const [checking, setChecking] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(false)
 
   useEffect(() => {
     if (!isConfigured || !supabase) { setChecking(false); return }
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
-      setChecking(false)
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
     return () => sub.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!session?.user || !supabase) {
+      setIsAdmin(false)
+      setOtpVerified(false)
+      setChecking(false)
+      return
+    }
+    let active = true
+    setChecking(true)
+    supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle()
+      .then(({ data, error }) => {
+        if (!active) return
+        const allowed = !error && data?.role === 'admin'
+        setIsAdmin(allowed)
+        setOtpVerified(allowed && hasAdminOtpVerification(session.user.id))
+        setChecking(false)
+      })
+    return () => { active = false }
+  }, [session])
+
+  const leaveAdmin = async () => {
+    if (session?.user?.id) clearAdminOtpVerification(session.user.id)
+    setOtpVerified(false)
+    await signOutAdmin()
+  }
 
   if (!isConfigured) {
     return (
@@ -75,8 +117,10 @@ export default function AdminPage() {
   }
 
   if (!session) return <LoginScreen />
+  if (!isAdmin) return <AccessDenied onExit={leaveAdmin} />
+  if (!otpVerified) return <EmailOtpScreen session={session} onVerified={() => setOtpVerified(true)} onExit={leaveAdmin} />
 
-  return <Dashboard session={session} />
+  return <Dashboard session={session} onExit={leaveAdmin} />
 }
 
 /* ---------------- Вход ---------------- */
@@ -119,6 +163,21 @@ function LoginScreen() {
     }
   }
 
+  const loginWithGoogle = async () => {
+    setBusy(true); setErr(''); setMsg('')
+    try {
+      const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'admin'
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo, queryParams: { prompt: 'select_account' } },
+      })
+      if (error) throw error
+    } catch (e2) {
+      setErr(e2.message)
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="container admin">
       <div className="login-box">
@@ -126,6 +185,11 @@ function LoginScreen() {
         <p className="admin-sub" style={{ marginBottom: 18 }}>
           Панель управления товарами Elva LaVenta
         </p>
+
+        <button type="button" className="btn btn-ghost full admin-google-btn" onClick={loginWithGoogle} disabled={busy}>
+          Продолжить с Google
+        </button>
+        <div className="login-divider"><span>или с паролем</span></div>
 
         <form onSubmit={submit} className="login-form">
           <label className="fld">
@@ -168,7 +232,86 @@ function LoginScreen() {
 }
 
 /* ---------------- Панель ---------------- */
-function Dashboard({ session }) {
+function AccessDenied({ onExit }) {
+  return (
+    <div className="container admin">
+      <div className="login-box admin-gate-box">
+        <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Нет доступа</h1>
+        <p className="admin-sub">Эта учётная запись не имеет прав администратора.</p>
+        <button className="btn btn-primary full" onClick={onExit}>Выйти</button>
+        <Link to="/" className="continue-link">← На сайт</Link>
+      </div>
+    </div>
+  )
+}
+
+function EmailOtpScreen({ session, onVerified, onExit }) {
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [err, setErr] = useState('')
+  const email = session.user.email
+
+  const sendCode = useCallback(async () => {
+    setBusy(true); setErr('')
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false, emailRedirectTo: window.location.origin + import.meta.env.BASE_URL + 'admin' },
+      })
+      if (error) throw error
+      setSent(true)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }, [email])
+
+  useEffect(() => { sendCode() }, [sendCode])
+
+  const verify = async (e) => {
+    e.preventDefault()
+    const token = code.replace(/\s/g, '')
+    if (!/^\d{6}$/.test(token)) {
+      setErr('Введите шестизначный код из письма.')
+      return
+    }
+    setBusy(true); setErr('')
+    try {
+      const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+      if (error) throw error
+      saveAdminOtpVerification(session.user.id)
+      onVerified()
+    } catch {
+      setErr('Код не подошёл или уже истёк. Запросите новый код.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="container admin">
+      <div className="login-box admin-gate-box">
+        <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Подтвердите вход</h1>
+        <p className="admin-sub">Мы отправили одноразовый код на <strong>{email}</strong>. Код действует 15 минут.</p>
+        <form onSubmit={verify} className="login-form">
+          <label className="fld">
+            <span>Код из письма</span>
+            <input className="otp-code" inputMode="numeric" autoComplete="one-time-code" maxLength="6" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus />
+          </label>
+          {err && <div className="admin-msg err">{err}</div>}
+          {sent && <div className="admin-msg ok">Письмо отправлено. Проверьте также папку «Спам».</div>}
+          <button className="btn btn-primary full" disabled={busy}>{busy ? 'Проверяю…' : 'Подтвердить код'}</button>
+          <button type="button" className="link-btn forgot-link" onClick={sendCode} disabled={busy}>Отправить код ещё раз</button>
+        </form>
+        <button type="button" className="continue-link link-btn" onClick={onExit}>Выйти из учётной записи</button>
+      </div>
+    </div>
+  )
+}
+
+function Dashboard({ session, onExit }) {
   const { reload: reloadSite } = useCatalog()
   const [tab, setTab] = useState('products')
   const [products, setProducts] = useState([])
@@ -237,7 +380,7 @@ function Dashboard({ session }) {
         </div>
         <div className="admin-head-actions">
           <Link to="/" className="btn btn-ghost btn-sm">На сайт</Link>
-          <button className="btn btn-ghost btn-sm" onClick={signOutAdmin}>Выйти</button>
+          <button className="btn btn-ghost btn-sm" onClick={onExit}>Выйти</button>
           {tab === 'products' && (
             <button className="btn btn-primary" onClick={() => setForm(emptyProduct(categories[0]?.id))}>
               <IconPlus /> Добавить товар

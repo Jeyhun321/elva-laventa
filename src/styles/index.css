@@ -2217,6 +2217,17 @@ a.product-media {
   border-color: var(--lavender);
   box-shadow: 0 0 0 3px rgba(229, 57, 154, 0.14);
 }
+.admin-google-btn { margin-bottom: 14px; }
+.login-divider {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--ink-soft); font-size: 0.8rem; margin: 0 0 14px;
+}
+.login-divider::before, .login-divider::after {
+  content: ''; height: 1px; background: var(--line); flex: 1;
+}
+.admin-gate-box { text-align: center; }
+.admin-gate-box .admin-sub { line-height: 1.55; margin-bottom: 20px; }
+.otp-code { letter-spacing: 0.34em; font-size: 1.25rem !important; font-weight: 700; text-align: center; }
 .admin-row.inactive { opacity: 0.55; }
 
 /* Admin: vkladki i zakazy */
