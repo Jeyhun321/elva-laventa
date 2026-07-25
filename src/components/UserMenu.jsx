@@ -31,7 +31,7 @@ export default function UserMenu() {
     }
   }
 
-  const switchAccount = async () => {
+  const addAccount = async () => {
     setBusy(true); setErr('')
     try {
       // Google покажет список уже добавленных аккаунтов и позволит выбрать другой.
@@ -46,8 +46,10 @@ export default function UserMenu() {
     setBusy(true); setErr('')
     try {
       await switchToSavedAccount(account)
-    } catch {
-      setErr(t('sign_in_failed'))
+    } catch (error) {
+      setErr(error?.message === 'SAVED_SESSION_MISSING'
+        ? 'Bu hesabı bir dəfə “Hesab əlavə et” ilə daxil edərək əlavə edin.'
+        : 'Bu hesabın sessiyası bitib. “Hesab əlavə et” ilə yenidən daxil olun.')
       setBusy(false)
     }
   }
@@ -137,9 +139,9 @@ export default function UserMenu() {
               ))}
             </div>
           )}
-          <button className="google-btn account-switch" onClick={switchAccount} disabled={busy}>
+          <button className="google-btn account-switch" onClick={addAccount} disabled={busy}>
             <IconGoogle />
-            {busy ? '…' : t('switch_account')}
+            {busy ? '…' : 'Hesab əlavə et'}
           </button>
           {err && <span className="user-err">{err}</span>}
           <button className="btn btn-ghost btn-sm full" onClick={logout}>

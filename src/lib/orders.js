@@ -30,9 +30,9 @@ export const createOrder = async ({ buyer, lines, email = null }) => {
 }
 
 // Admin: sifarişlərin siyahısı
-export const listOrders = async () => {
-  if (!supabase) throw new Error('NO_DB')
-  const { data, error } = await supabase
+export const listOrders = async (client = supabase) => {
+  if (!client) throw new Error('NO_DB')
+  const { data, error } = await client
     .from('orders')
     .select('*, order_items(*)')
     .order('created_at', { ascending: false })
@@ -40,9 +40,9 @@ export const listOrders = async () => {
   return data || []
 }
 
-export const setOrderStatus = async (id, status) => {
-  if (!supabase) throw new Error('NO_DB')
-  const { error } = await supabase.from('orders').update({ status }).eq('id', id)
+export const setOrderStatus = async (id, status, client = supabase) => {
+  if (!client) throw new Error('NO_DB')
+  const { error } = await client.from('orders').update({ status }).eq('id', id)
   if (error) throw error
 }
 

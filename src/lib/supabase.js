@@ -11,13 +11,32 @@ export const SUPABASE_URL = 'https://njvlvceqkjsvlfyajmee.supabase.co'
 export const SUPABASE_ANON_KEY = 'sb_publishable_btLK4kgQowu111Gu1NULtQ_eh2OudI6'
 
 export const isConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
+const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.endsWith('/admin')
 
 export const supabase = isConfigured
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        // OAuth-код обычного сайта обрабатывается в AuthContext.
+        // Это не даёт ему перехватывать вход, предназначенный для /admin.
+        detectSessionInUrl: false,
+        storageKey: 'elva-laventa-store-auth',
+      },
+    })
+  : null
+
+// Админка хранит авторизацию отдельно от авторизации витрины. Благодаря этому
+// владелец может быть в админке под одним Gmail, а на сайте — под другим.
+export const adminSupabase = isConfigured
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        // OAuth-код админки должен обрабатываться только на /admin.
+        // Иначе вход обычного покупателя мог бы случайно создать админ-сеанс.
+        detectSessionInUrl: isAdminRoute,
+        storageKey: 'elva-laventa-admin-auth',
       },
     })
   : null

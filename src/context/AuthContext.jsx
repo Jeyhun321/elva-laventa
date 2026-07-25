@@ -22,15 +22,29 @@ function accountFromUser(user) {
   }
 }
 
+function sessionForStorage(session) {
+  if (!session?.access_token || !session?.refresh_token) return null
+  return {
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token,
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(isConfigured)
   const [accounts, setAccounts] = useState(readSavedAccounts)
 
-  const rememberAccount = useCallback((nextUser) => {
+  const rememberAccount = useCallback((nextUser, session) => {
     if (!nextUser?.id) return
-    const next = accountFromUser(nextUser)
+    const nextSession = sessionForStorage(session)
     setAccounts((previous) => {
+      const existing = previous.find((item) => item.id === nextUser.id)
+      const next = {
+        ...existing,
+        ...accountFromUser(nextUser),
+        ...(nextSession ? { session: nextSession } : {}),
+      }
       const updated = [next, ...previous.filter((item) => item.id !== next.id)].slice(0, 8)
       try { localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(updated)) } catch { /* storage unavailable */ }
       return updated
@@ -42,15 +56,27 @@ export function AuthProvider({ children }) {
 
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null)
-      rememberAccount(data.session?.user)
+      rememberAccount(data.session?.user, data.session)
       setLoading(false)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null)
-      rememberAccount(session?.user)
+      rememberAccount(session?.user, session)
     })
     return () => sub.subscription.unsubscribe()
+  }, [rememberAccount])
+
+  // Обычный OAuth-вход обрабатываем только вне /admin: у админки отдельный
+  // клиент Supabase и отдельное хранилище сессии.
+  useEffect(() => {
+    if (!isConfigured || !supabase || window.location.pathname.endsWith('/admin')) return
+    const url = new URL(window.location.href)
+    if (!url.searchParams.get('code')) return
+
+    supabase.auth.exchangeCodeForSession(url.href).then(({ error }) => {
+      if (!error) window.history.replaceState({}, document.title, `${url.pathname}${url.hash}`)
+    })
   }, [])
 
   const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = '' } = {}) => {
@@ -68,8 +94,15 @@ export function AuthProvider({ children }) {
   }, [])
 
   const switchToSavedAccount = useCallback(async (account) => {
-    await loginWithGoogle({ selectAccount: true, loginHint: account?.email || '' })
-  }, [loginWithGoogle])
+    if (!account?.session?.accessToken || !account?.session?.refreshToken) {
+      throw new Error('SAVED_SESSION_MISSING')
+    }
+    const { error } = await supabase.auth.setSession({
+      access_token: account.session.accessToken,
+      refresh_token: account.session.refreshToken,
+    })
+    if (error) throw error
+  }, [])
 
   const logout = useCallback(async () => {
     if (supabase) await supabase.auth.signOut()

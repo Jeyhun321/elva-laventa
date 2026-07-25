@@ -1,4 +1,8 @@
-import { supabase } from '../lib/supabase.js'
+import { adminSupabase } from '../lib/supabase.js'
+
+// Этот модуль выполняет операции только из /admin, поэтому использует
+// отдельную сессию и не меняет аккаунт, которым клиент вошёл в магазин.
+const supabase = adminSupabase
 
 // ============================================================
 //  Admin paneli üçün baza əməliyyatları.

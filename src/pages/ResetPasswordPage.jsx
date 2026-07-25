@@ -18,7 +18,13 @@ export default function ResetPasswordPage() {
   // Linkdən gələn recovery sessiyasını gözləyirik
   useEffect(() => {
     if (!supabase) return
-    supabase.auth.getSession().then(({ data }) => {
+    const url = new URL(window.location.href)
+    const restore = url.searchParams.get('code')
+      ? supabase.auth.exchangeCodeForSession(url.href).then(({ error }) => {
+          if (!error) window.history.replaceState({}, document.title, `${url.pathname}${url.hash}`)
+        })
+      : Promise.resolve()
+    restore.then(() => supabase.auth.getSession()).then(({ data }) => {
       if (data.session) setReady(true)
     })
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {

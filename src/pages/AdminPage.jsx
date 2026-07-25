@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase, isConfigured } from '../lib/supabase.js'
+import { adminSupabase, isConfigured } from '../lib/supabase.js'
 import { loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin } from '../admin/db.js'
 import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
@@ -66,16 +66,16 @@ export default function AdminPage() {
   const [otpVerified, setOtpVerified] = useState(false)
 
   useEffect(() => {
-    if (!isConfigured || !supabase) { setChecking(false); return }
-    supabase.auth.getSession().then(({ data }) => {
+    if (!isConfigured || !adminSupabase) { setChecking(false); return }
+    adminSupabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    const { data: sub } = adminSupabase.auth.onAuthStateChange((_e, s) => setSession(s))
     return () => sub.subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
-    if (!session?.user || !supabase) {
+    if (!session?.user || !adminSupabase) {
       setIsAdmin(false)
       setOtpVerified(false)
       setChecking(false)
@@ -83,7 +83,7 @@ export default function AdminPage() {
     }
     let active = true
     setChecking(true)
-    supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle()
+    adminSupabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle()
       .then(({ data, error }) => {
         if (!active) return
         const allowed = !error && data?.role === 'admin' && session.user.email?.toLowerCase() === ADMIN_OTP_EMAIL
@@ -154,7 +154,7 @@ function LoginScreen() {
     setBusy(true)
     try {
       const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'reset'
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+      const { error } = await adminSupabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
       if (error) throw error
       setMsg('Ссылка для сброса отправлена на почту. Проверь «Спам».')
     } catch (e2) {
@@ -168,7 +168,7 @@ function LoginScreen() {
     setBusy(true); setErr(''); setMsg('')
     try {
       const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'admin'
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await adminSupabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo, queryParams: { prompt: 'select_account' } },
       })
@@ -256,7 +256,7 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
   const sendCode = useCallback(async () => {
     setBusy(true); setErr('')
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await adminSupabase.auth.signInWithOtp({
         email,
         options: { shouldCreateUser: false, emailRedirectTo: window.location.origin + import.meta.env.BASE_URL + 'admin' },
       })
@@ -280,7 +280,7 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
     }
     setBusy(true); setErr('')
     try {
-      const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+      const { error } = await adminSupabase.auth.verifyOtp({ email, token, type: 'email' })
       if (error) throw error
       saveAdminOtpVerification(session.user.id)
       onVerified()
@@ -463,7 +463,7 @@ function OrdersPanel({ onNotify }) {
   const refresh = async () => {
     setLoading(true)
     try {
-      setOrders(await listOrders())
+      setOrders(await listOrders(adminSupabase))
     } catch (e) {
       onNotify('err', `Не удалось загрузить заказы: ${e.message}`)
     } finally {
@@ -475,7 +475,7 @@ function OrdersPanel({ onNotify }) {
   const changeStatus = async (id, status) => {
     setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)))
     try {
-      await setOrderStatus(id, status)
+      await setOrderStatus(id, status, adminSupabase)
     } catch (e) {
       onNotify('err', `Не удалось изменить статус: ${e.message}`)
       refresh()
