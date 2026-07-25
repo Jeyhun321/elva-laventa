@@ -413,6 +413,10 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
   const [p, setP] = useState(value)
   const [uploading, setUploading] = useState(false)
   const [detecting, setDetecting] = useState(false)
+  const [suggestions, setSuggestions] = useState([]) // fotodan tapılan tonlar
+
+  const toggleColor = (c) =>
+    set({ colors: p.colors.includes(c) ? p.colors.filter((x) => x !== c) : [...p.colors, c] })
 
   const set = (patch) => setP((v) => ({ ...v, ...patch }))
   const setLang = (field, lang, val) =>
@@ -429,10 +433,10 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
     }
     setUploading(true)
     try {
-      // Rəngləri lokal fayldan təyin edirik (CORS problemi yoxdur)
+      // Fotodan tonları tapırıq — istifadəçi özü seçəcək (avtomatik təyin etmirik)
       try {
-        const cols = await extractColors(file, 3)
-        if (cols.length) { set({ colors: cols }); onNotify('ok', 'Цвета определены по фото ✓') }
+        const cols = await extractColors(file, 8)
+        if (cols.length) { setSuggestions(cols); onNotify('ok', 'Тона найдены — выбери нужные ниже') }
       } catch { /* rəng təyini kritik deyil */ }
 
       set({ image: await uploadImage(file) })
@@ -450,8 +454,8 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
     if (!p.image.trim()) return
     setDetecting(true)
     try {
-      const cols = await extractColors(p.image.trim(), 3)
-      if (cols.length) { set({ colors: cols }); onNotify('ok', 'Цвета определены по фото ✓') }
+      const cols = await extractColors(p.image.trim(), 8)
+      if (cols.length) { setSuggestions(cols); onNotify('ok', 'Тона найдены — выбери нужные ниже') }
       else onNotify('err', 'Не удалось прочитать цвета из этой ссылки')
     } catch {
       onNotify('err', 'Не удалось прочитать цвета из этой ссылки')
@@ -570,8 +574,25 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
             </div>
           </div>
 
+          {/* Fotodan tapılan tonlar — istifadəçi nəyi seçir */}
+          {suggestions.length > 0 && (
+            <div className="fld">
+              <span>Тона на фото <em className="fld-note" style={{ fontWeight: 400 }}>— нажми на нужный оттенок одежды</em></span>
+              <div className="suggest-swatches">
+                {suggestions.map((c, i) => (
+                  <button key={i} type="button" title={c}
+                    className={`suggest-swatch${p.colors.includes(c) ? ' picked' : ''}`}
+                    style={{ background: c }}
+                    onClick={() => toggleColor(c)}>
+                    {p.colors.includes(c) && <span className="tick">✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="fld">
-            <span>Цвета <em className="fld-note" style={{ fontWeight: 400 }}>— определяются по фото автоматически</em></span>
+            <span>Цвета товара <em className="fld-note" style={{ fontWeight: 400 }}>— выбранные оттенки (можно поправить вручную)</em></span>
             <div className="color-picks">
               {p.colors.map((c, i) => (
                 <span className="color-pick" key={i}>
@@ -582,11 +603,11 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
                 </span>
               ))}
               <button type="button" className="btn-ghost btn-sm"
-                onClick={() => set({ colors: [...p.colors, '#e5399a'] })}>+ цвет</button>
+                onClick={() => set({ colors: [...p.colors, '#e5399a'] })}>+ цвет вручную</button>
               {p.image && (
                 <button type="button" className="btn-ghost btn-sm" disabled={detecting}
                   onClick={detectFromUrl}>
-                  {detecting ? '…' : '🎨 по фото'}
+                  {detecting ? '…' : '🎨 найти по фото'}
                 </button>
               )}
             </div>

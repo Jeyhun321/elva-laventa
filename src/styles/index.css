@@ -2364,6 +2364,28 @@ a.product-media {
 .hint { font-size: 0.82rem; color: var(--lavender-text); font-weight: 600; }
 
 .size-picks, .color-picks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Fotodan tapılan tonlar */
+.suggest-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggest-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 2px solid var(--line);
+  cursor: pointer;
+  position: relative;
+  display: grid;
+  place-items: center;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.suggest-swatch:hover { transform: scale(1.08); }
+.suggest-swatch.picked { border-color: var(--plum); }
+.suggest-swatch .tick {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  text-shadow: 0 0 3px rgba(0,0,0,0.6);
+}
 .color-pick { position: relative; display: inline-flex; }
 .color-pick input[type='color'] {
   width: 42px; height: 38px; border: 1.5px solid var(--line);

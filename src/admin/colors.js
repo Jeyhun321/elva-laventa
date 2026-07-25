@@ -24,7 +24,7 @@ const loadImage = (source) =>
     }
   })
 
-export async function extractColors(source, count = 3) {
+export async function extractColors(source, count = 8, minDist = 32) {
   const { img, objUrl } = await loadImage(source)
   try {
     const W = 72, H = 72
@@ -62,7 +62,7 @@ export async function extractColors(source, count = 3) {
         b: Math.round(e.b / e.n),
       }
       // əvvəlkilərdən kifayət qədər fərqlənsin
-      if (picked.every((p) => dist(p, c) > 55)) picked.push(c)
+      if (picked.every((p) => dist(p, c) > minDist)) picked.push(c)
       if (picked.length >= count) break
     }
     return picked.map((c) => toHex(c.r, c.g, c.b))
