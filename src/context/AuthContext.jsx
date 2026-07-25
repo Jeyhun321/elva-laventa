@@ -103,29 +103,34 @@ const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = 
   if (returnTo.startsWith('/')) sessionStorage.setItem('elva-laventa-auth-return-to', returnTo)
     // Google-dan sonra istifadəçi saytın öz ünvanına qayıdır
     const redirectTo = window.location.origin + import.meta.env.BASE_URL
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
+        skipBrowserRedirect: true,
         ...((selectAccount || loginHint) ? { queryParams: { prompt: 'select_account', ...(loginHint ? { login_hint: loginHint } : {}) } } : {}),
       },
     })
     if (error) throw error
+    if (!data?.url) throw new Error('OAUTH_REDIRECT_MISSING')
+    window.location.assign(data.url)
   }, [])
 
   const switchToSavedAccount = useCallback(async (account) => {
     if (!account?.session?.accessToken || !account?.session?.refreshToken) {
       throw new Error('SAVED_SESSION_MISSING')
     }
-    const { error } = await supabase.auth.setSession({
+    const { data, error } = await supabase.auth.setSession({
       access_token: account.session.accessToken,
       refresh_token: account.session.refreshToken,
     })
     if (error) throw error
-  }, [])
+    setUser(data.user ?? null)
+    rememberAccount(data.user, data.session)
+  }, [rememberAccount])
 
   const logout = useCallback(async () => {
-    if (supabase) await supabase.auth.signOut()
+    if (supabase) await supabase.auth.signOut({ scope: 'local' })
   }, [])
 
   // E-poçt + şifrə ilə qeydiyyat.

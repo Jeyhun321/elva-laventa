@@ -23,7 +23,7 @@ export default function UserMenu() {
   const doLogin = async () => {
     setBusy(true); setErr('')
     try {
-      await loginWithGoogle()
+      await loginWithGoogle({ selectAccount: true })
       // brauzer Google-a yönlənir, burada davam etmir
     } catch {
       setErr(t('sign_in_failed'))
@@ -46,11 +46,13 @@ export default function UserMenu() {
     setBusy(true); setErr('')
     try {
       await switchToSavedAccount(account)
-    } catch (error) {
-      setErr(error?.message === 'SAVED_SESSION_MISSING'
-        ? 'Bu hesabı bir dəfə “Hesab əlavə et” ilə daxil edərək əlavə edin.'
-        : 'Bu hesabın sessiyası bitib. “Hesab əlavə et” ilə yenidən daxil olun.')
-      setBusy(false)
+    } catch {
+      try {
+        await loginWithGoogle({ selectAccount: true, loginHint: account.email })
+      } catch {
+        setErr(t('sign_in_failed'))
+        setBusy(false)
+      }
     }
   }
 

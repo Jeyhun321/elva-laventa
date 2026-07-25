@@ -24,7 +24,7 @@ export default function AuthRequiredDialog({ open, onClose, returnTo = '' }) {
     setBusy(true)
     setError('')
     try {
-      await loginWithGoogle({ returnTo })
+      await loginWithGoogle({ selectAccount: true, returnTo })
     } catch {
       setError(t('sign_in_failed'))
       setBusy(false)
