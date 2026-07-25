@@ -67,7 +67,7 @@ export function AuthProvider({ children }) {
         ...accountFromUser(nextUser),
         ...(nextSession ? { session: nextSession } : {}),
       }
-      const updated = [next, ...previous.filter((item) => item.id !== next.id)].slice(0, 8)
+      const updated = [next, ...previous.filter((item) => item.id !== next.id)].slice(0, 10)
       try { localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(updated)) } catch { /* storage unavailable */ }
       return updated
     })
@@ -92,6 +92,8 @@ export function AuthProvider({ children }) {
 const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = '', returnTo = '' } = {}) => {
   if (!supabase) throw new Error('NOT_CONFIGURED')
   if (returnTo.startsWith('/')) sessionStorage.setItem('elva-laventa-auth-return-to', returnTo)
+    const { data: currentSession } = await supabase.auth.getSession()
+    rememberAccount(currentSession.session?.user, currentSession.session)
     // Google-dan sonra istifadəçi GitHub Pages-də mağazanın düzgün ünvanına qayıdır.
     const redirectTo = publicAuthRedirectUrl()
     const { data, error } = await withTimeout(supabase.auth.signInWithOAuth({
@@ -105,7 +107,7 @@ const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = 
     // Обычно Supabase сразу переводит браузер на Google. Этот запасной
     // переход нужен для браузеров, где автоматический редирект отключён.
     if (data?.url) window.location.assign(data.url)
-  }, [])
+  }, [rememberAccount])
 
   const switchToSavedAccount = useCallback(async (account) => {
     if (!account?.session?.accessToken || !account?.session?.refreshToken) {
