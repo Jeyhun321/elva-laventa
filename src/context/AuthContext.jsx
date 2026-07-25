@@ -21,13 +21,16 @@ export function AuthProvider({ children }) {
     return () => sub.subscription.unsubscribe()
   }, [])
 
-  const loginWithGoogle = useCallback(async () => {
+  const loginWithGoogle = useCallback(async ({ selectAccount = false } = {}) => {
     if (!supabase) throw new Error('NOT_CONFIGURED')
     // Google-dan sonra istifadəçi saytın öz ünvanına qayıdır
     const redirectTo = window.location.origin + import.meta.env.BASE_URL
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        ...(selectAccount ? { queryParams: { prompt: 'select_account' } } : {}),
+      },
     })
     if (error) throw error
   }, [])

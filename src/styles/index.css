@@ -444,6 +444,34 @@ ul {
 .zone-left { left: 0; }
 .zone-right { right: 0; }
 
+/* Видимые стрелки для ручного переключения карточек на главном экране. */
+.showcase-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 6;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(181, 15, 97, 0.18);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--plum);
+  box-shadow: 0 8px 20px rgba(111, 25, 70, 0.16);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+.showcase-nav:hover {
+  background: var(--plum);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(111, 25, 70, 0.26);
+}
+.showcase-nav:focus-visible { outline: 3px solid var(--lavender); outline-offset: 3px; }
+.showcase-nav-prev { left: 2%; }
+.showcase-nav-next { right: 2%; }
+
 .discount-badge {
   position: absolute;
   top: 16px;
@@ -1281,6 +1309,7 @@ ul {
 }
 .google-btn:hover { border-color: var(--lavender); background: var(--bg); }
 .google-btn:disabled { opacity: 0.6; }
+.account-switch { margin-bottom: 8px; }
 .user-err {
   display: block;
   margin-top: 10px;
@@ -2407,9 +2436,9 @@ a.product-media {
 }
 @media (min-width: 1200px) {
   .product-detail {
-    grid-template-columns: 405px minmax(330px, 1fr) 280px;
-    gap: 30px;
-    margin-left: 24px;
+    grid-template-columns: 405px minmax(300px, 1fr) 320px;
+    gap: 28px;
+    margin-left: 18px;
   }
   .product-gallery { align-items: flex-start; }
   .product-aside {
@@ -2430,7 +2459,7 @@ a.product-media {
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
-  .product-aside-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .product-aside-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .related-mini {
     position: relative;
     display: block;

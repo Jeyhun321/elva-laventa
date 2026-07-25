@@ -31,6 +31,17 @@ export default function UserMenu() {
     }
   }
 
+  const switchAccount = async () => {
+    setBusy(true); setErr('')
+    try {
+      // Google покажет список уже добавленных аккаунтов и позволит выбрать другой.
+      await loginWithGoogle({ selectAccount: true })
+    } catch {
+      setErr(t('sign_in_failed'))
+      setBusy(false)
+    }
+  }
+
   if (loading) return null
 
   // Daxil olmayıb → giriş düyməsi
@@ -98,6 +109,11 @@ export default function UserMenu() {
               <span>{profile.email}</span>
             </div>
           </div>
+          <button className="google-btn account-switch" onClick={switchAccount} disabled={busy}>
+            <IconGoogle />
+            {busy ? '…' : t('switch_account')}
+          </button>
+          {err && <span className="user-err">{err}</span>}
           <button className="btn btn-ghost btn-sm full" onClick={logout}>
             {t('sign_out')}
           </button>

@@ -147,6 +147,23 @@ export default function Intro() {
               onMouseLeave={() => setHoverSide(null)}
               onClick={() => stepAndRestart(1, hoverSide === 'right')}
             />
+
+            <button
+              type="button"
+              className="showcase-nav showcase-nav-prev"
+              onClick={() => stepAndRestart(-1, false)}
+              aria-label={t('previous_product')}
+            >
+              <IconArrow style={{ transform: 'rotate(180deg)' }} />
+            </button>
+            <button
+              type="button"
+              className="showcase-nav showcase-nav-next"
+              onClick={() => stepAndRestart(1, false)}
+              aria-label={t('next_product')}
+            >
+              <IconArrow />
+            </button>
           </div>
 
           <div className="showcase-dots" role="tablist" aria-label="Showcase">
