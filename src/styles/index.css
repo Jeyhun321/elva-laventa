@@ -1321,6 +1321,16 @@ ul {
   color: var(--lavender-text);
   font-variant-numeric: tabular-nums;
 }
+.card-code {
+  font-style: normal;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--lavender-mist);
+  color: var(--lavender-text);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
 a.product-name {
   font-family: var(--serif);
   font-size: 1.22rem;
