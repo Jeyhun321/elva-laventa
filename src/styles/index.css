@@ -1290,6 +1290,17 @@ ul {
 }
 .google-btn:hover { border-color: var(--lavender); background: var(--bg); }
 .google-btn:disabled { opacity: 0.6; }
+.saved-accounts { border-top: 1px solid var(--line); margin: 12px 0; padding-top: 10px; text-align: left; }
+.saved-accounts-title { display: block; color: var(--ink-soft); font-size: .76rem; font-weight: 700; margin: 0 4px 6px; text-transform: uppercase; letter-spacing: .04em; }
+.saved-account { align-items: center; background: transparent; border: 1px solid transparent; border-radius: 10px; display: flex; gap: 9px; padding: 7px; text-align: left; width: 100%; }
+.saved-account:hover, .saved-account.current { background: #fff6fa; border-color: var(--line); }
+.saved-account img, .saved-account > svg { border-radius: 50%; flex: 0 0 auto; height: 30px; object-fit: cover; width: 30px; }
+.saved-account > svg { padding: 6px; background: var(--pink-soft); color: var(--plum); }
+.saved-account span { display: grid; min-width: 0; }
+.saved-account b, .saved-account small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-account b { color: var(--ink); font-size: .82rem; }
+.saved-account small { color: var(--ink-soft); font-size: .72rem; }
+.saved-account em { color: var(--plum); font-size: .72rem; font-style: normal; font-weight: 700; margin-left: auto; }
 .account-switch { margin-bottom: 8px; }
 .user-err {
   display: block;

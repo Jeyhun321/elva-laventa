@@ -5,7 +5,7 @@ import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconUser, IconGoogle } from './Icons.jsx'
 
 export default function UserMenu() {
-  const { profile, loading, loginWithGoogle, logout } = useAuth()
+  const { profile, accounts, loading, loginWithGoogle, switchToSavedAccount, logout } = useAuth()
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -36,6 +36,16 @@ export default function UserMenu() {
     try {
       // Google покажет список уже добавленных аккаунтов и позволит выбрать другой.
       await loginWithGoogle({ selectAccount: true })
+    } catch {
+      setErr(t('sign_in_failed'))
+      setBusy(false)
+    }
+  }
+
+  const selectSavedAccount = async (account) => {
+    setBusy(true); setErr('')
+    try {
+      await switchToSavedAccount(account)
     } catch {
       setErr(t('sign_in_failed'))
       setBusy(false)
@@ -109,6 +119,24 @@ export default function UserMenu() {
               <span>{profile.email}</span>
             </div>
           </div>
+          {accounts.length > 0 && (
+            <div className="saved-accounts">
+              <span className="saved-accounts-title">Bu cihazdakı hesablar</span>
+              {accounts.map((account) => (
+                <button
+                  className={`saved-account ${account.id === profile.id ? 'current' : ''}`}
+                  type="button"
+                  key={account.id}
+                  onClick={() => selectSavedAccount(account)}
+                  disabled={busy}
+                >
+                  {account.avatar ? <img src={account.avatar} alt="" referrerPolicy="no-referrer" /> : <IconUser />}
+                  <span><b>{account.name}</b><small>{account.email}</small></span>
+                  {account.id === profile.id && <em>Aktiv</em>}
+                </button>
+              ))}
+            </div>
+          )}
           <button className="google-btn account-switch" onClick={switchAccount} disabled={busy}>
             <IconGoogle />
             {busy ? '…' : t('switch_account')}

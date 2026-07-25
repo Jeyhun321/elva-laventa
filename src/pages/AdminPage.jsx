@@ -25,6 +25,7 @@ const TAGS = [
 ]
 
 const ADMIN_OTP_TTL = 15 * 60 * 1000
+const ADMIN_OTP_EMAIL = 'alekberov.ceyhun2002@gmail.com'
 const adminOtpStorageKey = (userId) => `elva-admin-otp-verified:${userId}`
 
 function hasAdminOtpVerification(userId) {
@@ -85,7 +86,7 @@ export default function AdminPage() {
     supabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle()
       .then(({ data, error }) => {
         if (!active) return
-        const allowed = !error && data?.role === 'admin'
+        const allowed = !error && data?.role === 'admin' && session.user.email?.toLowerCase() === ADMIN_OTP_EMAIL
         setIsAdmin(allowed)
         setOtpVerified(allowed && hasAdminOtpVerification(session.user.id))
         setChecking(false)
@@ -237,7 +238,7 @@ function AccessDenied({ onExit }) {
     <div className="container admin">
       <div className="login-box admin-gate-box">
         <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Нет доступа</h1>
-        <p className="admin-sub">Эта учётная запись не имеет прав администратора.</p>
+        <p className="admin-sub">Войдите через Google или пароль именно аккаунта <strong>{ADMIN_OTP_EMAIL}</strong>.</p>
         <button className="btn btn-primary full" onClick={onExit}>Выйти</button>
         <Link to="/" className="continue-link">← На сайт</Link>
       </div>
@@ -250,7 +251,7 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
   const [err, setErr] = useState('')
-  const email = session.user.email
+  const email = ADMIN_OTP_EMAIL
 
   const sendCode = useCallback(async () => {
     setBusy(true); setErr('')

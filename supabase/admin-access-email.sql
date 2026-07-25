@@ -1,0 +1,16 @@
+-- Elva LaVenta: выдаёт права админки указанному Gmail.
+-- Запустить один раз: Supabase → SQL Editor → New query → Run.
+
+update public.profiles
+set role = 'admin'
+where id in (
+  select id
+  from auth.users
+  where lower(email) = 'alekberov.ceyhun2002@gmail.com'
+);
+
+-- Проверка результата:
+select p.role, u.email
+from public.profiles p
+join auth.users u on u.id = p.id
+where lower(u.email) = 'alekberov.ceyhun2002@gmail.com';
