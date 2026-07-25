@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, isConfigured } from '../lib/supabase.js'
-import {
-  loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin, replaceWithRealProducts,
-} from '../admin/db.js'
+import { loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin } from '../admin/db.js'
 import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { extractColors } from '../admin/colors.js'
@@ -36,6 +34,7 @@ const emptyProduct = (catId) => ({
   price: '',
   oldPrice: '',
   image: '',
+  images: [],
   colors: ['#e5399a'],
   sizes: ['S', 'M', 'L'],
   rating: 5,
@@ -225,21 +224,6 @@ function Dashboard({ session }) {
     }
   }
 
-  const importRealProducts = async () => {
-    if (!confirm('Test məhsullar silinəcək və 14 real məhsul əlavə olunacaq. Davam edək?')) return
-    setBusy('import')
-    try {
-      await replaceWithRealProducts()
-      await refresh()
-      reloadSite()
-      say('ok', '14 real məhsul və bütün fotolar əlavə edildi.')
-    } catch (e) {
-      say('err', `İdxal xətası: ${e.message}`)
-    } finally {
-      setBusy('')
-    }
-  }
-
   const catLabel = (id) => categories.find((c) => c.id === id)?.label?.ru || id
 
   return (
@@ -254,11 +238,6 @@ function Dashboard({ session }) {
         <div className="admin-head-actions">
           <Link to="/" className="btn btn-ghost btn-sm">На сайт</Link>
           <button className="btn btn-ghost btn-sm" onClick={signOutAdmin}>Выйти</button>
-          {tab === 'products' && (
-            <button className="btn btn-ghost btn-sm" onClick={importRealProducts} disabled={busy === 'import'}>
-              {busy === 'import' ? 'Yüklənir…' : '14 məhsulu yüklə'}
-            </button>
-          )}
           {tab === 'products' && (
             <button className="btn btn-primary" onClick={() => setForm(emptyProduct(categories[0]?.id))}>
               <IconPlus /> Добавить товар
@@ -445,21 +424,29 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
   const toggleSize = (s) =>
     set({ sizes: p.sizes.includes(s) ? p.sizes.filter((x) => x !== s) : [...p.sizes, s] })
 
-  const pickFile = async (file) => {
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      onNotify('err', 'Фото больше 5 МБ — сожми его перед загрузкой.')
+  const pickFiles = async (files) => {
+    const selectedFiles = Array.from(files || [])
+    if (!selectedFiles.length) return
+    const oversized = selectedFiles.find((file) => file.size > 5 * 1024 * 1024)
+    if (oversized) {
+      onNotify('err', `«${oversized.name}» больше 5 МБ — сожми его перед загрузкой.`)
       return
     }
     setUploading(true)
     try {
-      // Fotodan tonları tapırıq — istifadəçi özü seçəcək (avtomatik təyin etmirik)
+      // Цвета находим только по первому фото: пользователь сам выбирает нужный тон.
       try {
-        const cols = await extractColors(file, 8)
+        const cols = await extractColors(selectedFiles[0], 8)
         if (cols.length) { setSuggestions(cols); onNotify('ok', 'Тона найдены — выбери нужные ниже') }
       } catch { /* rəng təyini kritik deyil */ }
 
-      set({ image: await uploadImage(file) })
+      const uploaded = []
+      for (const file of selectedFiles) uploaded.push(await uploadImage(file))
+      setP((current) => {
+        const images = [...new Set([...(current.images || []), ...uploaded])]
+        return { ...current, images, image: images[0] || '' }
+      })
+      onNotify('ok', selectedFiles.length > 1 ? `Добавлено фото: ${selectedFiles.length}` : 'Фото добавлено')
     } catch (e) {
       onNotify('err', e.message === 'BUCKET_MISSING'
         ? 'Хранилище фото ещё не создано — запусти supabase/storage.sql'
@@ -467,6 +454,13 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
     } finally {
       setUploading(false)
     }
+  }
+
+  const removeImage = (image) => {
+    setP((current) => {
+      const images = (current.images || []).filter((item) => item !== image)
+      return { ...current, images, image: images[0] || '' }
+    })
   }
 
   // Şəkil linkindən (URL) rəngləri təyin et
@@ -568,17 +562,23 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
           </div>
 
           <div className="fld">
-            <span>Фото</span>
+            <span>Фото товара <em className="fld-note" style={{ fontWeight: 400 }}>— первое будет главным</em></span>
             <div className="photo-row">
-              <div className="photo-preview">
-                {p.image ? <img src={p.image} alt="" /> : <span className="no-photo">нет фото</span>}
+              <div className="photo-previews">
+                {(p.images || []).length ? p.images.map((image, index) => (
+                  <div className="photo-preview" key={image}>
+                    <img src={image} alt="" />
+                    <span className="photo-number">{index === 0 ? 'Главное' : index + 1}</span>
+                    <button type="button" className="photo-remove" onClick={() => removeImage(image)} aria-label="Удалить фото">×</button>
+                  </div>
+                )) : (
+                  <div className="photo-preview"><span className="no-photo">нет фото</span></div>
+                )}
               </div>
               <div className="photo-controls">
-                <input type="file" accept="image/*" disabled={uploading}
-                  onChange={(e) => pickFile(e.target.files?.[0])} />
-                {uploading && <span className="hint">Загружаю…</span>}
-                <input type="text" value={p.image} placeholder="или вставь ссылку на фото"
-                  onChange={(e) => set({ image: e.target.value })} />
+                <input type="file" accept="image/*" multiple disabled={uploading}
+                  onChange={(e) => { pickFiles(e.target.files); e.target.value = '' }} />
+                {uploading && <span className="hint">Загружаю фото…</span>}
               </div>
             </div>
           </div>

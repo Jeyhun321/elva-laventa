@@ -23,6 +23,7 @@ create table if not exists public.products (
   price        numeric(10,2) not null check (price >= 0),
   old_price    numeric(10,2)          check (old_price is null or old_price > price),
   image        text        not null default '',
+  images       text[]      not null default '{}',
   colors       text[]      not null default '{}',
   sizes        text[]      not null default '{}',
   rating       numeric(2,1) not null default 5 check (rating between 1 and 5),
@@ -66,7 +67,7 @@ select
   case when p.old_price is null then 0
        else round((1 - p.price / p.old_price) * 100)::int
   end as discount_percent,
-  p.image, p.colors, p.sizes, p.rating, p.reviews, p.tag
+  p.image, p.images, p.colors, p.sizes, p.rating, p.reviews, p.tag
 from public.products p
 join public.categories c on c.id = p.category_id
 where p.is_active;

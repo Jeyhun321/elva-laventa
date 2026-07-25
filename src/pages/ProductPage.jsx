@@ -34,7 +34,10 @@ export default function ProductPage() {
   }
 
   const onSale = Boolean(product.oldPrice)
-  const gallery = REAL_PRODUCT_GALLERIES[product.code] || (product.image ? [product.image] : [])
+  const savedImages = product.images?.length ? product.images : (product.image ? [product.image] : [])
+  const gallery = savedImages.length > 1
+    ? savedImages
+    : (REAL_PRODUCT_GALLERIES[product.code] || savedImages)
   const mainImage = selectedImage || gallery[0] || product.image
   const switchGalleryImage = (direction) => {
     const currentIndex = Math.max(0, gallery.indexOf(mainImage))

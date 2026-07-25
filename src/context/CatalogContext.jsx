@@ -18,6 +18,7 @@ const fromRow = (r) => ({
   price: Number(r.price),
   oldPrice: r.old_price == null ? null : Number(r.old_price),
   image: r.image || '',
+  images: r.images?.length ? r.images : (r.image ? [r.image] : []),
   colors: r.colors || [],
   sizes: r.sizes || [],
   rating: Number(r.rating),

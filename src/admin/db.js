@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase.js'
-import { REAL_PRODUCTS } from '../data/realProducts.js'
 
 // ============================================================
 //  Admin paneli üçün baza əməliyyatları.
@@ -24,6 +23,7 @@ export const fromRow = (r) => ({
   price: String(r.price ?? ''),
   oldPrice: r.old_price == null ? '' : String(r.old_price),
   image: r.image || '',
+  images: r.images?.length ? r.images : (r.image ? [r.image] : []),
   colors: r.colors || [],
   sizes: r.sizes || [],
   rating: r.rating ?? 5,
@@ -35,6 +35,7 @@ export const fromRow = (r) => ({
 // Panel forması → baza sətri
 const toRow = (p) => {
   const az = (p.name.az || '').trim()
+  const images = [...new Set((p.images || [p.image]).map((image) => (image || '').trim()).filter(Boolean))]
   return {
     // boş buraxsan, baza özü kod verir (1000 + id)
     code: (p.code || '').trim() || null,
@@ -52,7 +53,8 @@ const toRow = (p) => {
     category_id: p.category,
     price: Number(p.price) || 0,
     old_price: p.oldPrice === '' || p.oldPrice == null ? null : Number(p.oldPrice),
-    image: (p.image || '').trim(),
+    image: images[0] || '',
+    images,
     colors: (p.colors || []).filter(Boolean),
     sizes: (p.sizes || []).length ? p.sizes : ['One size'],
     rating: Number(p.rating) || 5,
@@ -94,14 +96,6 @@ export const deleteProduct = async (id) => {
   const sb = need()
   const { error } = await sb.from('products').delete().eq('id', id)
   if (error) throw error
-}
-
-export const replaceWithRealProducts = async () => {
-  const sb = need()
-  const { error: deleteError } = await sb.from('products').delete().gt('id', 0)
-  if (deleteError) throw deleteError
-  const { error: insertError } = await sb.from('products').insert(REAL_PRODUCTS.map(toRow))
-  if (insertError) throw insertError
 }
 
 // Şəkli Supabase Storage-a yükləyir və ictimai linki qaytarır
