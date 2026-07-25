@@ -4,6 +4,10 @@ import { supabase, isConfigured } from '../lib/supabase.js'
 const AuthContext = createContext(null)
 const SAVED_ACCOUNTS_KEY = 'elva-laventa-saved-accounts'
 
+function publicAuthRedirectUrl() {
+  return new URL(import.meta.env.BASE_URL || '/', window.location.origin).toString()
+}
+
 function readSavedAccounts() {
   try {
     const value = JSON.parse(localStorage.getItem(SAVED_ACCOUNTS_KEY) || '[]')
@@ -85,33 +89,11 @@ export function AuthProvider({ children }) {
     return () => sub.subscription.unsubscribe()
   }, [rememberAccount])
 
-  // Обычный OAuth-вход обрабатываем только вне /admin: у админки отдельный
-  // клиент Supabase и отдельное хранилище сессии.
-  useEffect(() => {
-    if (!isConfigured || !supabase || window.location.pathname.endsWith('/admin')) return
-    const url = new URL(window.location.href)
-    if (!url.searchParams.get('code')) return
-
-  supabase.auth.exchangeCodeForSession(url.href).then(({ data, error }) => {
-    if (!error) {
-      setUser(data.session?.user ?? null)
-      rememberAccount(data.session?.user, data.session)
-      setLoading(false)
-      const nextPath = sessionStorage.getItem('elva-laventa-auth-return-to')
-      sessionStorage.removeItem('elva-laventa-auth-return-to')
-      window.history.replaceState({}, document.title, `${url.pathname}${url.hash}`)
-      if (nextPath?.startsWith('/')) {
-        window.location.assign(`${window.location.origin}${import.meta.env.BASE_URL}${nextPath.replace(/^\//, '')}`)
-      }
-    }
-  })
-}, [rememberAccount])
-
 const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = '', returnTo = '' } = {}) => {
   if (!supabase) throw new Error('NOT_CONFIGURED')
   if (returnTo.startsWith('/')) sessionStorage.setItem('elva-laventa-auth-return-to', returnTo)
-    // Google-dan sonra istifadəçi saytın öz ünvanına qayıdır
-    const redirectTo = window.location.origin + import.meta.env.BASE_URL
+    // Google-dan sonra istifadəçi GitHub Pages-də mağazanın düzgün ünvanına qayıdır.
+    const redirectTo = publicAuthRedirectUrl()
     const { data, error } = await withTimeout(supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

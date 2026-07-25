@@ -18,9 +18,9 @@ export const supabase = isConfigured
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // OAuth-код обычного сайта обрабатывается в AuthContext.
-        // Это не даёт ему перехватывать вход, предназначенный для /admin.
-        detectSessionInUrl: false,
+        // Клиент сам завершает OAuth после возврата Google. Это поддерживает
+        // и код в URL, и токен в hash, поэтому вход не зависит от формата ответа.
+        detectSessionInUrl: true,
         storageKey: 'elva-laventa-store-auth',
       },
     })
