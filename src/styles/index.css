@@ -1036,6 +1036,20 @@ ul {
   color: var(--plum);
 }
 
+/* Основной логотип: компактный, чтобы не сжимать поиск и кнопки шапки. */
+.header .brand-logo {
+  align-items: center;
+  flex: 0 0 170px;
+  height: 58px;
+  overflow: hidden;
+}
+.brand-logo-image {
+  display: block;
+  width: 170px;
+  height: 58px;
+  object-fit: contain;
+}
+
 /* Tünd çəhrayı futerdə brend oxunaqlı olsun */
 .footer .brand-elva { color: var(--lavender-light); }
 .footer .brand-la { color: #fff; }
@@ -1054,6 +1068,17 @@ ul {
   align-items: center;
   gap: 16px;
   height: 74px;
+}
+
+@media (max-width: 760px) {
+  .header .brand-logo {
+    flex-basis: 126px;
+    height: 48px;
+  }
+  .brand-logo-image {
+    width: 126px;
+    height: 48px;
+  }
 }
 
 /* Catalog button + dropdown */

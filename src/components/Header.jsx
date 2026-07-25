@@ -5,6 +5,7 @@ import { useShop } from '../context/ShopContext.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { IconSearch, IconHeart, IconBag, IconMenu, IconClose } from './Icons.jsx'
 import UserMenu from './UserMenu.jsx'
+import flowerLogo from '../assets/elva-laventa-flower-logo.png'
 
 export default function Header() {
   const { t, lang, setLang, langs } = useI18n()
@@ -39,9 +40,8 @@ export default function Header() {
   return (
     <header className="header">
       <div className="container header-inner">
-        <Link to="/" className="brand" aria-label="Elva LaVenta">
-          <span className="brand-elva">Elva</span>
-          <span className="brand-la">LaVenta</span>
+        <Link to="/" className="brand brand-logo" aria-label="Elva LaVenta">
+          <img className="brand-logo-image" src={flowerLogo} alt="Elva LaVenta" />
         </Link>
 
         <div className="cat-wrap" ref={catRef}>
