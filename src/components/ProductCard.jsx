@@ -46,13 +46,13 @@ export default function ProductCard({ product, showRating = true }) {
       </Link>
 
       <div className="product-info">
-        <span className="product-brand">
-          {product.brand}
-          {product.code && <em className="card-code">{t('field_code')}: {product.code}</em>}
-        </span>
+        <span className="product-brand">{product.brand}</span>
         <Link to={`/product/${product.id}`} className="product-name">
           {t(product.name)}
         </Link>
+        {product.code && (
+          <span className="card-code">{t('field_code')}: {product.code}</span>
+        )}
 
         {showRating && (
           <Rating value={product.rating} reviews={product.reviews} reviewsLabel={t('reviews')} />

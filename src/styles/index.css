@@ -1322,13 +1322,17 @@ ul {
   font-variant-numeric: tabular-nums;
 }
 .card-code {
+  display: inline-flex;
+  align-self: flex-start;
   font-style: normal;
-  margin-left: 8px;
-  padding: 1px 7px;
+  margin-top: 7px;
+  padding: 3px 8px;
   border-radius: 999px;
-  background: var(--lavender-mist);
+  background: #fff0f7;
   color: var(--lavender-text);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
   font-variant-numeric: tabular-nums;
 }
 a.product-name {
