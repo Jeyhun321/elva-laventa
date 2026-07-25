@@ -27,6 +27,7 @@ const TAGS = [
 const ADMIN_OTP_TTL = 15 * 60 * 1000
 const ADMIN_OTP_EMAIL = 'alekberov.ceyhun2002@gmail.com'
 const adminOtpStorageKey = (userId) => `elva-admin-otp-verified:${userId}`
+const isOwnerEmail = (email = '') => email.trim().toLowerCase() === ADMIN_OTP_EMAIL
 
 function hasAdminOtpVerification(userId) {
   try { return Number(sessionStorage.getItem(adminOtpStorageKey(userId))) > Date.now() } catch { return false }
@@ -81,12 +82,19 @@ export default function AdminPage() {
       setChecking(false)
       return
     }
+    if (!isOwnerEmail(session.user.email || '')) {
+      setIsAdmin(false)
+      setOtpVerified(false)
+      setChecking(false)
+      return
+    }
+
     let active = true
     setChecking(true)
     adminSupabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle()
       .then(({ data, error }) => {
         if (!active) return
-        const allowed = !error && data?.role === 'admin' && session.user.email?.toLowerCase() === ADMIN_OTP_EMAIL
+        const allowed = !error && data?.role === 'admin'
         setIsAdmin(allowed)
         setOtpVerified(allowed && hasAdminOtpVerification(session.user.id))
         setChecking(false)
@@ -118,7 +126,8 @@ export default function AdminPage() {
   }
 
   if (!session) return <LoginScreen />
-  if (!isAdmin) return <AccessDenied onExit={leaveAdmin} />
+  if (!isOwnerEmail(session.user.email || '')) return <NotFoundScreen onExit={leaveAdmin} />
+  if (!isAdmin) return <AdminSetupRequired onExit={leaveAdmin} />
   if (!otpVerified) return <EmailOtpScreen session={session} onVerified={() => setOtpVerified(true)} onExit={leaveAdmin} />
 
   return <Dashboard session={session} onExit={leaveAdmin} />
@@ -134,6 +143,10 @@ function LoginScreen() {
 
   const submit = async (e) => {
     e.preventDefault()
+    if (!isOwnerEmail(email)) {
+      setErr('404 — страница не найдена.')
+      return
+    }
     setBusy(true); setErr(''); setMsg('')
     try {
       await signIn(email.trim(), password)
@@ -151,6 +164,7 @@ function LoginScreen() {
   const forgot = async () => {
     setErr(''); setMsg('')
     if (!email.trim()) { setErr('Сначала впиши почту выше'); return }
+    if (!isOwnerEmail(email)) { setErr('404 — страница не найдена.'); return }
     setBusy(true)
     try {
       const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'reset'
@@ -170,7 +184,7 @@ function LoginScreen() {
       const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'admin'
       const { error } = await adminSupabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo, queryParams: { prompt: 'select_account' } },
+        options: { redirectTo, queryParams: { prompt: 'select_account', login_hint: ADMIN_OTP_EMAIL } },
       })
       if (error) throw error
     } catch (e2) {
@@ -233,12 +247,25 @@ function LoginScreen() {
 }
 
 /* ---------------- Панель ---------------- */
-function AccessDenied({ onExit }) {
+function NotFoundScreen({ onExit }) {
   return (
     <div className="container admin">
       <div className="login-box admin-gate-box">
-        <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Нет доступа</h1>
-        <p className="admin-sub">Войдите через Google или пароль именно аккаунта <strong>{ADMIN_OTP_EMAIL}</strong>.</p>
+        <h1 className="page-title" style={{ fontSize: '2.5rem' }}>404</h1>
+        <p className="admin-sub">Страница не найдена.</p>
+        <button className="btn btn-primary full" onClick={onExit}>Выйти из другого аккаунта</button>
+        <Link to="/" className="continue-link">← На сайт</Link>
+      </div>
+    </div>
+  )
+}
+
+function AdminSetupRequired({ onExit }) {
+  return (
+    <div className="container admin">
+      <div className="login-box admin-gate-box">
+        <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Доступ ещё не настроен</h1>
+        <p className="admin-sub">Для этого аккаунта нужно один раз выдать роль администратора в Supabase.</p>
         <button className="btn btn-primary full" onClick={onExit}>Выйти</button>
         <Link to="/" className="continue-link">← На сайт</Link>
       </div>
@@ -274,8 +301,8 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
   const verify = async (e) => {
     e.preventDefault()
     const token = code.replace(/\s/g, '')
-    if (!/^\d{6}$/.test(token)) {
-      setErr('Введите шестизначный код из письма.')
+    if (!/^\d{6,8}$/.test(token)) {
+      setErr('Введите код из письма.')
       return
     }
     setBusy(true); setErr('')
@@ -299,7 +326,7 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
         <form onSubmit={verify} className="login-form">
           <label className="fld">
             <span>Код из письма</span>
-            <input className="otp-code" inputMode="numeric" autoComplete="one-time-code" maxLength="6" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus />
+            <input className="otp-code" inputMode="numeric" autoComplete="one-time-code" maxLength="8" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus />
           </label>
           {err && <div className="admin-msg err">{err}</div>}
           {sent && <div className="admin-msg ok">Письмо отправлено. Проверьте также папку «Спам».</div>}
