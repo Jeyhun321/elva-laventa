@@ -6,6 +6,7 @@ import {
 } from '../admin/db.js'
 import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
+import { extractColors } from '../admin/colors.js'
 import { IconTrash, IconPlus, IconClose } from '../components/Icons.jsx'
 
 const ORDER_STATUSES = [
@@ -411,6 +412,7 @@ function OrdersPanel({ onNotify }) {
 function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) {
   const [p, setP] = useState(value)
   const [uploading, setUploading] = useState(false)
+  const [detecting, setDetecting] = useState(false)
 
   const set = (patch) => setP((v) => ({ ...v, ...patch }))
   const setLang = (field, lang, val) =>
@@ -427,14 +429,34 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
     }
     setUploading(true)
     try {
+      // Rəngləri lokal fayldan təyin edirik (CORS problemi yoxdur)
+      try {
+        const cols = await extractColors(file, 3)
+        if (cols.length) { set({ colors: cols }); onNotify('ok', 'Цвета определены по фото ✓') }
+      } catch { /* rəng təyini kritik deyil */ }
+
       set({ image: await uploadImage(file) })
-      onNotify('ok', 'Фото загружено ✓')
     } catch (e) {
       onNotify('err', e.message === 'BUCKET_MISSING'
         ? 'Хранилище фото ещё не создано — запусти supabase/storage.sql'
         : `Не удалось загрузить фото: ${e.message}`)
     } finally {
       setUploading(false)
+    }
+  }
+
+  // Şəkil linkindən (URL) rəngləri təyin et
+  const detectFromUrl = async () => {
+    if (!p.image.trim()) return
+    setDetecting(true)
+    try {
+      const cols = await extractColors(p.image.trim(), 3)
+      if (cols.length) { set({ colors: cols }); onNotify('ok', 'Цвета определены по фото ✓') }
+      else onNotify('err', 'Не удалось прочитать цвета из этой ссылки')
+    } catch {
+      onNotify('err', 'Не удалось прочитать цвета из этой ссылки')
+    } finally {
+      setDetecting(false)
     }
   }
 
@@ -549,7 +571,7 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
           </div>
 
           <div className="fld">
-            <span>Цвета</span>
+            <span>Цвета <em className="fld-note" style={{ fontWeight: 400 }}>— определяются по фото автоматически</em></span>
             <div className="color-picks">
               {p.colors.map((c, i) => (
                 <span className="color-pick" key={i}>
@@ -561,6 +583,12 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
               ))}
               <button type="button" className="btn-ghost btn-sm"
                 onClick={() => set({ colors: [...p.colors, '#e5399a'] })}>+ цвет</button>
+              {p.image && (
+                <button type="button" className="btn-ghost btn-sm" disabled={detecting}
+                  onClick={detectFromUrl}>
+                  {detecting ? '…' : '🎨 по фото'}
+                </button>
+              )}
             </div>
           </div>
 
