@@ -128,7 +128,7 @@ export default function CheckoutPage() {
       else localStorage.removeItem(BUYER_KEY)
 
       setDone(order)
-      clearCart()
+      await clearCart()
     } catch (error) {
       setErr(error?.message === 'GOOGLE_AUTH_REQUIRED' ? t('google_auth_required') : t('order_failed'))
     } finally {
