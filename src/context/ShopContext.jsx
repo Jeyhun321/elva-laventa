@@ -3,8 +3,10 @@ import { useAuth } from './AuthContext.jsx'
 
 const ShopContext = createContext(null)
 
-const CART_KEY = 'elva_cart'
-const FAV_KEY = 'elva_favorites'
+const CART_KEY_PREFIX = 'elva_cart:'
+const FAV_KEY_PREFIX = 'elva_favorites:'
+
+const accountKey = (prefix, accountId) => `${prefix}${accountId}`
 
 const load = (key, fallback) => {
   try {
@@ -16,26 +18,43 @@ const load = (key, fallback) => {
 }
 
 export function ShopProvider({ children }) {
-  const { isGoogleUser, loading } = useAuth()
+  const { user, isGoogleUser, loading } = useAuth()
+  const accountId = isGoogleUser ? user?.id : null
   // cart: [{ id, size, qty }]
-  const [cart, setCart] = useState(() => load(CART_KEY, []))
+  const [cart, setCart] = useState([])
   // favorites: [id, id, ...]
-  const [favorites, setFavorites] = useState(() => load(FAV_KEY, []))
+  const [favorites, setFavorites] = useState([])
+  // Protects the next account from receiving the previous account's state
+  // during the short React update between two sessions.
+  const [loadedAccountId, setLoadedAccountId] = useState(null)
 
   useEffect(() => {
-    localStorage.setItem(CART_KEY, JSON.stringify(cart))
-  }, [cart])
+    if (loading) return
+
+    if (!accountId) {
+      setCart([])
+      setFavorites([])
+      setLoadedAccountId(null)
+      return
+    }
+
+    setCart(load(accountKey(CART_KEY_PREFIX, accountId), []))
+    setFavorites(load(accountKey(FAV_KEY_PREFIX, accountId), []))
+    setLoadedAccountId(accountId)
+  }, [accountId, loading])
 
   useEffect(() => {
-    localStorage.setItem(FAV_KEY, JSON.stringify(favorites))
-  }, [favorites])
+    if (!accountId || loadedAccountId !== accountId) return
+    localStorage.setItem(accountKey(CART_KEY_PREFIX, accountId), JSON.stringify(cart))
+  }, [accountId, cart, loadedAccountId])
 
   useEffect(() => {
-    if (!loading && !isGoogleUser) setCart([])
-  }, [isGoogleUser, loading])
+    if (!accountId || loadedAccountId !== accountId) return
+    localStorage.setItem(accountKey(FAV_KEY_PREFIX, accountId), JSON.stringify(favorites))
+  }, [accountId, favorites, loadedAccountId])
 
   const addToCart = useCallback((id, size = null, qty = 1) => {
-    if (!isGoogleUser || loading) return false
+    if (!accountId || !isGoogleUser || loading) return false
     setCart((prev) => {
       const idx = prev.findIndex((i) => i.id === id && i.size === size)
       if (idx >= 0) {
@@ -46,7 +65,7 @@ export function ShopProvider({ children }) {
       return [...prev, { id, size, qty }]
     })
     return true
-  }, [isGoogleUser, loading])
+  }, [accountId, isGoogleUser, loading])
 
   const removeFromCart = useCallback((id, size = null) => {
     setCart((prev) => prev.filter((i) => !(i.id === id && i.size === size)))
