@@ -5,7 +5,7 @@ import { useShop } from '../context/ShopContext.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { IconSearch, IconHeart, IconBag, IconMenu, IconClose } from './Icons.jsx'
 import UserMenu from './UserMenu.jsx'
-import flowerLogo from '../assets/elva-laventa-flower-logo.png'
+import flowerLogo from '../assets/elva-laventa-logo.svg'
 
 export default function Header() {
   const { t, lang, setLang, langs } = useI18n()
