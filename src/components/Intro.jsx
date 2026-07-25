@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
@@ -6,7 +6,6 @@ import { IconArrow } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
 
 const AUTOPLAY_MS = 3600
-const HOVER_STEP_MS = 1500
 
 export default function Intro() {
   const { t } = useI18n()
@@ -19,7 +18,6 @@ export default function Intro() {
   }, [saleProducts, products])
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
-  const [hoverSide, setHoverSide] = useState(null) // 'left' | 'right' | null
 
   const step = (dir) =>
     setActive((a) => (SHOW.length ? (a + dir + SHOW.length) % SHOW.length : 0))
@@ -35,54 +33,6 @@ export default function Intro() {
     const tm = setInterval(() => step(1), AUTOPLAY_MS)
     return () => clearInterval(tm)
   }, [paused, SHOW.length])
-
-  // Yan zona: geri sayım HƏR addımdan sonra sıfırdan başlayır.
-  // Klik etsən — dərhal bir addım atılır və saniyə yenidən başlayır.
-  // Taymer öz-özünə işləmir: kliklə addım arasında həmişə tam 1 saniyə olur.
-  const timerRef = useRef(null)
-  const lastStepRef = useRef(0)
-
-  const clearTimer = () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
-  }
-
-  const scheduleNext = (dir) => {
-    clearTimer()
-    timerRef.current = setTimeout(() => {
-      lastStepRef.current = Date.now()
-      step(dir)
-      scheduleNext(dir)
-    }, HOVER_STEP_MS)
-  }
-
-  // Bir addım at və geri sayımı sıfırla.
-  // keepRunning: yalnız kursor zonada qalırsa avtomatik zəncir davam edir.
-  // Zonadan kənar klik (toxunma cihazları) → sadəcə bir addım, zəncir yoxdur.
-  const stepAndRestart = (dir, keepRunning = true) => {
-    const now = Date.now()
-    // hover + klik eyni anda gələndə ikiqat sürüşməni əngəllə
-    if (now - lastStepRef.current >= 150) {
-      lastStepRef.current = now
-      step(dir)
-    }
-    if (keepRunning) scheduleNext(dir)
-    else clearTimer()
-  }
-
-  useEffect(() => {
-    if (!hoverSide) {
-      clearTimer()
-      return
-    }
-    stepAndRestart(hoverSide === 'right' ? 1 : -1)
-    return clearTimer
-  }, [hoverSide])
-
-  // unmount zamanı təmizlik
-  useEffect(() => clearTimer, [])
 
   const slotName = (i) => {
     const n = SHOW.length
@@ -110,15 +60,12 @@ export default function Intro() {
           </div>
         </div>
 
-        <div
-          className="showcase"
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => {
-            setPaused(false)
-            setHoverSide(null)
-          }}
-        >
-          <div className="showcase-stage">
+        <div className="showcase">
+          <div
+            className="showcase-stage"
+            onMouseEnter={() => setPaused(true)}
+            onMouseLeave={() => setPaused(false)}
+          >
             {SHOW.map((product, i) => (
               <ShowcaseCard
                 key={product.id}
@@ -128,30 +75,10 @@ export default function Intro() {
               />
             ))}
 
-            {/* Sabit hover zonaları — kartlar hərəkət etsə də, bunlar yerində qalır */}
-            <button
-              type="button"
-              className="hover-zone zone-left"
-              aria-hidden="true"
-              tabIndex={-1}
-              onMouseEnter={() => setHoverSide('left')}
-              onMouseLeave={() => setHoverSide(null)}
-              onClick={() => stepAndRestart(-1, hoverSide === 'left')}
-            />
-            <button
-              type="button"
-              className="hover-zone zone-right"
-              aria-hidden="true"
-              tabIndex={-1}
-              onMouseEnter={() => setHoverSide('right')}
-              onMouseLeave={() => setHoverSide(null)}
-              onClick={() => stepAndRestart(1, hoverSide === 'right')}
-            />
-
             <button
               type="button"
               className="showcase-nav showcase-nav-prev"
-              onClick={() => stepAndRestart(-1, false)}
+              onClick={() => step(-1)}
               aria-label={t('previous_product')}
             >
               <IconArrow style={{ transform: 'rotate(180deg)' }} />
@@ -159,7 +86,7 @@ export default function Intro() {
             <button
               type="button"
               className="showcase-nav showcase-nav-next"
-              onClick={() => stepAndRestart(1, false)}
+              onClick={() => step(1)}
               aria-label={t('next_product')}
             >
               <IconArrow />

@@ -427,23 +427,6 @@ ul {
   pointer-events: none;
 }
 
-/* Sabit hover zonaları: yan kartların üstündə (z-3), mərkəzi kartın altında (z-5),
-   beləliklə mərkəzi karta klik yenə də məhsul səhifəsinə aparır. */
-.hover-zone {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 32%;
-  height: 70%;
-  z-index: 4;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-}
-.zone-left { left: 0; }
-.zone-right { right: 0; }
-
 /* Видимые стрелки для ручного переключения карточек на главном экране. */
 .showcase-nav {
   position: absolute;
