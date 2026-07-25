@@ -10,8 +10,13 @@ const HOVER_STEP_MS = 1500
 
 export default function Intro() {
   const { t } = useI18n()
-  const { saleProducts } = useCatalog()
-  const SHOW = useMemo(() => saleProducts.slice(0, 7), [saleProducts])
+  const { saleProducts, products } = useCatalog()
+  // Витрина не должна исчезать, если у товаров пока нет старой цены (скидки).
+  // Сначала показываем товары со скидкой, затем заполняем обычными товарами.
+  const SHOW = useMemo(() => {
+    const saleIds = new Set(saleProducts.map((product) => product.id))
+    return [...saleProducts, ...products.filter((product) => !saleIds.has(product.id))].slice(0, 7)
+  }, [saleProducts, products])
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
   const [hoverSide, setHoverSide] = useState(null) // 'left' | 'right' | null

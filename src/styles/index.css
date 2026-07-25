@@ -1678,7 +1678,7 @@ a.product-media {
   background: linear-gradient(135deg, var(--lavender-mist), var(--cream));
   box-shadow: var(--shadow-sm);
 }
-.gallery-main img { width: 100%; height: 100%; object-fit: cover; }
+.gallery-main img { width: 100%; height: 100%; object-fit: contain; }
 @media (min-width: 861px) {
   .product-gallery { display: flex; flex-direction: column; align-items: center; }
   .gallery-main {
