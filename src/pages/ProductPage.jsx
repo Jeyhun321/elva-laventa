@@ -9,6 +9,7 @@ import { IconHeart, IconBag, IconStar, IconArrow } from '../components/Icons.jsx
 import ProductImage from '../components/ProductImage.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Rating from '../components/Rating.jsx'
+import AuthRequiredDialog from '../components/AuthRequiredDialog.jsx'
 import { REAL_PRODUCT_GALLERIES } from '../data/realProducts.js'
 
 export default function ProductPage() {
@@ -23,7 +24,7 @@ export default function ProductPage() {
   const needsSize = product && product.sizes && product.sizes.length > 1
   const [size, setSize] = useState(needsSize ? null : product?.sizes?.[0] ?? null)
   const [warn, setWarn] = useState(false)
-  const [authWarn, setAuthWarn] = useState(false)
+  const [authDialog, setAuthDialog] = useState(false)
   const [added, setAdded] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
 
@@ -58,10 +59,9 @@ export default function ProductPage() {
       return
     }
     if (!isGoogleUser || !addToCart(product.id, size, 1)) {
-      setAuthWarn(true)
+      setAuthDialog(true)
       return
     }
-    setAuthWarn(false)
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
   }
@@ -72,10 +72,9 @@ export default function ProductPage() {
       return
     }
     if (!isGoogleUser || !addToCart(product.id, size, 1)) {
-      setAuthWarn(true)
+      setAuthDialog(true)
       return
     }
-    setAuthWarn(false)
     navigate('/cart')
   }
 
@@ -160,7 +159,7 @@ export default function ProductPage() {
                 <button
                   key={s}
                   className={`size-btn${size === s ? ' active' : ''}`}
-                  onClick={() => { setSize(s); setWarn(false); setAuthWarn(false) }}
+                  onClick={() => { setSize(s); setWarn(false) }}
                 >
                   {s}
                 </button>
@@ -194,11 +193,6 @@ export default function ProductPage() {
             <span className="field-label">{t('description')}</span>
             <p className="detail-desc">{t('product_desc_generic')}</p>
           </div>
-          {authWarn && (
-            <p className="action-notice" role="alert">
-              {t('google_auth_required')} <Link to={`/auth?next=${encodeURIComponent(`/product/${product.id}`)}`}>{t('google_auth_action')}</Link>
-            </p>
-          )}
         </div>
 
         {related.length > 0 && (
@@ -217,6 +211,8 @@ export default function ProductPage() {
           </aside>
         )}
       </div>
+
+      <AuthRequiredDialog open={authDialog} onClose={() => setAuthDialog(false)} returnTo={`/product/${product.id}`} />
 
       {related.length > 0 && (
         <section className="related">

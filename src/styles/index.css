@@ -1302,6 +1302,7 @@ ul {
 .saved-account small { color: var(--ink-soft); font-size: .72rem; }
 .saved-account em { color: var(--plum); font-size: .72rem; font-style: normal; font-weight: 700; margin-left: auto; }
 .account-switch { margin-bottom: 8px; }
+.saved-accounts-before-login { margin-top: 0; }
 .user-err {
   display: block;
   margin-top: 10px;
@@ -1325,6 +1326,45 @@ ul {
   word-break: break-all;
 }
 .btn-sm.full { width: 100%; justify-content: center; }
+
+/* Ã‡É™kÉ™t vÉ™ sifariÅŸ Ã¼Ã§Ã¼n giriÅŸ pÉ™ncÉ™rÉ™si */
+.auth-required-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(60, 17, 43, 0.38);
+  backdrop-filter: blur(3px);
+}
+.auth-required-dialog {
+  position: relative;
+  width: min(100%, 390px);
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--white);
+  box-shadow: var(--shadow-md);
+  text-align: center;
+  animation: menuIn .18s ease;
+}
+.auth-required-dialog h2 { color: var(--plum); font-family: var(--serif); font-size: 1.7rem; margin: 0 0 10px; }
+.auth-required-dialog p { color: var(--ink-soft); line-height: 1.5; margin: 0 0 20px; }
+.auth-required-close {
+  position: absolute;
+  top: 10px;
+  right: 13px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--plum);
+  font-size: 1.65rem;
+  line-height: 1;
+}
+.auth-required-close:hover { background: var(--pink-soft); }
 
 /* Product card additions */
 .product-brand {

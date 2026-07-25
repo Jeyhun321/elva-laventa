@@ -74,6 +74,23 @@ export default function UserMenu() {
           <div className="user-dropdown">
             <h4>{t('sign_in_title')}</h4>
             <p>{t('sign_in_why')}</p>
+            {accounts.length > 0 && (
+              <div className="saved-accounts saved-accounts-before-login">
+                <span className="saved-accounts-title">Bu cihazdakı hesablar</span>
+                {accounts.map((account) => (
+                  <button
+                    className="saved-account"
+                    type="button"
+                    key={account.id}
+                    onClick={() => selectSavedAccount(account)}
+                    disabled={busy}
+                  >
+                    {account.avatar ? <img src={account.avatar} alt="" referrerPolicy="no-referrer" /> : <IconUser />}
+                    <span><b>{account.name}</b><small>{account.email}</small></span>
+                  </button>
+                ))}
+              </div>
+            )}
             <button className="google-btn" onClick={doLogin} disabled={busy}>
               <IconGoogle />
               {busy ? '…' : t('continue_with_google')}

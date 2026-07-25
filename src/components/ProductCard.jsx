@@ -8,12 +8,14 @@ import { tagLabels } from '../i18n/translations.js'
 import { IconHeart, IconBag } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
 import Rating from './Rating.jsx'
+import AuthRequiredDialog from './AuthRequiredDialog.jsx'
 
 export default function ProductCard({ product, showRating = true }) {
   const { t } = useI18n()
   const { addToCart, toggleFavorite, isFavorite } = useShop()
   const { isGoogleUser } = useAuth()
   const [notice, setNotice] = useState('')
+  const [authDialog, setAuthDialog] = useState(false)
   const onSale = Boolean(product.oldPrice)
   const fav = isFavorite(product.id)
 
@@ -21,7 +23,8 @@ export default function ProductCard({ product, showRating = true }) {
     e.preventDefault()
     e.stopPropagation()
     if (!isGoogleUser) {
-      setNotice(t('google_auth_required'))
+      setNotice('')
+      setAuthDialog(true)
       return
     }
     if (product.sizes?.length > 1) {
@@ -90,6 +93,7 @@ export default function ProductCard({ product, showRating = true }) {
           </p>
         )}
       </div>
+      <AuthRequiredDialog open={authDialog} onClose={() => setAuthDialog(false)} returnTo={`/product/${product.id}`} />
     </article>
   )
 }
