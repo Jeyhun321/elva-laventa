@@ -5,7 +5,7 @@ import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconArrow } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
 
-const AUTOPLAY_MS = 1000
+const AUTOPLAY_MS = 2000
 
 export default function Intro() {
   const { t } = useI18n()
