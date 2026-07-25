@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { tagLabels } from '../i18n/translations.js'
 import { IconHeart, IconBag, IconStar, IconArrow } from '../components/Icons.jsx'
 import ProductImage from '../components/ProductImage.jsx'
@@ -16,11 +17,13 @@ export default function ProductPage() {
   const { t } = useI18n()
   const { getProduct, products } = useCatalog()
   const { addToCart, toggleFavorite, isFavorite } = useShop()
+  const { isGoogleUser } = useAuth()
 
   const product = getProduct(id)
   const needsSize = product && product.sizes && product.sizes.length > 1
   const [size, setSize] = useState(needsSize ? null : product?.sizes?.[0] ?? null)
   const [warn, setWarn] = useState(false)
+  const [authWarn, setAuthWarn] = useState(false)
   const [added, setAdded] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
 
@@ -54,7 +57,11 @@ export default function ProductPage() {
       setWarn(true)
       return
     }
-    addToCart(product.id, size, 1)
+    if (!isGoogleUser || !addToCart(product.id, size, 1)) {
+      setAuthWarn(true)
+      return
+    }
+    setAuthWarn(false)
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
   }
@@ -64,7 +71,11 @@ export default function ProductPage() {
       setWarn(true)
       return
     }
-    addToCart(product.id, size, 1)
+    if (!isGoogleUser || !addToCart(product.id, size, 1)) {
+      setAuthWarn(true)
+      return
+    }
+    setAuthWarn(false)
     navigate('/cart')
   }
 
@@ -149,7 +160,7 @@ export default function ProductPage() {
                 <button
                   key={s}
                   className={`size-btn${size === s ? ' active' : ''}`}
-                  onClick={() => { setSize(s); setWarn(false) }}
+                  onClick={() => { setSize(s); setWarn(false); setAuthWarn(false) }}
                 >
                   {s}
                 </button>
@@ -183,6 +194,11 @@ export default function ProductPage() {
             <span className="field-label">{t('description')}</span>
             <p className="detail-desc">{t('product_desc_generic')}</p>
           </div>
+          {authWarn && (
+            <p className="action-notice" role="alert">
+              {t('google_auth_required')} <Link to={`/auth?next=${encodeURIComponent(`/product/${product.id}`)}`}>{t('google_auth_action')}</Link>
+            </p>
+          )}
         </div>
 
         {related.length > 0 && (

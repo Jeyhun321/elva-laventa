@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -29,9 +29,10 @@ export const normalizeWhatsApp = (raw) => {
 export default function CheckoutPage() {
   const { t } = useI18n()
   const { getProduct } = useCatalog()
-  const { user, profile } = useAuth()
+  const { user, profile, isGoogleUser, loading } = useAuth()
   const { cart, clearCart } = useShop()
   const navigate = useNavigate()
+  const formRef = useRef(null)
 
   const [buyer, setBuyer] = useState(() => {
     // Bütün sahələr həmişə mövcud olsun — köhnə yaddaşda phoneCall olmaya bilər
@@ -57,8 +58,9 @@ export default function CheckoutPage() {
   const total = lines.reduce((s, l) => s + l.product.price * l.item.qty, 0)
 
   useEffect(() => {
+    if (!loading && !isGoogleUser) return
     if (lines.length === 0 && !done) navigate('/cart', { replace: true })
-  }, [lines.length, done, navigate])
+  }, [lines.length, done, navigate, isGoogleUser, loading])
 
   // Hesaba girmişsə, adı avtomatik dolsun
   useEffect(() => {
@@ -67,7 +69,10 @@ export default function CheckoutPage() {
     }
   }, [profile?.name])
 
-  const set = (k, v) => setBuyer((b) => ({ ...b, [k]: v }))
+  const set = (k, v) => {
+    setBuyer((b) => ({ ...b, [k]: v }))
+    setErr('')
+  }
 
   // Hər sahəni təhlükəsiz oxuyuruq (undefined ola bilməz)
   const g = (k) => (buyer[k] || '').trim()
@@ -89,9 +94,17 @@ export default function CheckoutPage() {
 
   const submit = async (e) => {
     e.preventDefault()
+    if (!isGoogleUser) {
+      setErr(t('google_auth_required'))
+      return
+    }
     setTouched({ name: true, phone: true, phoneCall: true, address: true })
     setErr('')
-    if (!valid) return
+    if (!valid) {
+      setErr(t('checkout_form_incomplete'))
+      window.requestAnimationFrame(() => formRef.current?.querySelector('input.invalid')?.focus())
+      return
+    }
 
     setBusy(true)
     try {
@@ -116,8 +129,8 @@ export default function CheckoutPage() {
 
       setDone(order)
       clearCart()
-    } catch {
-      setErr(t('order_failed'))
+    } catch (error) {
+      setErr(error?.message === 'GOOGLE_AUTH_REQUIRED' ? t('google_auth_required') : t('order_failed'))
     } finally {
       setBusy(false)
     }
@@ -142,13 +155,26 @@ export default function CheckoutPage() {
     )
   }
 
+  if (!loading && !isGoogleUser) {
+    return (
+      <div className="container checkout-page">
+        <div className="order-success">
+          <h1>{t('sign_in_title')}</h1>
+          <p className="order-ok-text">{t('google_auth_required')}</p>
+          <Link to="/auth?next=%2Fcheckout" className="btn btn-primary">{t('google_auth_action')}</Link>
+          <Link to="/cart" className="continue-link">{t('back_to_cart')}</Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="container checkout-page">
       <Link to="/cart" className="back-link">{t('back_to_cart')}</Link>
       <h1 className="page-title">{t('checkout_title')}</h1>
 
       <div className="checkout-layout">
-        <form className="checkout-form" onSubmit={submit} noValidate>
+        <form ref={formRef} className="checkout-form" onSubmit={submit} noValidate>
           <h3 className="checkout-h3">{t('your_details')}</h3>
 
           <label className="fld">
@@ -231,7 +257,7 @@ export default function CheckoutPage() {
             <span>{t('remember_me')}</span>
           </label>
 
-          {err && <div className="admin-msg err">{err}</div>}
+          {err && <div className="admin-msg err" role="alert">{err}</div>}
 
           <button type="submit" className="btn btn-primary btn-lg full" disabled={busy}>
             {busy ? t('order_sending') : t('place_order')}

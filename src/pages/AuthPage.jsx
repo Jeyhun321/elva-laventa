@@ -15,7 +15,13 @@ export default function AuthPage() {
 
   const raw = params.get('mode')
   const mode = raw === 'signup' ? 'signup' : raw === 'reset' ? 'reset' : 'login'
-  const setMode = (m) => setParams(m === 'login' ? {} : { mode: m })
+  const nextPath = params.get('next')?.startsWith('/') ? params.get('next') : '/'
+  const setMode = (m) => {
+    const next = {}
+    if (m !== 'login') next.mode = m
+    if (nextPath !== '/') next.next = nextPath
+    setParams(next)
+  }
   const [resetSent, setResetSent] = useState(false)
 
   const [f, setF] = useState({
@@ -28,8 +34,8 @@ export default function AuthPage() {
 
   // Artıq daxil olubsa, burada qalmağa ehtiyac yoxdur
   useEffect(() => {
-    if (user) navigate('/', { replace: true })
-  }, [user, navigate])
+    if (user) navigate(nextPath, { replace: true })
+  }, [user, navigate, nextPath])
 
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }))
 
@@ -56,10 +62,10 @@ export default function AuthPage() {
       if (mode === 'signup') {
         const { needsConfirm } = await signUp(f)
         if (needsConfirm) setConfirmSent(true)
-        else navigate('/', { replace: true })
+        else navigate(nextPath, { replace: true })
       } else {
         await signInWithPassword(f.email, f.password)
-        navigate('/', { replace: true })
+        navigate(nextPath, { replace: true })
       }
     } catch (e2) {
       const m = String(e2.message || '')
@@ -156,7 +162,7 @@ export default function AuthPage() {
         </h1>
         <p className="admin-sub" style={{ marginBottom: 18 }}>{t('sign_in_why')}</p>
 
-        <button className="google-btn" onClick={() => loginWithGoogle().catch(() => setErr(t('sign_in_failed')))}>
+        <button className="google-btn" onClick={() => loginWithGoogle({ returnTo: nextPath }).catch(() => setErr(t('sign_in_failed')))}>
           <IconGoogle /> {t('continue_with_google')}
         </button>
 

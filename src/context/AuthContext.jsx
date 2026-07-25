@@ -22,6 +22,15 @@ function accountFromUser(user) {
   }
 }
 
+function isGoogleUser(user) {
+  const providers = [
+    user?.app_metadata?.provider,
+    ...(user?.identities || []).map((identity) => identity?.provider),
+  ].filter(Boolean)
+
+  return providers.includes('google')
+}
+
 function sessionForStorage(session) {
   if (!session?.access_token || !session?.refresh_token) return null
   return {
@@ -74,13 +83,24 @@ export function AuthProvider({ children }) {
     const url = new URL(window.location.href)
     if (!url.searchParams.get('code')) return
 
-    supabase.auth.exchangeCodeForSession(url.href).then(({ error }) => {
-      if (!error) window.history.replaceState({}, document.title, `${url.pathname}${url.hash}`)
-    })
-  }, [])
+  supabase.auth.exchangeCodeForSession(url.href).then(({ data, error }) => {
+    if (!error) {
+      setUser(data.session?.user ?? null)
+      rememberAccount(data.session?.user, data.session)
+      setLoading(false)
+      const nextPath = sessionStorage.getItem('elva-laventa-auth-return-to')
+      sessionStorage.removeItem('elva-laventa-auth-return-to')
+      window.history.replaceState({}, document.title, `${url.pathname}${url.hash}`)
+      if (nextPath?.startsWith('/')) {
+        window.location.assign(`${window.location.origin}${import.meta.env.BASE_URL}${nextPath.replace(/^\//, '')}`)
+      }
+    }
+  })
+}, [rememberAccount])
 
-  const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = '' } = {}) => {
-    if (!supabase) throw new Error('NOT_CONFIGURED')
+const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = '', returnTo = '' } = {}) => {
+  if (!supabase) throw new Error('NOT_CONFIGURED')
+  if (returnTo.startsWith('/')) sessionStorage.setItem('elva-laventa-auth-return-to', returnTo)
     // Google-dan sonra istifadəçi saytın öz ünvanına qayıdır
     const redirectTo = window.location.origin + import.meta.env.BASE_URL
     const { error } = await supabase.auth.signInWithOAuth({
@@ -156,22 +176,16 @@ export function AuthProvider({ children }) {
   }, [])
 
   // Google profilindən ad və şəkil
-  const profile = user
-    ? {
-        id: user.id,
-        email: user.email || '',
-        name:
-          user.user_metadata?.full_name ||
-          user.user_metadata?.name ||
-          (user.email ? user.email.split('@')[0] : ''),
-        avatar: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-      }
-    : null
+  const profile = user ? accountFromUser(user) : null
+  const activeSavedAccount = user ? accounts.find((account) => account.id === user.id) || {} : null
+  const visibleAccounts = user
+    ? [{ ...activeSavedAccount, ...accountFromUser(user) }, ...accounts.filter((account) => account.id !== user.id)]
+    : accounts
 
   return (
     <AuthContext.Provider
       value={{
-        user, profile, accounts, loading,
+        user, profile, accounts: visibleAccounts, loading, isGoogleUser: isGoogleUser(user),
         loginWithGoogle, logout, signUp, signInWithPassword,
         sendPasswordReset, updatePassword, switchToSavedAccount,
       }}

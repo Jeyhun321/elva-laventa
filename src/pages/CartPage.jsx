@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { IconPlus, IconMinus, IconTrash } from '../components/Icons.jsx'
 import ProductImage from '../components/ProductImage.jsx'
 
@@ -9,6 +10,7 @@ export default function CartPage() {
   const { t } = useI18n()
   const { getProduct } = useCatalog()
   const { cart, setQty, removeFromCart } = useShop()
+  const { isGoogleUser } = useAuth()
 
   const lines = cart
     .map((item) => ({ item, product: getProduct(item.id) }))
@@ -98,9 +100,18 @@ export default function CartPage() {
             <span>{t('total')}</span>
             <span>{total} ₼</span>
           </div>
-          <Link to="/checkout" className="btn btn-primary btn-lg full">
-            {t('checkout')}
-          </Link>
+          {isGoogleUser ? (
+            <Link to="/checkout" className="btn btn-primary btn-lg full">
+              {t('checkout')}
+            </Link>
+          ) : (
+            <>
+              <Link to="/auth?next=%2Fcheckout" className="btn btn-primary btn-lg full">
+                {t('google_auth_action')}
+              </Link>
+              <p className="action-notice" role="alert">{t('google_auth_required')}</p>
+            </>
+          )}
           <Link to="/catalog" className="continue-link">{t('back_to_catalog')}</Link>
         </aside>
       </div>

@@ -219,6 +219,22 @@ export const ui = {
     ru: 'Пожалуйста, выберите размер',
     en: 'Please select a size',
   },
+  choose_size_on_product: {
+    az: 'Ölçünü seçmək üçün məhsulun səhifəsini açın',
+    ru: 'Чтобы выбрать размер, откройте страницу товара',
+    en: 'Open the product page to choose a size',
+  },
+  google_auth_required: {
+    az: 'Məhsulu səbətə əlavə etmək və sifariş vermək üçün Google ilə daxil olun.',
+    ru: 'Чтобы добавить товар в корзину и оформить заказ, войдите через Google.',
+    en: 'Sign in with Google to add items to the cart and place an order.',
+  },
+  google_auth_action: { az: 'Google ilə daxil ol', ru: 'Войти через Google', en: 'Sign in with Google' },
+  checkout_form_incomplete: {
+    az: 'Qırmızı ilə işarələnmiş xanaları yoxlayın.',
+    ru: 'Проверьте поля, выделенные красным.',
+    en: 'Check the fields highlighted in red.',
+  },
 
   // Cart
   cart_title: { az: 'Səbətiniz', ru: 'Ваша корзина', en: 'Your cart' },

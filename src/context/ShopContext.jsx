@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
+import { useAuth } from './AuthContext.jsx'
 
 const ShopContext = createContext(null)
 
@@ -15,6 +16,7 @@ const load = (key, fallback) => {
 }
 
 export function ShopProvider({ children }) {
+  const { isGoogleUser, loading } = useAuth()
   // cart: [{ id, size, qty }]
   const [cart, setCart] = useState(() => load(CART_KEY, []))
   // favorites: [id, id, ...]
@@ -28,7 +30,12 @@ export function ShopProvider({ children }) {
     localStorage.setItem(FAV_KEY, JSON.stringify(favorites))
   }, [favorites])
 
+  useEffect(() => {
+    if (!loading && !isGoogleUser) setCart([])
+  }, [isGoogleUser, loading])
+
   const addToCart = useCallback((id, size = null, qty = 1) => {
+    if (!isGoogleUser || loading) return false
     setCart((prev) => {
       const idx = prev.findIndex((i) => i.id === id && i.size === size)
       if (idx >= 0) {
@@ -38,7 +45,8 @@ export function ShopProvider({ children }) {
       }
       return [...prev, { id, size, qty }]
     })
-  }, [])
+    return true
+  }, [isGoogleUser, loading])
 
   const removeFromCart = useCallback((id, size = null) => {
     setCart((prev) => prev.filter((i) => !(i.id === id && i.size === size)))
@@ -78,6 +86,7 @@ export function ShopProvider({ children }) {
     isFavorite,
     cartCount,
     favCount: favorites.length,
+    canShop: isGoogleUser && !loading,
   }
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>
