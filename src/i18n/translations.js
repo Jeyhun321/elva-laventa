@@ -12,9 +12,9 @@ export const ui = {
   catalog: { az: 'Kataloq', ru: 'Каталог', en: 'Catalog' },
   home: { az: 'Ana səhifə', ru: 'Главная', en: 'Home' },
   search_placeholder: {
-    az: 'Məhsul axtar...',
-    ru: 'Искать товары...',
-    en: 'Search products...',
+    az: 'Məhsul və ya kod axtar...',
+    ru: 'Поиск по названию или коду...',
+    en: 'Search by name or code...',
   },
   favorites: { az: 'Sevimlilər', ru: 'Избранное', en: 'Favorites' },
 

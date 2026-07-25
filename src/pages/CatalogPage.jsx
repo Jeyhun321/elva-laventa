@@ -87,8 +87,9 @@ export default function CatalogPage() {
     let list = products
     if (cat !== 'all') list = list.filter((p) => p.category === cat)
     if (q) {
-      const needle = q.toLowerCase()
+      const needle = q.toLowerCase().trim()
       list = list.filter((p) =>
+        String(p.code || '').toLowerCase().includes(needle) ||
         Object.values(p.name).some((n) => n.toLowerCase().includes(needle)) ||
         p.brand.toLowerCase().includes(needle)
       )
