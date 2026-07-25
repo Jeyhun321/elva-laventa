@@ -1709,9 +1709,10 @@ a.product-media {
 .gallery-nav:hover { background: var(--plum); color: #fff; box-shadow: 0 6px 20px rgba(185, 16, 95, 0.3); }
 .gallery-nav:active { transform: translateY(-50%) scale(0.94); }
 .gallery-nav:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
-.gallery-nav-prev { left: 14px; }
-.gallery-nav-next { right: 14px; }
+.gallery-nav-prev { left: 8px; }
+.gallery-nav-next { right: 8px; }
 .gallery-nav-prev svg { transform: rotate(180deg); }
+.gallery-main .product-tag { left: 8px; }
 .product-detail-info { max-width: 520px; }
 .product-detail-name {
   font-family: var(--serif);
