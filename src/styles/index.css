@@ -1,27 +1,37 @@
 :root {
-  /* Çəhrayı tema — Elva LaVenta */
-  --bg: #fff2f8;            /* açıq çəhrayı fon */
-  --bg-alt: #ffe4f0;
-  --ink: #3a0f22;          /* tünd giləmeyvə — mətn */
-  --ink-soft: #8a3a5c;     /* ikinci dərəcəli mətn (AA) */
-  --plum: #a3104f;         /* əsas tünd çəhrayı (düymələr, başlıqlar, brend) */
+  /* Elva LaVenta — premium redizayn (v2): isti fil sümüyü fon + çəhrayı brend */
+  --bg: #faf6f3;            /* isti "ivory" fon — bahalı görünüş */
+  --bg-alt: #f3ebe6;        /* ikinci fon (səssiz kontrast) */
+  --ink: #2a1620;          /* demək olar qara giləmeyvə — əsas mətn */
+  --ink-soft: #8a6270;     /* ikinci dərəcəli mətn (isti boz-çəhrayı) */
+  --plum: #a3104f;         /* əsas tünd çəhrayı (brend, düymələr) */
   --lavender: #e5399a;     /* çəhrayı aksent */
-  --lavender-text: #a10f5b; /* kiçik mətn üçün tünd çəhrayı (AA kontrast) */
-  --lavender-light: #f7a8cd;
-  --lavender-mist: #ffd9e8; /* açıq çəhrayı çiplər/fonlar */
-  --cream: #ffe0ee;
+  --lavender-text: #a10f5b; /* kiçik mətn üçün tünd çəhrayı (AA) */
+  --lavender-light: #f2c6d8;
+  --lavender-mist: #f6e7ec; /* çox açıq çip fonu */
+  --cream: #f1e7e0;
   --rose: #e5399a;
-  --gold: #f5a623;         /* ulduz reytinqi */
-  --line: #ffd0e2;
+  --gold: #c79a3e;         /* isti qızıl — ulduz reytinqi (bahalı ton) */
+  --line: #e9ddd6;         /* isti neytral xətt/haşiyə */
+  --line-strong: #d8c8bf;
   --white: #ffffff;
-  --sale: #cb128f;         /* qiymət/endirim rəngi (WB tərzi maqenta) */
+  --sale: #b3124f;         /* endirim/qiymət — tünd, təmkinli */
 
   --serif: 'Cormorant Garamond', Georgia, serif;
   --sans: 'Manrope', system-ui, -apple-system, sans-serif;
 
-  --shadow-sm: 0 2px 12px rgba(163, 16, 79, 0.08);
-  --shadow-md: 0 14px 44px rgba(163, 16, 79, 0.16);
+  /* Tonlanmış, təbəqəli yumşaq kölgələr (bahalı hiss) */
+  --shadow-sm: 0 1px 2px rgba(42, 22, 32, 0.04), 0 4px 16px rgba(42, 22, 32, 0.05);
+  --shadow-md: 0 4px 12px rgba(42, 22, 32, 0.06), 0 20px 50px rgba(42, 22, 32, 0.10);
+  --shadow-lg: 0 8px 24px rgba(42, 22, 32, 0.08), 0 40px 90px rgba(42, 22, 32, 0.14);
+
   --radius: 14px;
+  --radius-lg: 22px;
+
+  --maxw: 1280px;
+
+  /* Vahid yumşaq keçid əyrisi (premium ritm) */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -39,7 +49,10 @@ body {
   background: var(--bg);
   color: var(--ink);
   line-height: 1.6;
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 img {
@@ -83,18 +96,18 @@ ul {
 
 .container {
   width: 100%;
-  max-width: 1240px;
+  max-width: var(--maxw);
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 32px;
 }
 
 .section {
-  padding: 88px 0;
+  padding: 104px 0 112px;
 }
 
 .eyebrow {
   font-size: 0.72rem;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
   color: var(--lavender-text);
   font-weight: 600;
@@ -102,11 +115,12 @@ ul {
 
 .section-title {
   font-family: var(--serif);
-  font-size: clamp(2rem, 4vw, 3.1rem);
-  font-weight: 600;
-  line-height: 1.1;
-  color: var(--plum);
-  letter-spacing: -0.01em;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-weight: 500;
+  line-height: 1.04;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .section-head {
@@ -123,18 +137,28 @@ ul {
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 14px 30px;
+  padding: 15px 32px;
   border-radius: 999px;
   font-weight: 600;
-  font-size: 0.9rem;
-  letter-spacing: 0.02em;
-  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 0.35s var(--ease), background 0.35s var(--ease),
+    box-shadow 0.35s var(--ease), color 0.35s var(--ease);
 }
+.btn:active { transform: translateY(1px) scale(0.99); }
 
 .btn-primary {
   background: var(--plum);
-  color: var(--lavender-mist);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(163, 16, 79, 0.22);
+}
+.btn-primary:hover {
+  background: var(--ink);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(42, 22, 32, 0.24);
 }
 
 .btn-primary:hover {
@@ -585,31 +609,33 @@ ul {
 
 .product-card {
   background: var(--white);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.45s var(--ease), box-shadow 0.45s var(--ease),
+    border-color 0.45s var(--ease);
   display: flex;
   flex-direction: column;
 }
-
 .product-card:hover {
   transform: translateY(-6px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
+  border-color: transparent;
 }
 
 .product-media {
   position: relative;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: linear-gradient(135deg, var(--lavender-mist), var(--cream));
+  background: var(--bg-alt);
 }
 
 .product-media img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.8s var(--ease);
 }
 
 .product-card:hover .product-media img {
