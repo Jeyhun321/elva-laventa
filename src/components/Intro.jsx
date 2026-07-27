@@ -7,6 +7,19 @@ import ProductImage from './ProductImage.jsx'
 
 const AUTOPLAY_MS = 2500
 
+// Заголовок с выделенным italic-словом (hero_title_em) — премиум-акцент.
+function HeroTitle({ text, em }) {
+  if (!em || !text.includes(em)) return <>{text}</>
+  const [before, ...rest] = text.split(em)
+  return (
+    <>
+      {before}
+      <em>{em}</em>
+      {rest.join(em)}
+    </>
+  )
+}
+
 export default function Intro() {
   const { t } = useI18n()
   const { saleProducts, products } = useCatalog()
@@ -48,7 +61,9 @@ export default function Intro() {
       <div className="container intro-grid">
         <div className="intro-copy">
           <span className="intro-badge">{t('hero_badge')}</span>
-          <h1 className="intro-title">{t('hero_title')}</h1>
+          <h1 className="intro-title">
+            <HeroTitle text={t('hero_title')} em={t('hero_title_em')} />
+          </h1>
           <p className="intro-desc">{t('hero_desc')}</p>
           <div className="intro-cta">
             <Link to="/catalog" className="btn btn-primary">
@@ -57,6 +72,20 @@ export default function Intro() {
             <Link to="/catalog?sale=1" className="btn btn-ghost">
               {t('hero_cta_secondary')}
             </Link>
+          </div>
+          <div className="intro-stats">
+            <div className="intro-stat">
+              <b>{products.length || 0}+</b>
+              <span>{t('stat_products')}</span>
+            </div>
+            <div className="intro-stat">
+              <b>2K+</b>
+              <span>{t('stat_customers')}</span>
+            </div>
+            <div className="intro-stat">
+              <b>4.9</b>
+              <span>{t('stat_rating')}</span>
+            </div>
           </div>
         </div>
 

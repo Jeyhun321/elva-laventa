@@ -283,7 +283,22 @@ ul {
 .intro {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(160deg, #ffe0ef 0%, #fff2f8 52%, #ffd9ea 100%);
+  /* Тёплый ivory-фон в тон системе + деликатное розовое свечение (дорого, не крикливо) */
+  background:
+    radial-gradient(120% 90% at 82% 12%, rgba(229, 57, 154, 0.10), transparent 55%),
+    radial-gradient(90% 70% at 8% 92%, rgba(163, 16, 79, 0.07), transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
+}
+
+/* Едва заметная золотая нить-разделитель внизу героя */
+.intro::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
 }
 
 .intro-grid {
@@ -322,17 +337,19 @@ ul {
 
 .intro-title {
   font-family: var(--serif);
-  font-size: clamp(2.8rem, 6.5vw, 5rem);
-  line-height: 1.02;
-  font-weight: 600;
-  color: var(--plum);
-  letter-spacing: -0.015em;
-  margin-bottom: 22px;
+  font-size: clamp(2.9rem, 6.5vw, 5.2rem);
+  line-height: 1.0;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  margin-bottom: 24px;
+  text-wrap: balance;
 }
 
 .intro-title em {
   font-style: italic;
-  color: var(--lavender);
+  font-weight: 500;
+  color: var(--plum);
 }
 
 .intro-desc {
@@ -349,20 +366,40 @@ ul {
 
 .intro-stats {
   display: flex;
-  gap: 40px;
+  gap: 34px;
   margin-top: 48px;
+  padding-top: 30px;
+  border-top: 1px solid var(--line);
+}
+
+.intro-stat {
+  position: relative;
+}
+
+/* Тонкий разделитель между показателями */
+.intro-stat + .intro-stat::before {
+  content: '';
+  position: absolute;
+  left: -17px;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--line);
 }
 
 .intro-stat b {
   display: block;
   font-family: var(--serif);
-  font-size: 2rem;
+  font-size: 2.1rem;
   font-weight: 600;
+  line-height: 1.1;
   color: var(--plum);
+  font-variant-numeric: tabular-nums;
 }
 
 .intro-stat span {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
   color: var(--ink-soft);
 }
 
