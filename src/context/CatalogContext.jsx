@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
 import { supabase, isConfigured } from '../lib/supabase.js'
+import { logSystemEvent } from '../lib/systemLogs.js'
 import localCatalog from '../data/catalog.json'
 
 const CatalogContext = createContext(null)
@@ -55,6 +56,12 @@ export function CatalogProvider({ children }) {
       setSource('supabase')
     } catch (e) {
       console.warn('Kataloq bazadan yüklənmədi, yerli surət istifadə olunur:', e.message)
+      void logSystemEvent({
+        level: 'warning',
+        source: 'catalog',
+        event: 'catalog_load_failed',
+        message: e?.message || 'Каталог не загрузился из базы',
+      })
       setSource('local')
     } finally {
       setLoading(false)

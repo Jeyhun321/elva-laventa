@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconGoogle } from './Icons.jsx'
 
-export default function AuthRequiredDialog({ open, onClose, returnTo = '' }) {
+export default function AuthRequiredDialog({ open, onClose, returnTo = '', messageKey = 'google_auth_required' }) {
   const { loginWithGoogle } = useAuth()
   const { t } = useI18n()
   const [busy, setBusy] = useState(false)
@@ -36,7 +36,7 @@ export default function AuthRequiredDialog({ open, onClose, returnTo = '' }) {
       <section className="auth-required-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-required-title" onMouseDown={(event) => event.stopPropagation()}>
         <button className="auth-required-close" type="button" onClick={onClose} aria-label="Bağla">×</button>
         <h2 id="auth-required-title">{t('sign_in_title')}</h2>
-        <p>{t('google_auth_required')}</p>
+        <p>{t(messageKey)}</p>
         <button className="google-btn" type="button" onClick={signIn} disabled={busy}>
           <IconGoogle />
           {busy ? '…' : t('continue_with_google')}

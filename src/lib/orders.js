@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { logSystemEvent } from './systemLogs.js'
 
 const isGoogleUser = (user) => {
   const providers = [
@@ -36,7 +37,15 @@ export const createOrder = async ({ buyer, lines, email = null }) => {
     p_items: items,
   })
 
-  if (error) throw error
+  if (error) {
+    void logSystemEvent({
+      source: 'checkout',
+      event: 'order_rpc_failed',
+      message: error.message || 'Не удалось создать заказ',
+      details: { code: error.code || null, line_count: Array.isArray(lines) ? lines.length : 0 },
+    })
+    throw error
+  }
   // rpc bir sətir qaytarır: { order_no, order_id }
   return Array.isArray(data) ? data[0] : data
 }

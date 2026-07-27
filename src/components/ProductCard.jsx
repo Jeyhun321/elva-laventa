@@ -41,7 +41,10 @@ export default function ProductCard({ product, showRating = true }) {
   const favClick = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    toggleFavorite(product.id)
+    if (!isGoogleUser || !toggleFavorite(product.id)) {
+      setNotice('')
+      setAuthDialog('favorite')
+    }
   }
 
   return (
@@ -93,7 +96,12 @@ export default function ProductCard({ product, showRating = true }) {
           </p>
         )}
       </div>
-      <AuthRequiredDialog open={authDialog} onClose={() => setAuthDialog(false)} returnTo={`/product/${product.id}`} />
+      <AuthRequiredDialog
+        open={Boolean(authDialog)}
+        onClose={() => setAuthDialog(false)}
+        returnTo={`/product/${product.id}`}
+        messageKey={authDialog === 'favorite' ? 'favorites_auth_required' : 'google_auth_required'}
+      />
     </article>
   )
 }

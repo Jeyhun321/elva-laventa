@@ -229,6 +229,11 @@ export const ui = {
     ru: 'Чтобы добавить товар в корзину и оформить заказ, войдите через Google.',
     en: 'Sign in with Google to add items to the cart and place an order.',
   },
+  favorites_auth_required: {
+    az: 'Məhsulu sevimlilərə əlavə etmək üçün hesabınıza daxil olun.',
+    ru: 'Чтобы добавить товар в избранное, войдите в аккаунт.',
+    en: 'Sign in to add this item to your favorites.',
+  },
   google_auth_action: { az: 'Google ilə daxil ol', ru: 'Войти через Google', en: 'Sign in with Google' },
   checkout_form_incomplete: {
     az: 'Qırmızı ilə işarələnmiş xanaları yoxlayın.',
@@ -301,6 +306,41 @@ export const ui = {
     az: 'Sifariş göndərilmədi. Yenidən cəhd edin.',
     ru: 'Не удалось отправить заказ. Попробуйте ещё раз.',
     en: 'Could not send the order. Please try again.',
+  },
+  order_auth_required: {
+    az: 'Sifariş üçün Google hesabınızla daxil olun.',
+    ru: 'Для оформления заказа войдите через Google.',
+    en: 'Sign in with Google to place an order.',
+  },
+  order_cart_empty: {
+    az: 'Səbət boşdur. Əvvəl məhsul əlavə edin.',
+    ru: 'Корзина пуста. Сначала добавьте товар.',
+    en: 'Your cart is empty. Add an item first.',
+  },
+  order_fields_required: {
+    az: 'Ad, WhatsApp nömrəsi və çatdırılma ünvanını doldurun.',
+    ru: 'Заполните имя, номер WhatsApp и адрес доставки.',
+    en: 'Enter your name, WhatsApp number and delivery address.',
+  },
+  order_invalid_item: {
+    az: 'Səbətdə düzgün olmayan məhsul var. Səbəti yeniləyin.',
+    ru: 'В корзине есть некорректный товар. Обновите корзину.',
+    en: 'Your cart contains an invalid item. Refresh the cart.',
+  },
+  order_product_unavailable: {
+    az: 'Məhsullardan biri artıq satışda deyil. Səbəti yeniləyin.',
+    ru: 'Один из товаров больше не продаётся. Обновите корзину.',
+    en: 'One item is no longer available. Refresh your cart.',
+  },
+  order_size_invalid: {
+    az: 'Məhsul üçün düzgün ölçü seçin.',
+    ru: 'Выберите доступный размер товара.',
+    en: 'Select an available product size.',
+  },
+  order_service_unavailable: {
+    az: 'Sifarişi hazırda göndərmək alınmadı. Bir az sonra yenidən cəhd edin.',
+    ru: 'Сейчас не удалось оформить заказ. Попробуйте немного позже.',
+    en: 'We could not place your order right now. Please try again shortly.',
   },
   order_explain: {
     az: 'Sifarişi göndərdikdən sonra operatorumuz WhatsApp-dan yazacaq və detalları dəqiqləşdirəcək.',

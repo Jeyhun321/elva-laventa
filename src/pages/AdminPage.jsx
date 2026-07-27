@@ -6,6 +6,7 @@ import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { extractColors } from '../admin/colors.js'
 import { IconTrash, IconPlus, IconClose, IconArrow } from '../components/Icons.jsx'
+import SystemLogsPanel from '../components/SystemLogsPanel.jsx'
 
 const ORDER_STATUSES = [
   { value: 'new', label: 'Новый' },
@@ -421,16 +422,21 @@ function Dashboard({ session, onExit }) {
         <button className={`admin-tab${tab === 'products' ? ' active' : ''}`} onClick={() => setTab('products')}>
           Товары
         </button>
-        <button className={`admin-tab${tab === 'orders' ? ' active' : ''}`} onClick={() => setTab('orders')}>
-          Заказы
-        </button>
+  <button className={`admin-tab${tab === 'orders' ? ' active' : ''}`} onClick={() => setTab('orders')}>
+    Заказы
+  </button>
+  <button className={`admin-tab${tab === 'logs' ? ' active' : ''}`} onClick={() => setTab('logs')}>
+    Системные логи
+  </button>
       </div>
 
       {msg && <div className={`admin-msg ${msg.type}`}>{msg.text}</div>}
 
-      {tab === 'orders' ? (
-        <OrdersPanel onNotify={say} />
-      ) : (
+{tab === 'orders' ? (
+  <OrdersPanel onNotify={say} />
+) : tab === 'logs' ? (
+  <SystemLogsPanel />
+) : (
       <>
       {busy === 'load' && <p className="admin-sub">Загружаю…</p>}
 

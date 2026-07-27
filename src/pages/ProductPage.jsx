@@ -78,6 +78,12 @@ export default function ProductPage() {
     navigate('/cart')
   }
 
+  const handleFavorite = () => {
+    if (!isGoogleUser || !toggleFavorite(product.id)) {
+      setAuthDialog('favorite')
+    }
+  }
+
   return (
     <div className="container product-page">
       <Link to="/catalog" className="back-link">{t('back_to_catalog')}</Link>
@@ -179,7 +185,7 @@ export default function ProductPage() {
               className={`icon-square${fav ? ' active' : ''}`}
               aria-label={t('favorites')}
               aria-pressed={fav}
-              onClick={() => toggleFavorite(product.id)}
+              onClick={handleFavorite}
             >
               <IconHeart />
             </button>
@@ -212,7 +218,12 @@ export default function ProductPage() {
         )}
       </div>
 
-      <AuthRequiredDialog open={authDialog} onClose={() => setAuthDialog(false)} returnTo={`/product/${product.id}`} />
+      <AuthRequiredDialog
+        open={Boolean(authDialog)}
+        onClose={() => setAuthDialog(false)}
+        returnTo={`/product/${product.id}`}
+        messageKey={authDialog === 'favorite' ? 'favorites_auth_required' : 'google_auth_required'}
+      />
 
       {related.length > 0 && (
         <section className="related">

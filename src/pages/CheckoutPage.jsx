@@ -10,6 +10,22 @@ import ProductImage from '../components/ProductImage.jsx'
 
 const BUYER_KEY = 'elva_buyer'
 
+const ORDER_ERROR_KEY_BY_CODE = {
+  AUTH_REQUIRED: 'order_auth_required',
+  GOOGLE_AUTH_REQUIRED: 'order_auth_required',
+  ORDER_FIELDS_REQUIRED: 'order_fields_required',
+  CART_EMPTY: 'order_cart_empty',
+  INVALID_ITEM: 'order_invalid_item',
+  PRODUCT_UNAVAILABLE: 'order_product_unavailable',
+  SIZE_INVALID: 'order_size_invalid',
+}
+
+const getOrderErrorKey = (error) => {
+  const message = String(error?.message || '')
+  return Object.entries(ORDER_ERROR_KEY_BY_CODE).find(([code]) => message.includes(code))?.[1]
+    || 'order_service_unavailable'
+}
+
 const onlyDigits = (s) => String(s).replace(/\D/g, '')
 
 export const isValidWhatsApp = (raw) => {
@@ -130,7 +146,7 @@ export default function CheckoutPage() {
       setDone(order)
       await clearCart()
     } catch (error) {
-      setErr(error?.message === 'GOOGLE_AUTH_REQUIRED' ? t('google_auth_required') : t('order_failed'))
+      setErr(t(getOrderErrorKey(error)))
     } finally {
       setBusy(false)
     }

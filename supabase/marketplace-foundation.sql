@@ -64,6 +64,11 @@ with check (public.is_admin());
 drop policy if exists "anyone can place order" on public.orders;
 drop policy if exists "anyone can add order items" on public.order_items;
 
+-- Фотография товара сохраняется в позиции заказа, чтобы история заказа не менялась
+-- при последующем редактировании карточки товара.
+alter table public.order_items
+  add column if not exists product_image text;
+
 create or replace function public.place_order(
   p_customer_name text,
   p_phone text,
@@ -143,7 +148,8 @@ begin
     insert into public.order_items (
       order_id, product_id, product_code, product_name, product_image, price, size, qty
     ) values (
-      v_order.id, v_product.id, v_product.code, v_product.name,
+      v_order.id, v_product.id, coalesce(v_product.code, ''),
+      coalesce(v_product.name ->> 'az', v_product.name ->> 'ru', v_product.name ->> 'en', ''),
       coalesce(v_product.images[1], v_product.image), v_product.price,
       coalesce(v_size, ''), v_qty
     );

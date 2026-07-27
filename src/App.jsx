@@ -11,6 +11,7 @@ import FavoritesPage from './pages/FavoritesPage.jsx'
 import AdminPage from './pages/AdminPage.jsx'
 import AuthPage from './pages/AuthPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
+import SystemLogReporter from './components/SystemLogReporter.jsx'
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -24,6 +25,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <SystemLogReporter />
       <Header />
       <main>
         <Routes>
