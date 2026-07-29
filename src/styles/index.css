@@ -1418,10 +1418,12 @@ ul {
   align-items: center;
   gap: 16px;
   height: 74px;
-  transition: height 0.35s var(--ease);
 }
 
-/* Sürüşdürəndə: yüngül kölgə + bir az sıxılma */
+/* Sürüşdürəndə: yüngül kölgə + loqonun bir az kiçilməsi.
+   DİQQƏT: başlığın HÜNDÜRLÜYÜ dəyişmir. O, sticky-dir və axındadır —
+   hündürlüyü canlandırsaq, altındakı bütün səhifə sürüşmə anında tərpənərdi.
+   Ona görə "sıxılma" yalnız transform ilə verilir: nə reflow, nə sıçrayış. */
 .header {
   transition: box-shadow 0.35s var(--ease), background 0.35s var(--ease);
 }
@@ -1429,8 +1431,11 @@ ul {
   background: rgba(255, 246, 250, 0.96);
   box-shadow: 0 1px 0 var(--line), 0 10px 30px rgba(42, 22, 32, 0.07);
 }
-.header.scrolled .header-inner { height: 64px; }
-.header.scrolled .brand-logo { height: 54px; }
+.header .brand-logo-image {
+  transform-origin: left center;
+  transition: transform 0.35s var(--ease);
+}
+.header.scrolled .brand-logo-image { transform: scale(0.88); }
 
 /* Başlıq ikonları eyni incəlikdə */
 .header-icon svg,
