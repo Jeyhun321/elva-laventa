@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
-import { supabase, isConfigured } from '../lib/supabase.js'
+import { supabase, isConfigured, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase.js'
 import { logSystemEvent } from '../lib/systemLogs.js'
 import localCatalog from '../data/catalog.json'
 
@@ -29,6 +29,28 @@ const fromRow = (r) => ({
 
 const ALL = { id: 'all', label: { az: 'Hamısı', ru: 'Все', en: 'All' } }
 
+// Kataloq ictimaidir — girişsiz də oxunur. İstifadəçinin sessiya "vəsiqəsi"
+// xarab olarsa (məs. saat fərqi: "JWT issued at future"), bazadan oxumaq
+// tamamilə dayanmasın deyə sorğunu anonim açarla təkrarlayırıq.
+const fetchAnonCatalog = async () => {
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    Accept: 'application/json',
+  }
+  const base = SUPABASE_URL.replace(/\/+$/, '')
+
+  const [pRes, cRes] = await Promise.all([
+    fetch(`${base}/rest/v1/products?select=*&is_active=eq.true&order=id`, { headers }),
+    fetch(`${base}/rest/v1/categories?select=*&order=sort_order`, { headers }),
+  ])
+
+  if (!pRes.ok) throw new Error(`products HTTP ${pRes.status}`)
+  if (!cRes.ok) throw new Error(`categories HTTP ${cRes.status}`)
+
+  return { prods: await pRes.json(), cats: await cRes.json() }
+}
+
 export function CatalogProvider({ children }) {
   // Baza cavab verməsə, sayt boş qalmasın deyə yerli fayl ehtiyatdır
   const [products, setProducts] = useState(
@@ -55,14 +77,32 @@ export function CatalogProvider({ children }) {
       }
       setSource('supabase')
     } catch (e) {
-      console.warn('Kataloq bazadan yüklənmədi, yerli surət istifadə olunur:', e.message)
-      void logSystemEvent({
-        level: 'warning',
-        source: 'catalog',
-        event: 'catalog_load_failed',
-        message: e?.message || 'Каталог не загрузился из базы',
-      })
-      setSource('local')
+      // 1-ci cəhd alınmadı. Yerli fayla keçməzdən əvvəl anonim açarla təkrar yoxlayırıq —
+      // beləliklə xarab sessiya vəsiqəsi ucbatından köhnə qiymətlər göstərilmir.
+      try {
+        const { prods, cats } = await fetchAnonCatalog()
+        if (prods) setProducts(prods.map(fromRow))
+        if (cats) setCategories([ALL, ...cats.map((c) => ({ id: c.id, label: c.label }))])
+        setSource('supabase')
+
+        void logSystemEvent({
+          level: 'info',
+          source: 'catalog',
+          event: 'catalog_recovered_anon',
+          message: `Каталог загружен анонимно после ошибки: ${e?.message || 'без описания'}`,
+        })
+        return
+      } catch (anonError) {
+        console.warn('Kataloq bazadan yüklənmədi, yerli surət istifadə olunur:', e.message)
+        void logSystemEvent({
+          level: 'warning',
+          source: 'catalog',
+          event: 'catalog_load_failed',
+          message: e?.message || 'Каталог не загрузился из базы',
+          details: { anonRetry: anonError?.message || 'не удалось' },
+        })
+        setSource('local')
+      }
     } finally {
       setLoading(false)
     }
