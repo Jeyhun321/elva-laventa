@@ -19,7 +19,16 @@ export default function Header() {
   const [query, setQuery] = useState('')
   const [catOpen, setCatOpen] = useState(false)
   const [authDialog, setAuthDialog] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const catRef = useRef(null)
+
+  // Sürüşdürəndə başlıq bir az sıxılır və yüngül kölgə alır (yalnız görünüş)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -48,7 +57,7 @@ export default function Header() {
   }
 
   return (
-    <header className="header">
+    <header className={`header${scrolled ? ' scrolled' : ''}`}>
       <div className="container header-inner">
         <Link to="/" className="brand brand-logo" aria-label="Elva LaVenta">
           <img className="brand-logo-image" src={flowerLogo} alt="Elva LaVenta" />

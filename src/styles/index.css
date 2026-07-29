@@ -178,70 +178,63 @@ ul {
   transform: translateY(-2px);
 }
 
-/* ---------- Navbar ---------- */
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(250, 247, 245, 0.82);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--line);
-}
-
-.navbar-inner {
-  display: flex;
+/* Mətn düyməsi (oxla) — ikinci dərəcəli çağırış */
+.btn-link {
+  display: inline-flex;
   align-items: center;
+  gap: 9px;
+  padding: 15px 4px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--plum);
+  position: relative;
+  transition: color 0.3s var(--ease);
+}
+.btn-link::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 9px;
+  height: 1.5px;
+  background: var(--lavender);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s var(--ease);
+}
+.btn-link:hover { color: var(--lavender); }
+.btn-link:hover::after { transform: scaleX(1); }
+.btn-link svg { transition: transform 0.35s var(--ease); }
+.btn-link:hover svg { transform: translateX(4px); }
+
+/* Bölmə başlığı: solda mətn, sağda "hamısı" keçidi */
+.section-head-row {
+  display: flex;
+  align-items: flex-end;
   justify-content: space-between;
-  height: 74px;
+  gap: 24px;
+  margin-bottom: 48px;
+  flex-wrap: wrap;
+}
+.section-head-row .eyebrow {
+  display: block;
+  margin-bottom: 14px;
+}
+.section-foot {
+  display: flex;
+  justify-content: center;
+  margin-top: 52px;
 }
 
+/* ---------- Brend sözü ---------- */
 .brand {
   font-family: var(--serif);
   font-size: 1.7rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--plum);
-}
-
-.nav-links {
-  display: flex;
-  gap: 34px;
-}
-
-.nav-links a {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--ink-soft);
-  transition: color 0.2s ease;
-  position: relative;
-}
-
-.nav-links a::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -6px;
-  width: 100%;
-  height: 1.5px;
-  background: var(--lavender);
-  /* transform yerine width animasiyası layout-a yük salırdı → scaleX */
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.25s var(--ease);
-}
-
-.nav-links a:hover {
-  color: var(--plum);
-}
-
-.nav-links a:hover::after {
-  transform: scaleX(1);
-}
-
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 18px;
 }
 
 .icon-btn {
@@ -256,30 +249,6 @@ ul {
 
 .icon-btn:hover {
   background: var(--lavender-mist);
-}
-
-.cart-badge {
-  position: relative;
-}
-
-.cart-badge span {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  background: var(--sale);
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 700;
-  min-width: 17px;
-  height: 17px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  padding: 0 4px;
-}
-
-.nav-toggle {
-  display: none;
 }
 
 /* ---------- Intro / Hero ---------- */
@@ -406,10 +375,160 @@ ul {
   color: var(--ink-soft);
 }
 
+/* --- Sosial sübut: üst-üstə düşən avatarlar --- */
+.intro-proof {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 34px;
+}
+.proof-avatars {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.proof-av {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2.5px solid var(--bg);
+  box-shadow: var(--shadow-sm);
+}
+.proof-av + .proof-av { margin-left: -13px; }
+.av-1 { background: linear-gradient(135deg, #f7c9dc, #e5399a); }
+.av-2 { background: linear-gradient(135deg, #f3d9c8, #c79a3e); }
+.av-3 { background: linear-gradient(135deg, #efc7d6, #a3104f); }
+.av-4 { background: linear-gradient(135deg, #e7d3dd, #8a6270); }
+.proof-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+/* --- Üzən ləçəklər (yalnız bəzək) --- */
+.intro-petals {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.petal {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 60% 0 60% 0;
+  background: var(--lavender);
+  opacity: 0.16;
+  animation: petalFloat 14s ease-in-out infinite;
+}
+/* Yalnız sağ yarıda — başlığın oxunuşuna qarışmasın */
+.petal-1 { top: 14%; right: 8%;  animation-delay: 0s;    transform: rotate(18deg); }
+.petal-2 { top: 34%; right: 46%; animation-delay: -3.5s; transform: rotate(-24deg); width: 11px; height: 11px; }
+.petal-3 { top: 62%; right: 12%; animation-delay: -7s;   transform: rotate(42deg); }
+.petal-4 { top: 78%; right: 40%; animation-delay: -10s;  transform: rotate(-8deg); width: 12px; height: 12px; }
+.petal-5 { top: 22%; right: 30%; animation-delay: -5s;   transform: rotate(60deg); width: 9px;  height: 9px; }
+.petal-6 { top: 50%; right: 4%;  animation-delay: -12s;  transform: rotate(-40deg); width: 13px; height: 13px; }
+
+@keyframes petalFloat {
+  0%   { translate: 0 0;      opacity: 0.10; }
+  50%  { translate: -14px -26px; opacity: 0.22; }
+  100% { translate: 0 0;      opacity: 0.10; }
+}
+
+/* Mətn ləçəklərin üstündə qalsın */
+.intro-grid { position: relative; z-index: 1; }
+
 /* Showcase — coverflow rotating sale cards */
 .showcase {
   position: relative;
 }
+
+/* 3D əyilmə üçün ayrıca örtük: .showcase-stage-ın öz @keyframes-i var,
+   inline transform-u əvəz edərdi — ona görə tilt burada dayanır. */
+.showcase-tilt {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.5s var(--ease);
+  will-change: transform;
+}
+
+/* Üzən dairəvi endirim nişanı */
+.hero-badge-round {
+  position: absolute;
+  top: -6px;
+  right: 2%;
+  z-index: 8;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: var(--plum);
+  color: #fff;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 2px;
+  box-shadow: 0 14px 34px rgba(163, 16, 79, 0.32);
+  transform: translateZ(60px);
+  animation: badgeFloat 5.5s ease-in-out infinite;
+}
+.hero-badge-round em {
+  font-style: normal;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.hero-badge-round b {
+  font-family: var(--serif);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+}
+@keyframes badgeFloat {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -9px; }
+}
+
+/* Aşağıdakı kiçik "yeni kolleksiya" kartı */
+.hero-mini-card {
+  position: absolute;
+  left: 0;
+  bottom: 24px;
+  z-index: 8;
+  display: grid;
+  gap: 5px;
+  padding: 14px 20px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-md);
+  transform: translateZ(40px);
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+.hero-mini-card:hover {
+  transform: translateZ(40px) translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+.hero-mini-title {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.15;
+}
+.hero-mini-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--plum);
+}
+.hero-mini-cta svg { width: 15px; height: 15px; }
 
 .showcase-stage {
   position: relative;
@@ -581,12 +700,12 @@ ul {
   background: var(--plum);
 }
 
-/* Marquee strip */
+/* Marquee strip — nazik tünd zolaq */
 .marquee {
-  background: var(--plum);
-  color: var(--lavender-mist);
+  background: var(--ink);
+  color: #f6e7ec;
   overflow: hidden;
-  padding: 14px 0;
+  padding: 15px 0;
 }
 
 .marquee-track {
@@ -606,8 +725,53 @@ ul {
 }
 
 .marquee-track b {
-  color: var(--lavender-light);
+  color: var(--lavender);
 }
+
+/* ---------- Kateqoriya zolağı ---------- */
+.cats-section { padding-bottom: 0; }
+
+.cats-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 14px;
+}
+
+.cat-circle {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 10px 6px;
+  text-align: center;
+}
+.cat-circle-icon {
+  width: 78px;
+  height: 78px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--white);
+  border: 1px solid var(--line);
+  color: var(--plum);
+  transition: transform 0.4s var(--ease), background 0.4s var(--ease),
+    border-color 0.4s var(--ease), box-shadow 0.4s var(--ease);
+}
+.cat-circle-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  transition: color 0.3s var(--ease);
+  line-height: 1.25;
+}
+.cat-circle:hover .cat-circle-icon {
+  background: var(--lavender-mist);
+  border-color: var(--lavender-light);
+  color: var(--lavender);
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+}
+.cat-circle:hover .cat-circle-label { color: var(--plum); }
+.cat-circle:focus-visible { border-radius: var(--radius); }
 
 @keyframes marquee {
   from { transform: translateX(0); }
@@ -651,6 +815,13 @@ ul {
   gap: 30px;
 }
 
+/* Ana səhifədə kartlar .reveal örtüyünün içindədir — şəbəkə pozulmasın */
+.product-grid > .reveal {
+  display: flex;
+  min-width: 0;
+}
+.product-grid > .reveal > .product-card { width: 100%; }
+
 .product-card {
   background: var(--white);
   border: 1px solid var(--line);
@@ -661,11 +832,28 @@ ul {
     border-color 0.45s var(--ease);
   display: flex;
   flex-direction: column;
+  transform-style: preserve-3d;
 }
 .product-card:hover {
   transform: translateY(-6px);
   box-shadow: var(--shadow-lg);
   border-color: transparent;
+}
+/* "Səbətə" düyməsi yalnız SİÇANLI cihazda gizlənir və hover-də görünür.
+   Toxunuş cihazlarında heç vaxt gizlədilmir — əks halda düymə əlçatmaz olardı.
+   Qayda "gizlət" tərəfindədir, ona görə üstündən yazmağa (override) ehtiyac yoxdur. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .product-card .add-btn {
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s var(--ease), transform 0.3s var(--ease),
+      background 0.22s ease, color 0.22s ease;
+  }
+  .product-card:hover .add-btn,
+  .product-card:focus-within .add-btn {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .product-media {
@@ -840,29 +1028,47 @@ ul {
 
 /* ---------- Featured / promo band ---------- */
 .promo {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--plum), var(--lavender));
   color: var(--lavender-mist);
-  border-radius: 24px;
-  padding: 56px 48px;
+  border-radius: var(--radius-lg);
+  padding: 76px 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 30px;
+  gap: 40px;
   flex-wrap: wrap;
 }
+/* Yumşaq işıq ləkəsi — düz qradienti canlandırır */
+.promo::after {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -10%;
+  width: 460px;
+  height: 460px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.18), transparent 65%);
+  pointer-events: none;
+}
+.promo > * { position: relative; z-index: 1; }
 
 .promo h3 {
   font-family: var(--serif);
-  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
-  font-weight: 600;
+  font-size: clamp(2.1rem, 4vw, 3.2rem);
+  font-weight: 500;
   color: #fff;
-  line-height: 1.1;
-  margin-bottom: 10px;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  margin-bottom: 14px;
+  text-wrap: balance;
 }
 
 .promo p {
-  opacity: 0.85;
-  max-width: 420px;
+  opacity: 0.9;
+  max-width: 440px;
+  font-size: 1.02rem;
 }
 
 .promo .btn-primary {
@@ -960,6 +1166,35 @@ ul {
   background: #fff;
 }
 
+/* Ödəniş üsulları sətri */
+.pay-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 22px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+.pay-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lavender-light);
+  font-weight: 600;
+}
+.pay-icons { display: inline-flex; gap: 9px; flex-wrap: wrap; }
+.pay-chip {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #fff;
+  padding: 7px 13px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .footer-bottom {
   border-top: 1px solid rgba(255, 255, 255, 0.14);
   padding-top: 24px;
@@ -992,14 +1227,19 @@ ul {
   color: var(--plum);
 }
 
-/* ---------- Reveal animation ---------- */
+/* ---------- Reveal animation ----------
+   Gizlətməni yalnız JS edir (.armed). JS işləməsə, məzmun görünən qalır —
+   mağazada məhsullar heç vaxt görünməz qalmamalıdır. */
 .reveal {
-  opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
 }
 
-.reveal.in {
+.reveal.armed {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.reveal.armed.in {
   opacity: 1;
   transform: none;
 }
@@ -1016,7 +1256,8 @@ ul {
     margin: 0 auto;
   }
   .intro-cta,
-  .intro-stats {
+  .intro-stats,
+  .intro-proof {
     justify-content: center;
   }
   .showcase {
@@ -1028,12 +1269,30 @@ ul {
   .footer-grid {
     grid-template-columns: 1fr 1fr;
   }
+  /* Kateqoriyalar: yan sürüşmə */
+  .cats-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    gap: 18px;
+    padding-bottom: 10px;
+    scrollbar-width: none;
+  }
+  .cats-row::-webkit-scrollbar { display: none; }
+  .cats-row > li { flex: 0 0 96px; scroll-snap-align: start; }
+  .cat-circle-icon { width: 68px; height: 68px; }
+  .hero-badge-round { width: 86px; height: 86px; }
+  .hero-badge-round b { font-size: 1.6rem; }
+  .section-head-row { align-items: flex-start; }
+}
+
+@media (max-width: 760px) {
+  .promo { padding: 52px 34px; }
+  .hero-mini-card { left: 50%; transform: translateX(-50%); bottom: 12px; }
+  .hero-mini-card:hover { transform: translateX(-50%) translateY(-3px); }
 }
 
 @media (max-width: 640px) {
-  .nav-links {
-    display: none;
-  }
   .section {
     padding: 60px 0;
   }
@@ -1046,8 +1305,22 @@ ul {
     grid-template-columns: 1fr;
   }
   .intro-stats {
-    gap: 26px;
+    gap: 22px;
   }
+  .intro-stat b { font-size: 1.7rem; }
+  .intro-proof { margin-top: 28px; }
+  .proof-av { width: 32px; height: 32px; }
+  .section-head-row { margin-bottom: 34px; }
+  .section-head-row .section-link { display: none; } /* aşağıda onsuz da düymə var */
+  .section-foot { margin-top: 36px; }
+  .pay-row { padding: 18px 0; }
+}
+
+/* Ləçəklər və 3D yalnız böyük ekranda və siçanla — mobil/toxunuşda söndürülür */
+@media (max-width: 760px), (pointer: coarse) {
+  .intro-petals { display: none; }
+  .showcase-tilt { transform: none !important; }
+  .product-card { transform-style: flat; }
 }
 
 /* Toxunuş cihazlarında (hover yoxdur) "sevimli" düyməsi həmişə görünsün */
@@ -1073,10 +1346,17 @@ ul {
     animation: none !important;
     transform: none !important;
   }
-  .reveal {
+  .reveal,
+  .reveal.armed {
     opacity: 1 !important;
     transform: none !important;
+    transition-delay: 0ms !important;
   }
+  /* Redizayn bəzəkləri: hərəkət tam dayanır */
+  .intro-petals { display: none; }
+  .hero-badge-round,
+  .petal { animation: none !important; }
+  .showcase-tilt { transform: none !important; }
 }
 
 /* ============================================================
@@ -1138,7 +1418,24 @@ ul {
   align-items: center;
   gap: 16px;
   height: 74px;
+  transition: height 0.35s var(--ease);
 }
+
+/* Sürüşdürəndə: yüngül kölgə + bir az sıxılma */
+.header {
+  transition: box-shadow 0.35s var(--ease), background 0.35s var(--ease);
+}
+.header.scrolled {
+  background: rgba(255, 246, 250, 0.96);
+  box-shadow: 0 1px 0 var(--line), 0 10px 30px rgba(42, 22, 32, 0.07);
+}
+.header.scrolled .header-inner { height: 64px; }
+.header.scrolled .brand-logo { height: 54px; }
+
+/* Başlıq ikonları eyni incəlikdə */
+.header-icon svg,
+.search-btn svg,
+.cat-btn svg { stroke-width: 1.5; }
 
 @media (max-width: 760px) {
   .header .brand-logo {

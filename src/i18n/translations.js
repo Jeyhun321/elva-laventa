@@ -150,6 +150,31 @@ export const ui = {
   stat_customers: { az: 'Məmnun müştəri', ru: 'Довольных клиентов', en: 'Happy customers' },
   stat_rating: { az: 'Reytinq', ru: 'Рейтинг', en: 'Rating' },
 
+  // Hero — redizayn (sosial sübut, üzən nişan, mini kart)
+  hero_proof: {
+    az: '500+ məmnun müştəri',
+    ru: '500+ довольных клиенток',
+    en: '500+ happy customers',
+  },
+  hero_card_title: {
+    az: 'Yeni kolleksiya 2026',
+    ru: 'Новая коллекция 2026',
+    en: 'New collection 2026',
+  },
+  hero_card_cta: { az: 'Bax', ru: 'Смотреть', en: 'Shop now' },
+  hero_off_label: { az: 'endirim', ru: 'скидка до', en: 'up to' },
+
+  // Kateqoriyalar zolağı
+  cats_eyebrow: { az: 'Kateqoriyalar', ru: 'Категории', en: 'Categories' },
+  cats_title: {
+    az: 'Üslubunuza görə seçin',
+    ru: 'Выбирайте по стилю',
+    en: 'Shop by style',
+  },
+
+  // Futer
+  pay_label: { az: 'Ödəniş üsulları', ru: 'Принимаем к оплате', en: 'We accept' },
+
   // Catalog
   collection: { az: 'Kolleksiya', ru: 'Коллекция', en: 'Collection' },
   all_products: { az: 'Bütün məhsullar', ru: 'Все товары', en: 'All products' },

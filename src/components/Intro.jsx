@@ -4,6 +4,11 @@ import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconArrow } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
+import useTilt from '../hooks/useTilt.js'
+
+// Hero fonunda üzən ləçəklər — sırf bəzək, oxunuşa mane olmasın deyə
+// yalnız sağ tərəfdə, şəffaf və pointer-events: none.
+const PETALS = [0, 1, 2, 3, 4, 5]
 
 const AUTOPLAY_MS = 2500
 
@@ -23,6 +28,7 @@ function HeroTitle({ text, em }) {
 export default function Intro() {
   const { t } = useI18n()
   const { saleProducts, products } = useCatalog()
+  const tiltRef = useTilt({ max: 4 })
   // Витрина не должна исчезать, если у товаров пока нет старой цены (скидки).
   // Сначала показываем товары со скидкой, затем заполняем обычными товарами.
   const SHOW = useMemo(() => {
@@ -58,6 +64,12 @@ export default function Intro() {
 
   return (
     <section className="intro" id="top">
+      <div className="intro-petals" aria-hidden="true">
+        {PETALS.map((i) => (
+          <span key={i} className={`petal petal-${i + 1}`} />
+        ))}
+      </div>
+
       <div className="container intro-grid">
         <div className="intro-copy">
           <span className="intro-badge">{t('hero_badge')}</span>
@@ -69,17 +81,29 @@ export default function Intro() {
             <Link to="/catalog" className="btn btn-primary">
               {t('hero_cta_primary')} <IconArrow />
             </Link>
-            <Link to="/catalog?sale=1" className="btn btn-ghost">
-              {t('hero_cta_secondary')}
+            <Link to="/catalog?sale=1" className="btn-link">
+              {t('hero_cta_secondary')} <IconArrow />
             </Link>
           </div>
+
+          {/* Sosial sübut: üst-üstə düşən avatarlar. Uydurma foto yoxdur — sadə qradient dairələr. */}
+          <div className="intro-proof">
+            <span className="proof-avatars" aria-hidden="true">
+              <i className="proof-av av-1" />
+              <i className="proof-av av-2" />
+              <i className="proof-av av-3" />
+              <i className="proof-av av-4" />
+            </span>
+            <span className="proof-text">{t('hero_proof')}</span>
+          </div>
+
           <div className="intro-stats">
             <div className="intro-stat">
               <b>{products.length || 0}+</b>
               <span>{t('stat_products')}</span>
             </div>
             <div className="intro-stat">
-              <b>2K+</b>
+              <b>500+</b>
               <span>{t('stat_customers')}</span>
             </div>
             <div className="intro-stat">
@@ -90,19 +114,34 @@ export default function Intro() {
         </div>
 
         <div className="showcase">
-          <div
-            className="showcase-stage"
-            onMouseEnter={() => setPaused(true)}
-            onMouseLeave={() => setPaused(false)}
-          >
-            {SHOW.map((product, i) => (
-              <ShowcaseCard
-                key={product.id}
-                product={product}
-                slot={slotName(i)}
-              />
-            ))}
+          <div className="showcase-tilt" ref={tiltRef}>
+            <div
+              className="showcase-stage"
+              onMouseEnter={() => setPaused(true)}
+              onMouseLeave={() => setPaused(false)}
+            >
+              {SHOW.map((product, i) => (
+                <ShowcaseCard
+                  key={product.id}
+                  product={product}
+                  slot={slotName(i)}
+                />
+              ))}
+            </div>
 
+            {/* Üzən dairəvi endirim nişanı */}
+            <span className="hero-badge-round" aria-hidden="true">
+              <em>{t('hero_off_label')}</em>
+              <b>40%</b>
+            </span>
+
+            {/* Aşağıda kiçik "yeni kolleksiya" kartı */}
+            <Link to="/catalog" className="hero-mini-card">
+              <span className="hero-mini-title">{t('hero_card_title')}</span>
+              <span className="hero-mini-cta">
+                {t('hero_card_cta')} <IconArrow />
+              </span>
+            </Link>
           </div>
 
           <div className="showcase-dots" role="tablist" aria-label="Showcase">

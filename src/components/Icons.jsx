@@ -106,3 +106,64 @@ export const IconTiktok = (p) => (
     <path d="M16.5 3c.3 2 1.6 3.6 3.5 3.9v2.6c-1.3 0-2.5-.4-3.5-1.1v5.9a5.4 5.4 0 1 1-5.4-5.4c.3 0 .6 0 .9.1v2.7a2.7 2.7 0 1 0 1.9 2.6V3h2.6Z" />
   </svg>
 )
+
+// --- Kateqoriya ikonları (nazik xətt, eyni qalınlıq) ---
+const catProps = {
+  width: 26,
+  height: 26,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.4,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+}
+
+export const IconDress = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M9 3h6l-1 3 2.6 3.2L15 12l1.8 7.2A2 2 0 0 1 14.9 21H9.1a2 2 0 0 1-1.9-1.8L9 12l-1.6-2.8L10 6 9 3Z" />
+    <path d="M10 6c.6.7 1.2 1 2 1s1.4-.3 2-1" />
+  </svg>
+)
+
+export const IconBlouse = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M9 3 5 5.5 3.6 10l2.6.9V21h11.6V10.9l2.6-.9L19 5.5 15 3l-3 2.6L9 3Z" />
+  </svg>
+)
+
+export const IconSkirt = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M8 3h8l.6 3.5H7.4L8 3Z" />
+    <path d="M7.4 6.5 4 20.2c2.5.9 5.1 1.3 8 1.3s5.5-.4 8-1.3L16.6 6.5H7.4Z" />
+  </svg>
+)
+
+export const IconTrousers = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M7 3h10v3l-.8 15h-3.4L12 10.5 11.2 21H7.8L7 6V3Z" />
+    <path d="M7 6h10" />
+  </svg>
+)
+
+export const IconCoat = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M9 3 4.5 5.6 3 11l2.4.8V21H12V3H9Z" />
+    <path d="M15 3l4.5 2.6L21 11l-2.4.8V21H12V3h3Z" />
+    <path d="M12 8v9" />
+  </svg>
+)
+
+export const IconKnit = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M9 3h6l4 3.2-2 3.4-1.2-.9V21H8.2V8.7L7 9.6 5 6.2 9 3Z" />
+    <path d="M10.5 12.5c1 .8 2 .8 3 0M10.5 16c1 .8 2 .8 3 0" />
+  </svg>
+)
+
+export const IconAccessory = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M4.5 8.5h15l-1.2 11a1.6 1.6 0 0 1-1.6 1.4H7.3a1.6 1.6 0 0 1-1.6-1.4L4.5 8.5Z" />
+    <path d="M8.5 8.5V6.6a3.5 3.5 0 0 1 7 0v1.9" />
+  </svg>
+)

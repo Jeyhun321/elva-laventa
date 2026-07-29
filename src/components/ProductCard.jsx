@@ -9,6 +9,7 @@ import { IconHeart, IconBag } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
 import Rating from './Rating.jsx'
 import AuthRequiredDialog from './AuthRequiredDialog.jsx'
+import useTilt from '../hooks/useTilt.js'
 
 export default function ProductCard({ product, showRating = true }) {
   const { t } = useI18n()
@@ -18,6 +19,7 @@ export default function ProductCard({ product, showRating = true }) {
   const [authDialog, setAuthDialog] = useState(false)
   const onSale = Boolean(product.oldPrice)
   const fav = isFavorite(product.id)
+  const tiltRef = useTilt({ max: 3, lift: -6 })
 
   const quickAdd = (e) => {
     e.preventDefault()
@@ -48,7 +50,7 @@ export default function ProductCard({ product, showRating = true }) {
   }
 
   return (
-    <article className="product-card">
+    <article className="product-card" ref={tiltRef}>
       <Link to={`/product/${product.id}`} className="product-media">
         <ProductImage product={{ ...product, name: t(product.name) }} />
         {product.tag && (

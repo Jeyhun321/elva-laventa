@@ -80,6 +80,15 @@ export default function Footer() {
           </div>
         </div>
 
+        <div className="pay-row">
+          <span className="pay-label">{t('pay_label')}</span>
+          <span className="pay-icons" aria-hidden="true">
+            <i className="pay-chip">VISA</i>
+            <i className="pay-chip">MC</i>
+            <i className="pay-chip">MILLI</i>
+          </span>
+        </div>
+
         <div className="footer-bottom">
           <span>© {new Date().getFullYear()} Elva LaVenta. {t('rights')}</span>
           <div className="socials">
