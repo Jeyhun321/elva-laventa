@@ -5,20 +5,16 @@ import { useShop } from '../context/ShopContext.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { IconSearch, IconHeart, IconBag, IconMenu, IconClose } from './Icons.jsx'
 import UserMenu from './UserMenu.jsx'
-import AuthRequiredDialog from './AuthRequiredDialog.jsx'
 import flowerLogo from '../assets/elva-laventa-logo.svg'
-import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Header() {
   const { t, lang, setLang, langs } = useI18n()
   const { cartCount, favCount } = useShop()
-  const { isGoogleUser } = useAuth()
   const { categories } = useCatalog()
   const navigate = useNavigate()
 
   const [query, setQuery] = useState('')
   const [catOpen, setCatOpen] = useState(false)
-  const [authDialog, setAuthDialog] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const catRef = useRef(null)
 
@@ -48,12 +44,6 @@ export default function Header() {
   const goCategory = (id) => {
     navigate(id === 'all' ? '/catalog' : `/catalog?cat=${id}`)
     setCatOpen(false)
-  }
-
-  const openCart = (event) => {
-    if (isGoogleUser) return
-    event.preventDefault()
-    setAuthDialog(true)
   }
 
   return (
@@ -124,14 +114,13 @@ export default function Header() {
             <em>{t('favorites')}</em>
           </Link>
 
-          <Link to="/cart" className="header-icon" aria-label={t('cart')} onClick={openCart}>
+          <Link to="/cart" className="header-icon" aria-label={t('cart')}>
             <IconBag />
             {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
             <em>{t('cart')}</em>
           </Link>
         </div>
       </div>
-      <AuthRequiredDialog open={authDialog} onClose={() => setAuthDialog(false)} returnTo="/cart" />
     </header>
   )
 }

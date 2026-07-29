@@ -3,13 +3,11 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
 import { tagLabels } from '../i18n/translations.js'
 import { IconHeart, IconBag, IconStar, IconArrow } from '../components/Icons.jsx'
 import ProductImage from '../components/ProductImage.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Rating from '../components/Rating.jsx'
-import AuthRequiredDialog from '../components/AuthRequiredDialog.jsx'
 import { REAL_PRODUCT_GALLERIES } from '../data/realProducts.js'
 
 export default function ProductPage() {
@@ -18,13 +16,11 @@ export default function ProductPage() {
   const { t } = useI18n()
   const { getProduct, products } = useCatalog()
   const { addToCart, toggleFavorite, isFavorite } = useShop()
-  const { isGoogleUser } = useAuth()
 
   const product = getProduct(id)
   const needsSize = product && product.sizes && product.sizes.length > 1
   const [size, setSize] = useState(needsSize ? null : product?.sizes?.[0] ?? null)
   const [warn, setWarn] = useState(false)
-  const [authDialog, setAuthDialog] = useState(false)
   const [added, setAdded] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
 
@@ -53,15 +49,13 @@ export default function ProductPage() {
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 9)
 
+  // Qonaq da səbətə əlavə edə bilər — giriş yalnız sifarişin təsdiqindədir.
   const handleAdd = () => {
     if (needsSize && !size) {
       setWarn(true)
       return
     }
-    if (!isGoogleUser || !addToCart(product.id, size, 1)) {
-      setAuthDialog(true)
-      return
-    }
+    addToCart(product.id, size, 1)
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
   }
@@ -71,17 +65,12 @@ export default function ProductPage() {
       setWarn(true)
       return
     }
-    if (!isGoogleUser || !addToCart(product.id, size, 1)) {
-      setAuthDialog(true)
-      return
-    }
+    addToCart(product.id, size, 1)
     navigate('/cart')
   }
 
   const handleFavorite = () => {
-    if (!isGoogleUser || !toggleFavorite(product.id)) {
-      setAuthDialog('favorite')
-    }
+    toggleFavorite(product.id)
   }
 
   return (
@@ -218,12 +207,6 @@ export default function ProductPage() {
         )}
       </div>
 
-      <AuthRequiredDialog
-        open={Boolean(authDialog)}
-        onClose={() => setAuthDialog(false)}
-        returnTo={`/product/${product.id}`}
-        messageKey={authDialog === 'favorite' ? 'favorites_auth_required' : 'google_auth_required'}
-      />
 
       {related.length > 0 && (
         <section className="related">

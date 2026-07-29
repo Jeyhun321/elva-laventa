@@ -9,7 +9,35 @@ const ShopContext = createContext(null)
 const CART_KEY_PREFIX = 'elva_cart:'
 const FAV_KEY_PREFIX = 'elva_favorites:'
 
+// Qonaq (girişsiz) alıcı da səbətdən istifadə edə bilər. Onun səbəti
+// yalnız brauzerdə saxlanılır; giriş edəndə hesabın səbətinə birləşdirilir.
+const GUEST_ID = 'guest'
+
 const accountKey = (prefix, accountId) => `${prefix}${accountId}`
+
+const cartLineKey = (item) => `${item.id}|${item.size || ''}`
+
+// Eyni məhsul + eyni ölçü olarsa, sayları TOPLAYIRIQ (dublikat sətir yaranmır).
+// Olmayanlar sadəcə əlavə olunur. Maksimum say 20-dir.
+const mergeCarts = (base, extra) => {
+  const result = base.map((item) => ({ ...item }))
+  const index = new Map(result.map((item, i) => [cartLineKey(item), i]))
+
+  extra.forEach((item) => {
+    const key = cartLineKey(item)
+    if (index.has(key)) {
+      const target = result[index.get(key)]
+      target.qty = Math.min(20, target.qty + item.qty)
+    } else {
+      index.set(key, result.length)
+      result.push({ ...item })
+    }
+  })
+
+  return result
+}
+
+const mergeFavorites = (base, extra) => [...new Set([...base, ...extra])]
 
 const load = (key, fallback) => {
   try {
@@ -47,34 +75,54 @@ export function ShopProvider({ children }) {
   const [favorites, setFavorites] = useState([])
   const [loadedAccountId, setLoadedAccountId] = useState(null)
 
-  const cacheCart = useCallback((next, id = accountId) => {
-    if (id) save(accountKey(CART_KEY_PREFIX, id), next)
-  }, [accountId])
+  // Girişsiz alıcı üçün "guest" açarı istifadə olunur — səbəti yenə də yadda qalır.
+  const storageId = accountId || GUEST_ID
 
-  const cacheFavorites = useCallback((next, id = accountId) => {
-    if (id) save(accountKey(FAV_KEY_PREFIX, id), next)
-  }, [accountId])
+  const cacheCart = useCallback((next, id = storageId) => {
+    save(accountKey(CART_KEY_PREFIX, id), next)
+  }, [storageId])
+
+  const cacheFavorites = useCallback((next, id = storageId) => {
+    save(accountKey(FAV_KEY_PREFIX, id), next)
+  }, [storageId])
 
   useEffect(() => {
     let cancelled = false
 
     if (loading) return undefined
+
+    // Qonaq: səbət yalnız brauzerdən oxunur, Supabase-ə heç nə getmir.
     if (!accountId) {
-      setCart([])
-      setFavorites([])
-      setLoadedAccountId(null)
+      setCart(normaliseCart(load(accountKey(CART_KEY_PREFIX, GUEST_ID), [])))
+      setFavorites(normaliseFavorites(load(accountKey(FAV_KEY_PREFIX, GUEST_ID), [])))
+      setLoadedAccountId(GUEST_ID)
       return undefined
     }
 
     const cachedCart = normaliseCart(load(accountKey(CART_KEY_PREFIX, accountId), []))
     const cachedFavorites = normaliseFavorites(load(accountKey(FAV_KEY_PREFIX, accountId), []))
-    setCart(cachedCart)
-    setFavorites(cachedFavorites)
+    // Giriş anında qonaq səbəti — hesabın səbəti ilə birləşdiriləcək
+    const guestCart = normaliseCart(load(accountKey(CART_KEY_PREFIX, GUEST_ID), []))
+    const guestFavorites = normaliseFavorites(load(accountKey(FAV_KEY_PREFIX, GUEST_ID), []))
+
+    setCart(guestCart.length ? mergeCarts(cachedCart, guestCart) : cachedCart)
+    setFavorites(guestFavorites.length ? mergeFavorites(cachedFavorites, guestFavorites) : cachedFavorites)
     setLoadedAccountId(null)
 
     const syncAccount = async () => {
       if (!supabase) {
-        if (!cancelled) setLoadedAccountId(accountId)
+        // Baza olmasa belə, birləşmə itməsin: nəticəni brauzerdə saxlayırıq
+        // və qonaq səbətini təmizləyirik.
+        if (cancelled) return
+        if (guestCart.length) {
+          cacheCart(mergeCarts(cachedCart, guestCart), accountId)
+          save(accountKey(CART_KEY_PREFIX, GUEST_ID), [])
+        }
+        if (guestFavorites.length) {
+          cacheFavorites(mergeFavorites(cachedFavorites, guestFavorites), accountId)
+          save(accountKey(FAV_KEY_PREFIX, GUEST_ID), [])
+        }
+        setLoadedAccountId(accountId)
         return
       }
 
@@ -94,11 +142,17 @@ export function ShopProvider({ children }) {
 
       if (!cartResult.error) {
         const remoteCart = normaliseCart(cartResult.data || [])
-        if (remoteCart.length || !cachedCart.length) {
-          nextCart = remoteCart
-        } else {
+        // Bazadakı səbət əsasdır; boşdursa, brauzerdəki nüsxə götürülür.
+        const base = remoteCart.length ? remoteCart : cachedCart
+        // Qonaq səbəti həmişə üstünə əlavə olunur (saylar toplanır).
+        nextCart = guestCart.length ? mergeCarts(base, guestCart) : base
+
+        // Bazaya yazmaq lazımdırsa yazırıq: ya qonaq malları gəlib,
+        // ya da baza boş idi və brauzerdəki nüsxəni köçürürük.
+        const mustPush = guestCart.length > 0 || (!remoteCart.length && cachedCart.length > 0)
+        if (mustPush && nextCart.length) {
           await supabase.from('customer_cart_items').upsert(
-            cachedCart.map((item) => ({
+            nextCart.map((item) => ({
               user_id: accountId,
               product_id: item.id,
               size: item.size || '',
@@ -111,11 +165,13 @@ export function ShopProvider({ children }) {
 
       if (!favoritesResult.error) {
         const remoteFavorites = normaliseFavorites(favoritesResult.data || [])
-        if (remoteFavorites.length || !cachedFavorites.length) {
-          nextFavorites = remoteFavorites
-        } else {
+        const base = remoteFavorites.length ? remoteFavorites : cachedFavorites
+        nextFavorites = guestFavorites.length ? mergeFavorites(base, guestFavorites) : base
+
+        const mustPush = guestFavorites.length > 0 || (!remoteFavorites.length && cachedFavorites.length > 0)
+        if (mustPush && nextFavorites.length) {
           await supabase.from('customer_favorites').upsert(
-            cachedFavorites.map((productId) => ({ user_id: accountId, product_id: productId })),
+            nextFavorites.map((productId) => ({ user_id: accountId, product_id: productId })),
             { onConflict: 'user_id,product_id' }
           )
         }
@@ -126,6 +182,12 @@ export function ShopProvider({ children }) {
       setFavorites(nextFavorites)
       cacheCart(nextCart, accountId)
       cacheFavorites(nextFavorites, accountId)
+
+      // Birləşmə bitdi — qonaq səbətini silirik ki, növbəti girişdə
+      // saylar TƏKRAR toplanmasın.
+      if (guestCart.length) save(accountKey(CART_KEY_PREFIX, GUEST_ID), [])
+      if (guestFavorites.length) save(accountKey(FAV_KEY_PREFIX, GUEST_ID), [])
+
       setLoadedAccountId(accountId)
     }
 
@@ -133,7 +195,16 @@ export function ShopProvider({ children }) {
     return () => { cancelled = true }
   }, [accountId, cacheCart, cacheFavorites, loading])
 
-  const canChangeShop = Boolean(accountId && isGoogleUser && !loading && loadedAccountId === accountId)
+  // Qonaq da səbətdən istifadə edə bilər. Girişli alıcı üçün əvvəlki kimi
+  // sinxronizasiyanın bitməsini gözləyirik ki, yerli və uzaq səbət toqquşmasın.
+  const canChangeShop = loading
+    ? false
+    : accountId
+      ? loadedAccountId === accountId
+      : loadedAccountId === GUEST_ID
+
+  // Supabase-ə yalnız girişli alıcı üçün yazırıq (qonaqda user_id yoxdur).
+  const syncsToDatabase = Boolean(supabase && accountId)
 
   const addToCart = useCallback((id, size = null, qty = 1) => {
     if (!canChangeShop) return false
@@ -150,7 +221,7 @@ export function ShopProvider({ children }) {
 
     setCart(nextCart)
     cacheCart(nextCart)
-    if (supabase) {
+    if (syncsToDatabase) {
       const item = nextCart.find((entry) => entry.id === productId && entry.size === size)
       void supabase.from('customer_cart_items').upsert({
         user_id: accountId,
@@ -170,7 +241,7 @@ export function ShopProvider({ children }) {
       cacheCart(next)
       return next
     })
-    if (supabase) void supabase.from('customer_cart_items')
+    if (syncsToDatabase) void supabase.from('customer_cart_items')
       .delete()
       .eq('user_id', accountId)
       .eq('product_id', productId)
@@ -191,7 +262,7 @@ export function ShopProvider({ children }) {
       cacheCart(next)
       return next
     })
-    if (supabase) void supabase.from('customer_cart_items').upsert({
+    if (syncsToDatabase) void supabase.from('customer_cart_items').upsert({
       user_id: accountId,
       product_id: productId,
       size: size || '',
@@ -204,7 +275,7 @@ export function ShopProvider({ children }) {
     if (!canChangeShop) return false
     setCart([])
     cacheCart([])
-    if (supabase) await supabase.from('customer_cart_items').delete().eq('user_id', accountId)
+    if (syncsToDatabase) await supabase.from('customer_cart_items').delete().eq('user_id', accountId)
     return true
   }, [accountId, cacheCart, canChangeShop])
 
@@ -218,7 +289,7 @@ export function ShopProvider({ children }) {
 
     setFavorites(next)
     cacheFavorites(next)
-    if (supabase) {
+    if (syncsToDatabase) {
       if (isNowFavorite) {
         void supabase.from('customer_favorites').upsert(
           { user_id: accountId, product_id: productId },
@@ -249,7 +320,8 @@ export function ShopProvider({ children }) {
       isFavorite,
       cartCount,
       favCount: favorites.length,
-      canShop: isGoogleUser && !loading,
+      // Artıq qonaq da alış-veriş edə bilər; giriş yalnız sifarişin təsdiqindədir.
+      canShop: !loading,
     }}>
       {children}
     </ShopContext.Provider>

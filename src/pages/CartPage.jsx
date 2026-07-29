@@ -2,15 +2,13 @@ import { Link } from 'react-router-dom'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
 import { IconPlus, IconMinus, IconTrash } from '../components/Icons.jsx'
 import ProductImage from '../components/ProductImage.jsx'
 
 export default function CartPage() {
   const { t } = useI18n()
-  const { getProduct } = useCatalog()
+  const { getProduct, loading: catalogLoading } = useCatalog()
   const { cart, setQty, removeFromCart } = useShop()
-  const { isGoogleUser } = useAuth()
 
   const lines = cart
     .map((item) => ({ item, product: getProduct(item.id) }))
@@ -19,6 +17,12 @@ export default function CartPage() {
   const subtotal = lines.reduce((s, l) => s + (l.product.oldPrice || l.product.price) * l.item.qty, 0)
   const total = lines.reduce((s, l) => s + l.product.price * l.item.qty, 0)
   const discount = subtotal - total
+
+  // Kataloq hələ yüklənirsə, "səbət boşdur" yazmaq yanlışdır — məhsullar
+  // bazadan gələnə qədər getProduct boş qaytarır.
+  if (lines.length === 0 && catalogLoading && cart.length > 0) {
+    return <div className="container cart-page"><h1 className="page-title">{t('cart_title')}</h1></div>
+  }
 
   if (lines.length === 0) {
     return (
@@ -100,18 +104,10 @@ export default function CartPage() {
             <span>{t('total')}</span>
             <span>{total} ₼</span>
           </div>
-          {isGoogleUser ? (
-            <Link to="/checkout" className="btn btn-primary btn-lg full">
-              {t('checkout')}
-            </Link>
-          ) : (
-            <>
-              <Link to="/auth?next=%2Fcheckout" className="btn btn-primary btn-lg full">
-                {t('google_auth_action')}
-              </Link>
-              <p className="action-notice" role="alert">{t('google_auth_required')}</p>
-            </>
-          )}
+          {/* Qonaq da sifarişə keçə bilər — giriş yalnız təsdiq anındadır. */}
+          <Link to="/checkout" className="btn btn-primary btn-lg full">
+            {t('checkout')}
+          </Link>
           <Link to="/catalog" className="continue-link">{t('back_to_catalog')}</Link>
         </aside>
       </div>

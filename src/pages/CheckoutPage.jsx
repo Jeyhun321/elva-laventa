@@ -44,7 +44,7 @@ export const normalizeWhatsApp = (raw) => {
 
 export default function CheckoutPage() {
   const { t } = useI18n()
-  const { getProduct } = useCatalog()
+  const { getProduct, loading: catalogLoading } = useCatalog()
   const { user, profile, isGoogleUser, loading } = useAuth()
   const { cart, clearCart } = useShop()
   const navigate = useNavigate()
@@ -74,9 +74,12 @@ export default function CheckoutPage() {
   const total = lines.reduce((s, l) => s + l.product.price * l.item.qty, 0)
 
   useEffect(() => {
-    if (!loading && !isGoogleUser) return
+    // Səbət boşdursa, həm qonaq, həm girişli alıcı səbətə qaytarılır.
+    // DİQQƏT: kataloq bazadan gec gəlir və o vaxta qədər getProduct boş qaytarır —
+    // gözləməsək, dolu səbətlə gələn alıcı səhvən səbətə atılır.
+    if (loading || catalogLoading) return
     if (lines.length === 0 && !done) navigate('/cart', { replace: true })
-  }, [lines.length, done, navigate, isGoogleUser, loading])
+  }, [lines.length, done, navigate, loading, catalogLoading])
 
   // Hesaba girmişsə, adı avtomatik dolsun
   useEffect(() => {
@@ -110,15 +113,23 @@ export default function CheckoutPage() {
 
   const submit = async (e) => {
     e.preventDefault()
-    if (!isGoogleUser) {
-      setErr(t('google_auth_required'))
-      return
-    }
     setTouched({ name: true, phone: true, phoneCall: true, address: true })
     setErr('')
     if (!valid) {
       setErr(t('checkout_form_incomplete'))
       window.requestAnimationFrame(() => formRef.current?.querySelector('input.invalid')?.focus())
+      return
+    }
+
+    // Sifarişin TƏSDİQİ üçün giriş tələb olunur (place_order auth.uid() yazır).
+    // Doldurulmuş məlumatları saxlayırıq ki, girişdən qayıdanda forma boş qalmasın.
+    if (!isGoogleUser) {
+      try {
+        localStorage.setItem(BUYER_KEY, JSON.stringify(buyer))
+      } catch {
+        // Yaddaş bağlıdırsa, sadəcə girişə keçirik.
+      }
+      navigate('/auth?next=%2Fcheckout')
       return
     }
 
@@ -171,18 +182,7 @@ export default function CheckoutPage() {
     )
   }
 
-  if (!loading && !isGoogleUser) {
-    return (
-      <div className="container checkout-page">
-        <div className="order-success">
-          <h1>{t('sign_in_title')}</h1>
-          <p className="order-ok-text">{t('google_auth_required')}</p>
-          <Link to="/auth?next=%2Fcheckout" className="btn btn-primary">{t('google_auth_action')}</Link>
-          <Link to="/cart" className="continue-link">{t('back_to_cart')}</Link>
-        </div>
-      </div>
-    )
-  }
+  // Qonaq forması sərbəst doldura bilər — giriş yalnız təsdiq düyməsindədir.
 
   return (
     <div className="container checkout-page">
@@ -275,9 +275,18 @@ export default function CheckoutPage() {
 
           {err && <div className="admin-msg err" role="alert">{err}</div>}
 
+          {/* Yekun məbləğ düymənin ÜSTÜNDƏ — alıcı nə ödədiyini görmədən təsdiqləməsin */}
+          <div className="checkout-total-inline">
+            <span>{t('total')}</span>
+            <b>{total} ₼</b>
+          </div>
+
           <button type="submit" className="btn btn-primary btn-lg full" disabled={busy}>
             {busy ? t('order_sending') : t('place_order')}
           </button>
+          {!loading && !isGoogleUser && (
+            <p className="wa-explain">{t('checkout_auth_required')}</p>
+          )}
           <p className="wa-explain">{t('order_explain')}</p>
         </form>
 

@@ -3,50 +3,37 @@ import { Link } from 'react-router-dom'
 import { discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
-import { useAuth } from '../context/AuthContext.jsx'
 import { tagLabels } from '../i18n/translations.js'
 import { IconHeart, IconBag } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
 import Rating from './Rating.jsx'
-import AuthRequiredDialog from './AuthRequiredDialog.jsx'
 import useTilt from '../hooks/useTilt.js'
 
 export default function ProductCard({ product, showRating = true }) {
   const { t } = useI18n()
   const { addToCart, toggleFavorite, isFavorite } = useShop()
-  const { isGoogleUser } = useAuth()
   const [notice, setNotice] = useState('')
-  const [authDialog, setAuthDialog] = useState(false)
   const onSale = Boolean(product.oldPrice)
   const fav = isFavorite(product.id)
   const tiltRef = useTilt({ max: 3, lift: -6 })
 
+  // Qonaq da səbətə əlavə edə bilər — giriş yalnız sifarişin təsdiqindədir.
   const quickAdd = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!isGoogleUser) {
-      setNotice('')
-      setAuthDialog(true)
-      return
-    }
     if (product.sizes?.length > 1) {
       setNotice(t('choose_size_on_product'))
       return
     }
-    if (!addToCart(product.id, product.sizes?.[0] ?? null, 1)) {
-      setNotice(t('google_auth_required'))
-      return
-    }
+    addToCart(product.id, product.sizes?.[0] ?? null, 1)
     setNotice('')
   }
 
   const favClick = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!isGoogleUser || !toggleFavorite(product.id)) {
-      setNotice('')
-      setAuthDialog('favorite')
-    }
+    toggleFavorite(product.id)
+    setNotice('')
   }
 
   return (
@@ -91,19 +78,8 @@ export default function ProductCard({ product, showRating = true }) {
             <IconBag />
           </button>
         </div>
-        {notice && (
-          <p className="action-notice" role="alert">
-            {notice}
-            {!isGoogleUser && <> <Link to={`/auth?next=${encodeURIComponent(`/product/${product.id}`)}`}>{t('google_auth_action')}</Link></>}
-          </p>
-        )}
+        {notice && <p className="action-notice" role="alert">{notice}</p>}
       </div>
-      <AuthRequiredDialog
-        open={Boolean(authDialog)}
-        onClose={() => setAuthDialog(false)}
-        returnTo={`/product/${product.id}`}
-        messageKey={authDialog === 'favorite' ? 'favorites_auth_required' : 'google_auth_required'}
-      />
     </article>
   )
 }

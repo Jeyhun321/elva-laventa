@@ -172,8 +172,6 @@ export const ui = {
     en: 'Shop by style',
   },
 
-  // Futer
-  pay_label: { az: 'Ödəniş üsulları', ru: 'Принимаем к оплате', en: 'We accept' },
 
   // Catalog
   collection: { az: 'Kolleksiya', ru: 'Коллекция', en: 'Collection' },
@@ -250,9 +248,15 @@ export const ui = {
     en: 'Open the product page to choose a size',
   },
   google_auth_required: {
-    az: 'Məhsulu səbətə əlavə etmək və sifariş vermək üçün Google ilə daxil olun.',
-    ru: 'Чтобы добавить товар в корзину и оформить заказ, войдите через Google.',
-    en: 'Sign in with Google to add items to the cart and place an order.',
+    az: 'Sifarişi təsdiqləmək üçün Google ilə daxil olun.',
+    ru: 'Чтобы подтвердить заказ, войдите через Google.',
+    en: 'Sign in with Google to confirm your order.',
+  },
+  // Səbət artıq girişsiz işləyir — giriş yalnız sifarişin təsdiqindədir
+  checkout_auth_required: {
+    az: 'Son addım: sifarişi təsdiqləmək üçün Google ilə daxil olun. Doldurduğunuz məlumatlar saxlanılacaq.',
+    ru: 'Последний шаг: чтобы подтвердить заказ, войдите через Google. Заполненные данные сохранятся.',
+    en: 'Last step: sign in with Google to confirm the order. Your details will be kept.',
   },
   favorites_auth_required: {
     az: 'Məhsulu sevimlilərə əlavə etmək üçün hesabınıza daxil olun.',

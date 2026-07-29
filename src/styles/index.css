@@ -1166,35 +1166,6 @@ ul {
   background: #fff;
 }
 
-/* Ödəniş üsulları sətri */
-.pay-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 22px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-}
-.pay-label {
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--lavender-light);
-  font-weight: 600;
-}
-.pay-icons { display: inline-flex; gap: 9px; flex-wrap: wrap; }
-.pay-chip {
-  font-style: normal;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: #fff;
-  padding: 7px 13px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
 .footer-bottom {
   border-top: 1px solid rgba(255, 255, 255, 0.14);
   padding-top: 24px;
@@ -1313,7 +1284,6 @@ ul {
   .section-head-row { margin-bottom: 34px; }
   .section-head-row .section-link { display: none; } /* aşağıda onsuz da düymə var */
   .section-foot { margin-top: 36px; }
-  .pay-row { padding: 18px 0; }
 }
 
 /* Ləçəklər və 3D yalnız böyük ekranda və siçanla — mobil/toxunuşda söndürülür */
@@ -3070,4 +3040,72 @@ a.product-media {
   .cart-line { grid-template-columns: 76px 1fr; }
   .cart-line-controls { grid-column: 1 / -1; justify-content: space-between; }
   .cart-thumb { width: 76px; }
+}
+
+/* ============================================================
+   Mobil konversiya düzəlişləri
+   ============================================================ */
+
+/* iOS Safari şrifti 16px-dən kiçik olan sahəyə toxunanda səhifəni ZUMLAYIR
+   və ekran sıçrayır. Ona görə bütün giriş sahələrində şrift ən azı 16px-dir.
+   Vizual ölçü padding ilə tarazlanır — şrift kiçildilmir. */
+.search input,
+.newsletter input,
+.checkout-form .fld input,
+.checkout-form .fld textarea,
+.fld input,
+.fld select,
+.fld textarea,
+.login-form .fld input,
+.price-input,
+.sort-select select,
+.status-select,
+.system-log-search,
+.admin input,
+.admin select,
+.admin textarea {
+  font-size: 16px;
+}
+
+/* 16px-lik şrift dar sahələri şişirtməsin */
+.price-input { padding: 8px 8px; }
+.sort-select select { padding: 8px 12px; }
+.newsletter input { padding: 11px 15px; }
+
+/* Yekun məbləğ — təsdiq düyməsinin ÜSTÜNDƏ.
+   Alıcı nə ödədiyini görmədən sifarişi təsdiqləməməlidir. */
+.checkout-total-inline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 22px 0 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-alt);
+  font-variant-numeric: tabular-nums;
+}
+.checkout-total-inline span {
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* --ink-soft bu fonda AA-dan aşağı düşür (4.39) — əsas mətn rəngi götürülür */
+  color: var(--ink);
+}
+.checkout-total-inline b {
+  font-family: var(--serif);
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: var(--plum);
+  line-height: 1;
+}
+
+/* Mobil/planşetdə sifarişin tərkibi FORMADAN ƏVVƏL gəlsin.
+   Masaüstündə iki sütun olduğu üçün sıra dəyişmir. */
+@media (max-width: 900px) {
+  .checkout-layout { display: flex; flex-direction: column; }
+  .checkout-summary { order: -1; }
+  .checkout-form { order: 0; }
 }
