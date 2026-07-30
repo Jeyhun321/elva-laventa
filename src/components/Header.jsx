@@ -18,7 +18,10 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false)
   // Mobildə axtarış lupa ikonuna yığılır, tıklayanda tam enli panel açılır
   const [searchOpen, setSearchOpen] = useState(false)
+  // Mobildə dil üç düymə yerinə açılan siyahıdır (yer qazanmaq üçün)
+  const [langOpen, setLangOpen] = useState(false)
   const catRef = useRef(null)
+  const langRef = useRef(null)
   const searchInputRef = useRef(null)
 
   // Panel açılanda kursor dərhal sahəyə düşsün, Esc bağlasın
@@ -41,10 +44,19 @@ export default function Header() {
   useEffect(() => {
     const onDoc = (e) => {
       if (catRef.current && !catRef.current.contains(e.target)) setCatOpen(false)
+      if (langRef.current && !langRef.current.contains(e.target)) setLangOpen(false)
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [])
+
+  // Dil siyahısı Esc ilə bağlanır
+  useEffect(() => {
+    if (!langOpen) return undefined
+    const onKey = (e) => { if (e.key === 'Escape') setLangOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [langOpen])
 
   const submitSearch = (e) => {
     e.preventDefault()
@@ -134,7 +146,8 @@ export default function Header() {
         </form>
 
         <div className="header-actions">
-          <div className="lang-switch" role="group" aria-label="Language">
+          {/* Masaüstü: üç düymə yan-yana (CSS ilə yalnız burada görünür) */}
+          <div className="lang-switch" role="group" aria-label={t('language')}>
             {langs.map((l) => (
               <button
                 key={l.code}
@@ -145,6 +158,39 @@ export default function Header() {
                 {l.label}
               </button>
             ))}
+          </div>
+
+          {/* Mobil: açılan siyahı — yalnız seçilmiş dil görünür */}
+          <div className="lang-select" ref={langRef}>
+            <button
+              type="button"
+              className={`lang-select-btn${langOpen ? ' open' : ''}`}
+              onClick={() => setLangOpen((o) => !o)}
+              aria-expanded={langOpen}
+              aria-haspopup="listbox"
+              aria-label={t('language')}
+            >
+              <span>{langs.find((l) => l.code === lang)?.label || lang}</span>
+              <i className="lang-caret" aria-hidden="true" />
+            </button>
+
+            {langOpen && (
+              <ul className="lang-menu" role="listbox" aria-label={t('language')}>
+                {langs.map((l) => (
+                  <li key={l.code}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={lang === l.code}
+                      className={`lang-menu-item${lang === l.code ? ' active' : ''}`}
+                      onClick={() => { setLang(l.code); setLangOpen(false) }}
+                    >
+                      {l.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <UserMenu />

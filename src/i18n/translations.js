@@ -192,6 +192,7 @@ export const ui = {
     en: 'Filters and sorting',
   },
   close: { az: 'Bağla', ru: 'Закрыть', en: 'Close' },
+  language: { az: 'Dil', ru: 'Язык', en: 'Language' },
   // Mobil alış paneli (məhsul səhifəsi)
   added_to_cart: { az: 'Əlavə olundu', ru: 'Добавлено', en: 'Added' },
   go_to_cart: { az: 'Səbətə keç', ru: 'В корзину', en: 'Go to cart' },
