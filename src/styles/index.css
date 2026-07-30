@@ -3585,40 +3585,12 @@ a.product-media {
   .intro-grid > .showcase { order: -1; }
   .intro-grid > .intro-copy { order: 0; margin-top: 8px; }
 
-  /* --- 2. Endirim nişanı: iri dairə → səliqəli həb --- */
-  .hero-badge-round {
-    top: 10px;
-    right: 12px;
-    width: auto;
-    height: auto;
-    min-height: 0;
-    padding: 7px 14px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 4px;
-    /* 3D qalxma və yellənmə mobildə şəkilə dırmaşırdı — söndürülür */
-    transform: none;
-    animation: none;
-    box-shadow: 0 6px 18px rgba(163, 16, 79, 0.28);
-  }
-  /* Həbin içində yalnız faiz qalır — söz sıxışdırırdı */
-  .hero-badge-round em { display: none; }
-  .hero-badge-round b {
-    font-family: var(--sans);
-    font-size: 0.82rem;   /* ≈13px, oxunaqlı */
-    font-weight: 800;
-    letter-spacing: 0.01em;
-  }
-  .hero-badge-round b::before { content: '−'; margin-right: 1px; }
+  /* --- 2. Endirim nişanı mobildə göstərilmir (masaüstündə dairə qalır) --- */
+  .hero-badge-round { display: none; }
 
-  /* --- 3. Karusel şəkillərində adlar gizlədilir --- */
-  .showcase-price .name { display: none; }
-  .showcase-price {
-    justify-content: center;
-    padding: 9px 14px;
-  }
-  .showcase-price .prices { padding-left: 0; }
+  /* --- 3. Şəkillərin üstündəki lövhə tamamilə gizlənir:
+         nə ad, nə qiymət. Masaüstündə mərkəzi kartda qalır. --- */
+  .showcase-price { display: none; }
 
   /* --- 4. "Kataloqa qayıt" düyməsi --- */
   .back-link {
@@ -3884,4 +3856,33 @@ a.product-media {
      əvvəl 60px padding + 20px margin = 80px boş yer idi. */
   .intro-grid { padding: 14px 0 26px; }
   .intro-grid > .showcase { margin-top: 0; }
+}
+
+/* ============================================================
+   Hero bölməsinin üstündə iri brend nişanı — YALNIZ mobil
+   ============================================================
+   Masaüstündə görünmür ki, oradakı görünüş dəyişməsin. */
+.hero-brand { display: none; }
+
+@media (max-width: 900px) {
+  .hero-brand {
+    display: block;
+    /* Nişanın getdiyi yeri doldurur — yuxarıda boşluq qalmasın */
+    margin: 2px auto 14px;
+    text-align: center;
+  }
+  .hero-brand-logo {
+    display: block;
+    width: min(260px, 72vw);   /* başlıqdakı 150px-dən nəzərəçarpacaq iri */
+    height: auto;
+    margin: 0 auto;
+  }
+}
+
+/* Nişan gedəndən sonra səhnənin yuxarısında 132px boşluq qalırdı:
+   kartlar 257px-dir, səhnə isə 440px idi və onlar mərkəzə düşürdü.
+   Səhnəni kartların ölçüsünə yaxınlaşdırırıq. */
+@media (max-width: 900px) {
+  /* 268px-də noqtələr şəklin üstünə çıxırdı — 300px təhlükəsiz həddir */
+  .showcase-stage { height: 300px; }
 }
