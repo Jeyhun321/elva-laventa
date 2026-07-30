@@ -3870,3 +3870,18 @@ a.product-media {
   /* Kataloq düyməsi 2-ci sətrin solunda */
   .cat-btn { min-height: 46px; }
 }
+
+/* ============================================================
+   Ana səhifə mobildə: hero-nun MƏTN bloku gizlədilir
+   ============================================================
+   Nişan, başlıq, təsvir, iki düymə, sosial sübut və statistika —
+   hamısı .intro-copy içindədir, ona görə bir qayda kifayətdir.
+   Разметка toxunulmur: masaüstündə blok olduğu kimi qalır. */
+@media (max-width: 900px) {
+  .intro-copy { display: none; }
+
+  /* Blok gedəndən sonra yerində boşluq qalmasın:
+     əvvəl 60px padding + 20px margin = 80px boş yer idi. */
+  .intro-grid { padding: 14px 0 26px; }
+  .intro-grid > .showcase { margin-top: 0; }
+}
