@@ -160,14 +160,18 @@ export default function CatalogPage() {
             </button>
           ))}
         </div>
+        {/* Yalnız ikon: uzun söz çiplərin sürüşməsinə mane olurdu.
+            Mətn ekran oxuyucular üçün aria-label-də qalır. */}
         <button
           ref={filterBtnRef}
           className="filters-open-btn"
           onClick={() => setSheetOpen(true)}
           aria-expanded={sheetOpen}
+          aria-label={t('filters')}
+          title={t('filters')}
         >
           <IconSliders />
-          <span>{t('filters')}</span>
+          <span className="filters-open-text">{t('filters')}</span>
         </button>
       </div>
 

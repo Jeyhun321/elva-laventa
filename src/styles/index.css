@@ -3575,3 +3575,129 @@ a.product-media {
   /* Hesab menyusu mobildə hesaba yeganə giriş nöqtəsidir — toxunma sahəsi 44px */
   .user-menu > .header-icon { min-width: 44px; min-height: 44px; }
 }
+
+/* ============================================================
+   Mobil dizayn düzəlişləri (≤900px). Masaüstü toxunulmur.
+   ============================================================ */
+@media (max-width: 900px) {
+
+  /* --- 1. Ana səhifə: karusel yuxarı, mətn aşağı --- */
+  .intro-grid > .showcase { order: -1; }
+  .intro-grid > .intro-copy { order: 0; margin-top: 8px; }
+
+  /* --- 2. Endirim nişanı: iri dairə → səliqəli həb --- */
+  .hero-badge-round {
+    top: 10px;
+    right: 12px;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    padding: 7px 14px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    /* 3D qalxma və yellənmə mobildə şəkilə dırmaşırdı — söndürülür */
+    transform: none;
+    animation: none;
+    box-shadow: 0 6px 18px rgba(163, 16, 79, 0.28);
+  }
+  /* Həbin içində yalnız faiz qalır — söz sıxışdırırdı */
+  .hero-badge-round em { display: none; }
+  .hero-badge-round b {
+    font-family: var(--sans);
+    font-size: 0.82rem;   /* ≈13px, oxunaqlı */
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+  .hero-badge-round b::before { content: '−'; margin-right: 1px; }
+
+  /* --- 3. Karusel şəkillərində adlar gizlədilir --- */
+  .showcase-price .name { display: none; }
+  .showcase-price {
+    justify-content: center;
+    padding: 9px 14px;
+  }
+  .showcase-price .prices { padding-left: 0; }
+
+  /* --- 4. "Kataloqa qayıt" düyməsi --- */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 18px 10px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--plum);
+    font-size: 0.88rem;
+    font-weight: 700;
+    box-shadow: var(--shadow-sm);
+    transition: background 0.22s var(--ease), border-color 0.22s var(--ease);
+  }
+  .back-link::before {
+    content: '←';
+    font-size: 1.15rem;
+    line-height: 1;
+    font-weight: 700;
+  }
+  .back-link:hover,
+  .back-link:active {
+    background: var(--lavender-mist);
+    border-color: var(--lavender-light);
+  }
+
+  /* --- 5. Loqo: bir az iri, rahat toxunuş sahəsi --- */
+  .header .brand-logo {
+    flex: 0 0 134px;
+    height: 46px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .brand-logo-image {
+    width: 134px;
+    height: 46px;
+    object-fit: contain;
+  }
+  .header.scrolled .brand-logo { height: 46px; }
+
+  /* --- 6. Filtr düyməsi çiplərdən ayrılır --- */
+  .catalog-mobile-bar { gap: 0; }
+
+  .cat-chips {
+    flex: 1 1 auto;
+    min-width: 0;
+    /* Çiplər düymənin altından "çıxıb" gəlsin, dirənməsin */
+    padding-right: 10px;
+  }
+
+  .filters-open-btn {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    gap: 0;
+    margin-left: 10px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--white);
+    box-shadow: var(--shadow-sm);
+  }
+  /* Uzun söz çiplərin yerini yeyirdi — yalnız ikon qalır */
+  .filters-open-text { display: none; }
+  .filters-open-btn[aria-expanded='true'] {
+    background: var(--plum);
+    border-color: var(--plum);
+    color: #fff;
+  }
+
+  /* Sağdakı düymənin yanında çiplər yumşaq "əriyir" */
+  .cat-chips {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent 100%);
+  }
+}
