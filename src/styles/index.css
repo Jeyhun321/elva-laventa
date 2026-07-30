@@ -3109,3 +3109,290 @@ a.product-media {
   .checkout-summary { order: -1; }
   .checkout-form { order: 0; }
 }
+
+/* ============================================================
+   Aşağı tab paneli (yalnız mobil) + mobil kataloq
+   ============================================================ */
+
+/* --- Tab paneli --- */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 120;
+  display: none; /* masaüstündə gizli — aşağıdakı media onu açır */
+  background: rgba(255, 246, 250, 0.97);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  transform: translateY(0);
+  transition: transform 0.32s var(--ease);
+  will-change: transform;
+}
+.tabbar-hidden { transform: translateY(100%); }
+
+.tabbar-item {
+  flex: 1;
+  min-height: 56px;      /* toxunma sahəsi 44px-dən böyükdür */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--ink-soft);
+  transition: color 0.22s var(--ease);
+}
+.tabbar-item.active { color: var(--plum); }
+.tabbar-item:focus-visible { outline-offset: -3px; border-radius: 10px; }
+
+.tabbar-icon { position: relative; display: inline-flex; line-height: 0; }
+.tabbar-icon svg { transition: transform 0.28s var(--ease); }
+.tabbar-item.active .tabbar-icon svg { transform: translateY(-1px); }
+
+.tabbar-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.tabbar-badge {
+  position: absolute;
+  top: -6px;
+  right: -9px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--sale);
+  color: #fff;
+  font-size: 0.63rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Mobil kataloq paneli və filtr pərdəsi --- */
+.catalog-mobile-bar { display: none; }
+
+.cat-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.cat-chips::-webkit-scrollbar { display: none; }
+.cat-chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: background 0.22s var(--ease), color 0.22s var(--ease),
+    border-color 0.22s var(--ease);
+}
+.cat-chip.active {
+  background: var(--plum);
+  border-color: var(--plum);
+  color: #fff;
+}
+
+.filters-open-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--white);
+  color: var(--plum);
+  font-size: 0.9rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.filter-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  background: rgba(42, 22, 32, 0.42);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.22s var(--ease);
+}
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+.sheet-head,
+.sheet-foot,
+.sheet-only { display: none; }
+
+/* ============================================================
+   Mobil (≤900px)
+   ============================================================ */
+@media (max-width: 900px) {
+  .tabbar { display: flex; }
+
+  /* Tab paneli məzmunu və futeri örtməsin.
+     Panelin əsl hündürlüyü = 56px (element) + 1px (üst xətt) + safe-area.
+     Üstünə 8px hava əlavə edirik ki, futer panelə dirənməsin. */
+  body { padding-bottom: calc(65px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Səbət və sevimlilər aşağı panelə köçdü — başlıqdan çıxarılır.
+     Dil və hesab menyusu qalır, çünki tablarda yeri yoxdur. */
+  .header-actions .header-icon { display: none; }
+
+  /* Kataloq: çiplər + filtr düyməsi, yapışqan */
+  .catalog-mobile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 10px 0;
+    background: var(--bg);
+  }
+
+  /* Yan sütun → aşağıdan çıxan pərdə */
+  .catalog-layout { display: block; }
+  .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 150;
+    max-height: 86vh;
+    max-height: 86dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: block;
+    padding: 0 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    border-radius: 22px 22px 0 0;
+    background: var(--bg);
+    box-shadow: 0 -10px 40px rgba(42, 22, 32, 0.18);
+    transform: translateY(101%);
+    visibility: hidden;
+    /* visibility QƏSDƏN animasiya olunmur: keçid müddətində pərdə
+       toxunuşu udmasın və animasiya işləməsə belə dərhal görünsün. */
+    transition: transform 0.34s var(--ease);
+  }
+  .sidebar.sheet-open {
+    transform: translateY(0);
+    visibility: visible;
+  }
+
+  .sheet-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 0 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 16px;
+  }
+  .sheet-head h2 {
+    font-family: var(--serif);
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .sheet-close {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--plum);
+    background: var(--bg-alt);
+  }
+
+  .sheet-only { display: block; }
+  .sort-select.full select { width: 100%; }
+
+  .sheet-foot {
+    position: sticky;
+    bottom: 0;
+    display: block;
+    padding: 14px 0 4px;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    margin-top: 8px;
+  }
+  .sheet-foot .btn { width: 100%; }
+
+  /* Yuxarıdakı köhnə sıralama sətri mobil pərdəyə köçdü */
+  .catalog-toolbar { display: none; }
+}
+
+/* ============================================================
+   Dar ekran (≤640px)
+   ============================================================ */
+@media (max-width: 640px) {
+  /* Yan boşluqlar 32px → 16px: ekranın altıda biri qazanılır */
+  .container { padding: 0 16px; }
+
+  /* Məhsullar 1 → 2 sütun */
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .product-info { padding: 12px 12px 14px; gap: 7px; }
+  .product-name,
+  a.product-name { font-size: 1rem; line-height: 1.2; }
+  .price-block .new { font-size: 1rem; }
+  .product-brand { font-size: 0.68rem; }
+  .card-code { font-size: 0.66rem; }
+  .add-btn { width: 40px; height: 40px; }
+}
+
+/* Hərəkəti azaltma: panel və pərdə sıçrayışsız görünür */
+@media (prefers-reduced-motion: reduce) {
+  .tabbar,
+  .sidebar,
+  .filter-backdrop {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* --- Mobil başlıq: 3 sətir → 2 sətir (hədəf ≤120px) --- */
+@media (max-width: 900px) {
+  .header-inner {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 6px 0;
+    gap: 9px;
+  }
+  /* 1-ci sətir: loqo + "Kataloq" */
+  .header .brand-logo { flex: 0 0 118px; height: 44px; }
+  .brand-logo-image { width: 118px; height: 44px; }
+  .header.scrolled .brand-logo { height: 44px; }
+
+  /* 2-ci sətir: axtarış + dil (yan-yana, axtarış yeri paylaşır) */
+  .search { order: 2; flex: 1 1 190px; }
+  .header-actions { order: 3; flex-shrink: 0; }
+
+  /* Dil düymələri daha yığcam, amma toxunma sahəsi qorunur */
+  .lang-btn { padding: 8px 8px; font-size: 0.74rem; min-height: 36px; }
+}
+
+/* Toxunma sahələri 44px-dən kiçik qalmasın (mobil).
+   Seçicilər QƏSDƏN daha dəqiqdir — fayl sırasından asılı qalmasın. */
+@media (max-width: 900px) {
+  .header-actions .lang-switch .lang-btn { min-height: 44px; min-width: 44px; }
+  .sidebar .sheet-only .sort-select select { min-height: 44px; width: 100%; }
+}

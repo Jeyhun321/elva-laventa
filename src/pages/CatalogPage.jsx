@@ -1,8 +1,9 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import ProductCard from '../components/ProductCard.jsx'
+import { IconSliders, IconClose } from '../components/Icons.jsx'
 
 export default function CatalogPage() {
   const { t } = useI18n()
@@ -21,6 +22,10 @@ export default function CatalogPage() {
   const [minText, setMinText] = useState(String(bounds.min))
   const [maxText, setMaxText] = useState(String(bounds.max))
   const [onlySale, setOnlySale] = useState(saleParam === '1')
+  // Mobil filtr pərdəsi (bottom sheet)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const sheetRef = useRef(null)
+  const filterBtnRef = useRef(null)
 
   const applyMin = (n) => { setMinPrice(n); setMinText(String(n)) }
   const applyMax = (n) => { setMaxPrice(n); setMaxText(String(n)) }
@@ -108,6 +113,25 @@ export default function CatalogPage() {
     return sorted
   }, [cat, q, sort, minPrice, maxPrice, onlySale])
 
+  // Pərdə açıqkən: Esc bağlayır, fokus içəri keçir, arxa fon sürüşmür,
+  // bağlananda fokus düyməyə qayıdır.
+  useEffect(() => {
+    if (!sheetOpen) return undefined
+
+    const onKey = (e) => { if (e.key === 'Escape') setSheetOpen(false) }
+    document.addEventListener('keydown', onKey)
+
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    sheetRef.current?.focus()
+
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+      filterBtnRef.current?.focus()
+    }
+  }, [sheetOpen])
+
   const title = q
     ? `${t('search_results')}: “${q}”`
     : t(categories.find((c) => c.id === cat)?.label || categories[0].label)
@@ -121,8 +145,66 @@ export default function CatalogPage() {
         </span>
       </div>
 
+      {/* Mobil panel: kateqoriya çipləri + filtr düyməsi. Masaüstündə gizlidir. */}
+      <div className="catalog-mobile-bar">
+        <div className="cat-chips" role="tablist" aria-label={t('catalog')}>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              role="tab"
+              aria-selected={cat === c.id && !q}
+              className={`cat-chip${cat === c.id && !q ? ' active' : ''}`}
+              onClick={() => setCat(c.id)}
+            >
+              {t(c.label)}
+            </button>
+          ))}
+        </div>
+        <button
+          ref={filterBtnRef}
+          className="filters-open-btn"
+          onClick={() => setSheetOpen(true)}
+          aria-expanded={sheetOpen}
+        >
+          <IconSliders />
+          <span>{t('filters')}</span>
+        </button>
+      </div>
+
+      {sheetOpen && (
+        <div className="filter-backdrop" onClick={() => setSheetOpen(false)} />
+      )}
+
       <div className="catalog-layout">
-        <aside className="sidebar">
+        <aside
+          className={`sidebar${sheetOpen ? ' sheet-open' : ''}`}
+          ref={sheetRef}
+          tabIndex={-1}
+          role={sheetOpen ? 'dialog' : undefined}
+          aria-modal={sheetOpen ? 'true' : undefined}
+          aria-label={t('filters_and_sort')}
+        >
+          <div className="sheet-head">
+            <h2>{t('filters_and_sort')}</h2>
+            <button className="sheet-close" onClick={() => setSheetOpen(false)} aria-label={t('close')}>
+              <IconClose />
+            </button>
+          </div>
+
+          {/* Sıralama pərdənin içində — mobil paneli yükləməmək üçün */}
+          <div className="sidebar-block sheet-only">
+            <h3>{t('sort_by')}</h3>
+            <label className="sort-select full">
+              <select value={sort} onChange={(e) => setSort(e.target.value)}>
+                <option value="popular">{t('sort_popular')}</option>
+                <option value="price_asc">{t('sort_price_asc')}</option>
+                <option value="price_desc">{t('sort_price_desc')}</option>
+                <option value="rating">{t('sort_rating')}</option>
+                <option value="discount">{t('sort_discount')}</option>
+              </select>
+            </label>
+          </div>
+
           <div className="sidebar-block">
             <h3>{t('catalog')}</h3>
             <ul className="cat-list">
@@ -227,6 +309,14 @@ export default function CatalogPage() {
               }}
             >
               {t('reset')}
+            </button>
+          </div>
+
+          {/* Yalnız mobil pərdədə görünür — filtrlər onsuz da dərhal işləyir,
+              bu düymə sadəcə pərdəni bağlayır və nəticəni göstərir. */}
+          <div className="sheet-foot">
+            <button className="btn btn-primary full" onClick={() => setSheetOpen(false)}>
+              {t('apply')} · {visible.length} {t('items')}
             </button>
           </div>
         </aside>

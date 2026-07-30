@@ -183,6 +183,15 @@ export const ui = {
   sort_rating: { az: 'Reytinqə görə', ru: 'По рейтингу', en: 'By rating' },
   sort_discount: { az: 'Endirimə görə', ru: 'По скидке', en: 'By discount' },
   filters: { az: 'Filtrlər', ru: 'Фильтры', en: 'Filters' },
+  // Aşağı tab paneli + mobil filtr pərdəsi
+  menu: { az: 'Menyu', ru: 'Меню', en: 'Menu' },
+  apply: { az: 'Tətbiq et', ru: 'Применить', en: 'Apply' },
+  filters_and_sort: {
+    az: 'Filtrlər və sıralama',
+    ru: 'Фильтры и сортировка',
+    en: 'Filters and sorting',
+  },
+  close: { az: 'Bağla', ru: 'Закрыть', en: 'Close' },
   price_range: { az: 'Qiymət', ru: 'Цена', en: 'Price' },
   price_min: { az: 'Min', ru: 'Мин', en: 'Min' },
   price_max: { az: 'Maks', ru: 'Макс', en: 'Max' },

@@ -167,3 +167,32 @@ export const IconAccessory = (p) => (
     <path d="M8.5 8.5V6.6a3.5 3.5 0 0 1 7 0v1.9" />
   </svg>
 )
+
+// --- Aşağı tab paneli üçün ikonlar ---
+export const IconHome = (p) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M3.5 10.2 12 3.6l8.5 6.6" />
+    <path d="M5.6 9v10.4h12.8V9" />
+    <path d="M9.8 19.4v-5.2h4.4v5.2" />
+  </svg>
+)
+
+export const IconGrid = (p) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <rect x="3.6" y="3.6" width="7" height="7" rx="1.6" />
+    <rect x="13.4" y="3.6" width="7" height="7" rx="1.6" />
+    <rect x="3.6" y="13.4" width="7" height="7" rx="1.6" />
+    <rect x="13.4" y="13.4" width="7" height="7" rx="1.6" />
+  </svg>
+)
+
+export const IconSliders = (p) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+    <circle cx="16" cy="7" r="2.2" />
+    <circle cx="10" cy="17" r="2.2" />
+  </svg>
+)
