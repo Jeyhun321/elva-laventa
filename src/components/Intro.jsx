@@ -170,7 +170,8 @@ function ShowcaseCard({ product, slot }) {
     <>
       {hasDiscount && <span className="discount-badge">-{discountPercent(product)}%</span>}
       <div className="sc-photo">
-        <ProductImage product={{ ...product, name: t(product.name) }} />
+        {/* Mərkəzdəki şəkil ekranın ilk böyük şəklidir (LCP) — gecikmədən yüklənir */}
+        <ProductImage product={{ ...product, name: t(product.name) }} eager={slot === 'main'} />
       </div>
       <div className="showcase-price">
         <span className="name">{t(product.name)}</span>

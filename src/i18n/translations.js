@@ -192,6 +192,10 @@ export const ui = {
     en: 'Filters and sorting',
   },
   close: { az: 'Bağla', ru: 'Закрыть', en: 'Close' },
+  // Mobil alış paneli (məhsul səhifəsi)
+  added_to_cart: { az: 'Əlavə olundu', ru: 'Добавлено', en: 'Added' },
+  go_to_cart: { az: 'Səbətə keç', ru: 'В корзину', en: 'Go to cart' },
+  loading: { az: 'Yüklənir…', ru: 'Загрузка…', en: 'Loading…' },
   price_range: { az: 'Qiymət', ru: 'Цена', en: 'Price' },
   price_min: { az: 'Min', ru: 'Мин', en: 'Min' },
   price_max: { az: 'Maks', ru: 'Макс', en: 'Max' },

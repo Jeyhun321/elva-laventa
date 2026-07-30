@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
@@ -23,6 +23,8 @@ export default function ProductPage() {
   const [warn, setWarn] = useState(false)
   const [added, setAdded] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
+  const sizeFieldRef = useRef(null)
+  const touch = useRef(null)
 
   if (!product) {
     return (
@@ -49,6 +51,41 @@ export default function ProductPage() {
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 9)
 
+  // --- Şəkillər üzərində sürüşdürmə (swipe) ---
+  // Yalnız ÜFÜQİ jest şəkli dəyişir; şaquli hərəkət səhifənin sürüşməsinə mane olmur.
+  const SWIPE_MIN = 40
+
+  const onTouchStart = (e) => {
+    const p = e.touches[0]
+    touch.current = { x: p.clientX, y: p.clientY, horizontal: null }
+  }
+
+  const onTouchMove = (e) => {
+    if (!touch.current) return
+    const p = e.touches[0]
+    const dx = p.clientX - touch.current.x
+    const dy = p.clientY - touch.current.y
+    // İstiqamət bir dəfə təyin olunur ki, jest ortada "sıçramasın"
+    if (touch.current.horizontal === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      touch.current.horizontal = Math.abs(dx) > Math.abs(dy)
+    }
+  }
+
+  const onTouchEnd = (e) => {
+    const start = touch.current
+    touch.current = null
+    if (!start || !start.horizontal || gallery.length < 2) return
+    const dx = e.changedTouches[0].clientX - start.x
+    if (Math.abs(dx) < SWIPE_MIN) return
+    switchGalleryImage(dx < 0 ? 1 : -1)
+  }
+
+  // Ölçü seçilməyibsə, alış panelindən ölçü blokuna aparırıq
+  const focusSize = () => {
+    setWarn(true)
+    sizeFieldRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }
+
   // Qonaq da səbətə əlavə edə bilər — giriş yalnız sifarişin təsdiqindədir.
   const handleAdd = () => {
     if (needsSize && !size) {
@@ -57,7 +94,8 @@ export default function ProductPage() {
     }
     addToCart(product.id, size, 1)
     setAdded(true)
-    setTimeout(() => setAdded(false), 1500)
+    // 3 saniyə: alıcı "Səbətə keç" düyməsinə toxunmağa macal tapsın
+    setTimeout(() => setAdded(false), 3000)
   }
 
   const handleBuy = () => {
@@ -79,8 +117,13 @@ export default function ProductPage() {
 
       <div className="product-detail">
         <div className="product-gallery">
-          <div className="gallery-main">
-            <ProductImage product={{ ...product, image: mainImage, name: t(product.name) }} />
+          <div
+            className="gallery-main"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
+            <ProductImage product={{ ...product, image: mainImage, name: t(product.name) }} eager />
             {gallery.length > 1 && (
               <>
                 <button
@@ -137,15 +180,19 @@ export default function ProductPage() {
           {product.colors && (
             <div className="detail-field">
               <span className="field-label">{t('color')}</span>
+              {/* Rəng seçilmir — bu, sadəcə məhsulun çalarlarıdır.
+                  Nöqtə 30px görünür, ətrafındakı sahə 44px-dir (rahat toxunuş). */}
               <div className="color-swatches">
                 {product.colors.map((c, i) => (
-                  <span key={i} className="swatch" style={{ background: c }} title={c} />
+                  <span key={i} className="swatch-wrap">
+                    <span className="swatch" style={{ background: c }} title={c} />
+                  </span>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="detail-field">
+          <div className="detail-field" ref={sizeFieldRef}>
             <span className="field-label">
               {t('size')}{needsSize && <em className="req"> *</em>}
             </span>
@@ -211,13 +258,38 @@ export default function ProductPage() {
       {related.length > 0 && (
         <section className="related">
           <h2 className="section-title" style={{ fontSize: '1.8rem' }}>{t('related')}</h2>
-          <div className="product-grid">
+          {/* Mobildə bu şəbəkə üfüqi lentə çevrilir (CSS) — səhifə uzanmasın */}
+          <div className="product-grid related-grid">
             {related.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>
         </section>
       )}
+
+      {/* Yapışqan alış paneli — yalnız mobildə (CSS), tab panelinin ÜSTÜNDƏ */}
+      <div className="buy-bar">
+        <div className="buy-bar-info">
+          <span className="buy-bar-price">{product.price} ₼</span>
+          <span className="buy-bar-meta">
+            {size ? `${t('size')}: ${size}` : (needsSize ? t('choose_size_first') : t('size'))}
+          </span>
+        </div>
+
+        {added ? (
+          <div className="buy-bar-done">
+            <span className="buy-bar-added">{t('added_to_cart')} ✓</span>
+            <Link to="/cart" className="btn btn-primary buy-bar-btn">{t('go_to_cart')}</Link>
+          </div>
+        ) : (
+          <button
+            className="btn btn-primary buy-bar-btn"
+            onClick={needsSize && !size ? focusSize : handleAdd}
+          >
+            <IconBag /> {t('add_to_cart')}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

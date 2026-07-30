@@ -1,7 +1,10 @@
 import { useState } from 'react'
 
 // Şəkil yüklənməsə, məhsul adı ilə zərif bir placeholder göstərilir.
-export default function ProductImage({ product }) {
+// eager — yalnız ekranın İLK (LCP) şəkli üçün: gecikmədən yüklənsin.
+// Qeyd: React 18 camelCase `fetchPriority`-ni tanımır, ona görə atribut
+// kiçik hərflərlə (`fetchpriority`) yazılır.
+export default function ProductImage({ product, eager = false }) {
   const [failed, setFailed] = useState(false)
 
   const gradient = product.colors && product.colors.length
@@ -20,7 +23,9 @@ export default function ProductImage({ product }) {
     <img
       src={product.image}
       alt={product.name}
-      loading="lazy"
+      loading={eager ? 'eager' : 'lazy'}
+      fetchpriority={eager ? 'high' : undefined}
+      decoding={eager ? 'sync' : 'async'}
       onError={() => setFailed(true)}
     />
   )
