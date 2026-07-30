@@ -3247,8 +3247,10 @@ a.product-media {
   body { padding-bottom: calc(65px + env(safe-area-inset-bottom, 0px)); }
 
   /* Səbət və sevimlilər aşağı panelə köçdü — başlıqdan çıxarılır.
-     Dil və hesab menyusu qalır, çünki tablarda yeri yoxdur. */
-  .header-actions .header-icon { display: none; }
+     DİQQƏT: yalnız BİRBAŞA övladlar gizlədilir. Əks halda hesab
+     menyusunun düyməsi də (.user-menu > .header-icon) gizlənir və
+     mobil istifadəçi hesabına ümumiyyətlə girə bilmir. */
+  .header-actions > .header-icon { display: none; }
 
   /* Kataloq: çiplər + filtr düyməsi, yapışqan */
   .catalog-mobile-bar {
@@ -3374,7 +3376,9 @@ a.product-media {
   .header-inner {
     flex-wrap: wrap;
     height: auto;
-    padding: 6px 0;
+    /* YALNIZ şaquli boşluq: `padding: 6px 0` qısa yazılışı .container-in
+       yan boşluqlarını sıfırlayır və başlıq ekranın kənarına yapışırdı. */
+    padding-block: 6px;
     gap: 9px;
   }
   /* 1-ci sətir: loqo + "Kataloq" */
@@ -3522,4 +3526,52 @@ a.product-media {
 
 @media (prefers-reduced-motion: reduce) {
   .route-loading-dot { animation-duration: 1.6s; }
+}
+
+/* ============================================================
+   Hesab menyusu mobildə ekrandan kənara çıxmasın
+   ============================================================
+   Problem: dropdown kiçik düyməyə (.user-menu) bağlanırdı və
+   `right: 0` ilə 268px sola uzanıb ekrandan çıxırdı.
+   Həll: mobildə .user-menu-nun `position: relative`-i söndürülür,
+   beləliklə dropdown YAPIŞQAN BAŞLIĞA görə yerləşir və hər iki
+   kənardan 12px boşluqla ekrana tam sığır. */
+@media (max-width: 900px) {
+  .user-menu { position: static; }
+
+  .user-dropdown {
+    top: calc(100% + 8px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: calc(100vw - 24px);
+    /* Çox hesab olarsa, siyahı öz içində sürüşsün */
+    max-height: calc(100vh - 150px);
+    max-height: calc(100dvh - 150px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Uzun e-poçt qutudan çıxmasın — üç nöqtə ilə kəsilsin */
+.user-card span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+}
+.user-card { min-width: 0; }
+.user-card > div { min-width: 0; overflow: hidden; }
+
+/* Hesab düyməsi mobildə görünən kimi başlıq yenidən 3 sətrə keçirdi.
+   Axtarış daha çox sıxılsın ki, axtarış + dil + hesab BİR sətrə yerləşsin. */
+@media (max-width: 900px) {
+  .search { flex: 1 1 120px; min-width: 0; }
+  /* input-un öz min-width-i sıxılmağa imkan verməsə, axtarış düyməsi
+     .search-in overflow: hidden altında kəsilir */
+  .search input { min-width: 0; }
+  /* Hesab menyusu mobildə hesaba yeganə giriş nöqtəsidir — toxunma sahəsi 44px */
+  .user-menu > .header-icon { min-width: 44px; min-height: 44px; }
 }
