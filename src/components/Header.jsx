@@ -16,22 +16,10 @@ export default function Header() {
   const [query, setQuery] = useState('')
   const [catOpen, setCatOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  // Mobildə axtarış lupa ikonuna yığılır, tıklayanda tam enli panel açılır
-  const [searchOpen, setSearchOpen] = useState(false)
   // Mobildə dil üç düymə yerinə açılan siyahıdır (yer qazanmaq üçün)
   const [langOpen, setLangOpen] = useState(false)
   const catRef = useRef(null)
   const langRef = useRef(null)
-  const searchInputRef = useRef(null)
-
-  // Panel açılanda kursor dərhal sahəyə düşsün, Esc bağlasın
-  useEffect(() => {
-    if (!searchOpen) return undefined
-    searchInputRef.current?.focus()
-    const onKey = (e) => { if (e.key === 'Escape') setSearchOpen(false) }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [searchOpen])
 
   // Sürüşdürəndə başlıq bir az sıxılır və yüngül kölgə alır (yalnız görünüş)
   useEffect(() => {
@@ -63,8 +51,6 @@ export default function Header() {
     const q = query.trim()
     navigate(q ? `/catalog?q=${encodeURIComponent(q)}` : '/catalog')
     setCatOpen(false)
-    // Nəticə göstərildikdən sonra panel bağlanır (axtarış məntiqi dəyişmir)
-    setSearchOpen(false)
   }
 
   const goCategory = (id) => {
@@ -105,26 +91,8 @@ export default function Header() {
           )}
         </div>
 
-        {/* Yalnız mobildə görünən lupa düyməsi (CSS ilə) */}
-        <button
-          type="button"
-          className="search-toggle"
-          onClick={() => setSearchOpen((o) => !o)}
-          aria-expanded={searchOpen}
-          aria-controls="header-search"
-          aria-label={t('search_placeholder')}
-        >
-          {searchOpen ? <IconClose /> : <IconSearch />}
-        </button>
-
-        <form
-          id="header-search"
-          className={`search${searchOpen ? ' search-open' : ''}`}
-          onSubmit={submitSearch}
-          role="search"
-        >
+        <form className="search" onSubmit={submitSearch} role="search">
           <input
-            ref={searchInputRef}
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -133,15 +101,6 @@ export default function Header() {
           />
           <button type="submit" className="search-btn" aria-label={t('search_placeholder')}>
             <IconSearch />
-          </button>
-          {/* Paneli bağlayan düymə — yalnız mobil paneldə görünür */}
-          <button
-            type="button"
-            className="search-close"
-            onClick={() => setSearchOpen(false)}
-            aria-label={t('close')}
-          >
-            <IconClose />
           </button>
         </form>
 

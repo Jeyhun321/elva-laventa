@@ -3702,109 +3702,6 @@ a.product-media {
   }
 }
 
-/* ============================================================
-   Mobil axtarış: lupa ikonu + tam enli panel (≤900px)
-   ============================================================ */
-
-/* Masaüstündə lupa düyməsi və bağlama düyməsi yoxdur */
-.search-toggle,
-.search-close { display: none; }
-
-@media (max-width: 900px) {
-  .search-toggle {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    flex: 0 0 44px;
-    border-radius: 12px;
-    border: 1px solid var(--line);
-    background: var(--white);
-    color: var(--plum);
-    box-shadow: var(--shadow-sm);
-    transition: background 0.22s var(--ease), border-color 0.22s var(--ease),
-      color 0.22s var(--ease);
-  }
-  .search-toggle[aria-expanded='true'] {
-    background: var(--plum);
-    border-color: var(--plum);
-    color: #fff;
-  }
-
-  /* Axtarış sahəsi başlığın SƏTRİNDƏN çıxır — başlıq alçalır.
-     Açılanda başlığın altında tam enli zolaq kimi görünür. */
-  .search {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
-    z-index: 90;
-    order: 0;
-    flex: none;
-    width: auto;
-    margin: 0;
-    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
-    gap: 8px;
-    border-radius: 0;
-    border: none;
-    border-bottom: 1px solid var(--line);
-    background: rgba(255, 246, 250, 0.98);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 10px 24px rgba(42, 22, 32, 0.08);
-    overflow: visible;
-    /* Bağlı vəziyyət: görünmür və toxunuşu udmur.
-       DİQQƏT: transform ANİMASİYA OLUNMUR — panelin yeri animasiyanın
-       bitməsindən asılı olmamalıdır, yoxsa başlığın üstünə sürüşür. */
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.22s var(--ease);
-  }
-  .search.search-open {
-    visibility: visible;
-    opacity: 1;
-  }
-
-  .search input {
-    flex: 1 1 auto;
-    min-width: 0;
-    height: 46px;
-    padding: 0 14px;
-    border: 1.5px solid var(--line);
-    border-radius: 12px;
-    background: var(--white);
-    /* 16px — iOS fokusda səhifəni zumlamasın */
-    font-size: 16px;
-  }
-  .search:focus-within input {
-    border-color: var(--lavender);
-    box-shadow: 0 0 0 3px rgba(229, 57, 154, 0.14);
-  }
-
-  .search-btn {
-    flex: 0 0 46px;
-    width: 46px;
-    height: 46px;
-    align-self: auto;
-    border-radius: 12px;
-  }
-
-  .search-close {
-    display: grid;
-    place-items: center;
-    flex: 0 0 44px;
-    width: 44px;
-    height: 46px;
-    border-radius: 12px;
-    background: transparent;
-    color: var(--ink-soft);
-  }
-  .search-close:hover { color: var(--plum); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .search { transition: none !important; }
-}
-
 /* Axtarış sətirdən çıxdıqdan sonra 2-ci sətirdə boş hündürlük qalmışdı:
    dil keçidi 50px idi, düymələr isə 36px. 44px-ə yığırıq. */
 @media (max-width: 900px) {
@@ -3825,14 +3722,18 @@ a.product-media {
   .lang-switch { display: none; }
 
   /* --- Sətirlərin qurulması ---
-     1-ci sətir: [hesab + dil] .............. [loqo]
-     2-ci sətir: ..................... [Kataloq] [lupa] */
-  /* Solda: əvvəl hesab ikonu, sonra dil */
-  .header-actions { order: 1; gap: 8px; }
-  .header-actions .user-menu { order: -1; }
-  .header .brand-logo { order: 2; margin-left: auto; }
-  .cat-wrap { order: 3; margin-left: auto; }
-  .search-toggle { order: 4; }
+     1-ci sətir: [LOQO] ................. [AZ ▾] [hesab]
+     2-ci sətir: [Kataloq] [——— axtarış tam enli ———] */
+  .header .brand-logo { order: 1; }
+  .header-actions { order: 2; margin-left: auto; gap: 8px; }
+  /* Sağda: əvvəl dil, sonra hesab ikonu */
+  .header-actions .lang-select { order: 1; }
+  .header-actions .user-menu { order: 2; }
+
+  .cat-wrap { order: 3; margin-left: 0; }
+  /* Axtarış "Kataloq"-un YANINDA qalıb sətrin qalanını tutur.
+     flex-basis kiçikdir ki, öz sətrinə keçməsin. */
+  .search { order: 4; flex: 1 1 130px; min-width: 0; }
 
   /* --- Dil: açılan siyahı --- */
   .lang-select { display: block; position: relative; flex: 0 0 auto; }
@@ -3915,4 +3816,57 @@ a.product-media {
 @media (prefers-reduced-motion: reduce) {
   .lang-caret,
   .lang-menu { transition: none !important; animation: none !important; }
+}
+
+/* ============================================================
+   Mobil başlıq — son ölçülər (loqo iri, axtarış uzun sətir)
+   ============================================================ */
+@media (max-width: 900px) {
+  /* Loqo bir az iriləşdi */
+  .header .brand-logo { flex: 0 0 150px; height: 48px; }
+  .brand-logo-image { width: 150px; height: 48px; object-fit: contain; }
+  .header.scrolled .brand-logo { height: 48px; }
+
+  /* Axtarış: adi uzun sətir sahəsi (lupa yığımı ləğv edildi) */
+  .search {
+    position: static;
+    visibility: visible;
+    opacity: 1;
+    display: flex;
+    align-items: center;
+    height: 46px;
+    padding: 0;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    background: var(--white);
+    box-shadow: none;
+    overflow: hidden;
+    backdrop-filter: none;
+  }
+  .search input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    padding: 0 14px;
+    border: none;
+    border-radius: 0;
+    background: none;
+    /* 16px — iOS fokusda səhifəni zumlamasın */
+    font-size: 16px;
+  }
+  .search:focus-within {
+    border-color: var(--lavender);
+    box-shadow: 0 0 0 3px rgba(229, 57, 154, 0.14);
+  }
+  .search:focus-within input { box-shadow: none; }
+  .search-btn {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 100%;
+    align-self: stretch;
+    border-radius: 0;
+  }
+
+  /* Kataloq düyməsi 2-ci sətrin solunda */
+  .cat-btn { min-height: 46px; }
 }
