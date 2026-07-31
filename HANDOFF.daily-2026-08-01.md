@@ -41,3 +41,4 @@
 - **[03:33]** Локальная UI-проверка: 375px AZ/RU/EN — счётчик отсутствует, placeholder внутри input, при focus статичен, при вводе скрыт; RU rating не переполняется. 1280px — placeholder overlay выключен, 14 карточек, счётчика нет. Console errors: 0. Далее финальный build и deploy.
 - **[03:33]** Финальный `npm run build` и `git diff --check`: OK. Далее commit/push и production-check.
 - **[03:33]** Создан commit `b727ddf` (`Fix mobile search and favorite sync`); далее push в `main`, GitHub Pages и production-check.
+- **[03:33]** Commit дополнен handoff и отправлен как `e8fdcba`; GitHub Pages workflow `30673540932` завершился success. Production 375px: 14 карточек, счётчик отсутствует, placeholder анимируется внутри input, console errors 0.
