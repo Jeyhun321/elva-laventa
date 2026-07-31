@@ -3994,3 +3994,18 @@ a.product-media {
     padding-right: env(safe-area-inset-right, 0px);
   }
 }
+
+/* "E-poçt ilə daxil ol" — Google düyməsindən sonra ikinci yol */
+.auth-email-link {
+  display: block;
+  margin-top: 14px;
+  padding: 12px 8px;
+  min-height: 44px;
+  color: var(--plum);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 10px;
+  transition: background 0.18s var(--ease);
+}
+.auth-email-link:hover { background: var(--lavender-mist); }

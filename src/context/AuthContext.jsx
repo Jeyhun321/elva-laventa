@@ -183,7 +183,12 @@ const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = 
   return (
     <AuthContext.Provider
       value={{
-        user, profile, accounts: visibleAccounts, loading, isGoogleUser: isGoogleUser(user),
+        user, profile, accounts: visibleAccounts, loading,
+        // isSignedIn — HƏR hansı yolla daxil olmuş istifadəçi (Google və ya e-poçt).
+        // isGoogleUser — YALNIZ Google. Hazırda səbət/sevimlilər ona bağlıdır,
+        // ona görə 1-ci addımda mənası DƏYİŞMİR (2-ci addımda keçirilecek).
+        isSignedIn: Boolean(user),
+        isGoogleUser: isGoogleUser(user),
         loginWithGoogle, logout, signUp, signInWithPassword,
         sendPasswordReset, updatePassword, switchToSavedAccount,
       }}

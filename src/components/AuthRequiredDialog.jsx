@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconGoogle } from './Icons.jsx'
@@ -42,6 +43,15 @@ export default function AuthRequiredDialog({ open, onClose, returnTo = '', messa
           {busy ? '…' : t('continue_with_google')}
         </button>
         {error && <span className="user-err" role="alert">{error}</span>}
+
+        {/* Google-dan başqa yol: adi e-poçt ilə giriş/qeydiyyat */}
+        <Link
+          to={`/auth?next=${encodeURIComponent(returnTo || '/')}`}
+          className="auth-email-link"
+          onClick={onClose}
+        >
+          {t('sign_in_with_email')}
+        </Link>
       </section>
     </div>
   )

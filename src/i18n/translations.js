@@ -77,6 +77,26 @@ export const ui = {
     ru: 'Неверная почта или пароль',
     en: 'Wrong email or password',
   },
+  weak_password: {
+    az: 'Şifrə çox qısadır — ən azı 6 simvol olmalıdır',
+    ru: 'Пароль слишком короткий — минимум 6 символов',
+    en: 'Password is too short — at least 6 characters',
+  },
+  too_many_attempts: {
+    az: 'Çox cəhd oldu. Bir neçə dəqiqə gözləyin və yenidən yoxlayın.',
+    ru: 'Слишком много попыток. Подождите пару минут и попробуйте снова.',
+    en: 'Too many attempts. Wait a couple of minutes and try again.',
+  },
+  auth_failed_generic: {
+    az: 'Alınmadı. İnternet bağlantısını yoxlayın və yenidən cəhd edin.',
+    ru: 'Не получилось. Проверьте интернет и попробуйте ещё раз.',
+    en: 'Something went wrong. Check your connection and try again.',
+  },
+  sign_in_with_email: {
+    az: 'E-poçt ilə daxil ol',
+    ru: 'Войти по почте',
+    en: 'Sign in with email',
+  },
   email_taken: {
     az: 'Bu e-poçt artıq qeydiyyatdan keçib',
     ru: 'Эта почта уже зарегистрирована',

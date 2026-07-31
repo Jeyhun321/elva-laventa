@@ -30,6 +30,18 @@ export default function AuthPage() {
   const [touched, setTouched] = useState({})
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+
+  // Supabase-in ingiliscə texniki mətnini insan dilinə çevirir.
+  // Tanınmayan hal üçün də ingiliscə mətn göstərilmir — ümumi izah verilir.
+  const authErrorText = (e) => {
+    const m = String(e?.message || '')
+    if (/already registered|already been registered|user already/i.test(m)) return t('email_taken')
+    if (/email not confirmed/i.test(m)) return t('email_not_confirmed')
+    if (/invalid login credentials|invalid.*password/i.test(m)) return t('wrong_credentials')
+    if (/password.*(at least|should be|too short)|weak password/i.test(m)) return t('weak_password')
+    if (/rate limit|too many|after \d+ seconds/i.test(m)) return t('too_many_attempts')
+    return t('auth_failed_generic')
+  }
   const [confirmSent, setConfirmSent] = useState(false)
 
   // Artıq daxil olubsa, burada qalmağa ehtiyac yoxdur
@@ -68,11 +80,7 @@ export default function AuthPage() {
         navigate(nextPath, { replace: true })
       }
     } catch (e2) {
-      const m = String(e2.message || '')
-      if (/already registered|already been registered/i.test(m)) setErr(t('email_taken'))
-      else if (/email not confirmed/i.test(m)) setErr(t('email_not_confirmed'))
-      else if (/invalid login credentials/i.test(m)) setErr(t('wrong_credentials'))
-      else setErr(m)
+      setErr(authErrorText(e2))
     } finally {
       setBusy(false)
     }
@@ -88,7 +96,7 @@ export default function AuthPage() {
       await sendPasswordReset(f.email)
       setResetSent(true)
     } catch (e2) {
-      setErr(String(e2.message || ''))
+      setErr(authErrorText(e2))
     } finally {
       setBusy(false)
     }
