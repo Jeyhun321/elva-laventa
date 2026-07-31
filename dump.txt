@@ -1,0 +1,179 @@
+ELVA LAVENTA — ТЕХНИЧЕСКИЙ ОТЧЁТ ДЛЯ РЕДИЗАЙНА
+Интернет-магазин женской одежды. Дата: 2026-07-30.
+
+================================================================
+1. СТЕК
+================================================================
+Фреймворк:  React 18.3.1 (SPA) + Vite 5.4.8, ESM ("type": "module")
+Роутер:     react-router-dom 6.26.2
+Бэкенд:     @supabase/supabase-js 2.110.8 (Postgres, Frankfurt)
+
+Зависимости (prod, всё):
+  react 18.3.1 / react-dom 18.3.1 / react-router-dom 6.26.2 /
+  @supabase/supabase-js 2.110.8
+Dev: vite 5.4.8, @vitejs/plugin-react 4.3.1
+
+CSS-инструмент: ЧИСТЫЙ CSS, один файл — src/styles/index.css (~2700 строк).
+  Tailwind НЕТ. SCSS НЕТ. PostCSS-конфига НЕТ. CSS-модулей НЕТ.
+  Вся тема — CSS-переменные в :root.
+
+Анимационные / 3D библиотеки: НЕТ НИ ОДНОЙ.
+  Всё на чистых CSS transition/@keyframes (coverflow-карусель в героe,
+  Ken Burns на фото, marquee-бегущая строка, reveal-при-скролле).
+  Т.е. поле для Framer Motion / GSAP / Three.js полностью свободно.
+
+Деплой: GitHub Pages, BASE_PATH=/elva-laventa/, есть vercel.json.
+  Live: https://jeyhun321.github.io/elva-laventa/
+
+================================================================
+2. СТРУКТУРА (без node_modules/.git, до 2 уровней)
+================================================================
+/
+├── index.html            (подключение Google Fonts)
+├── package.json, vite.config.js, vercel.json
+├── README.md, PRODUCT.md, ARCHITECTURE_ALIGNMENT.md
+├── ЛОГИ.bat              (локальный просмотр логов)
+├── public/               favicon.svg, products/ (фото)
+├── supabase/             14 .sql (schema, seed, RPC, storage, логи, telegram)
+├── tools/                log-tail.mjs, README-logs.md
+└── src/
+    ├── App.jsx, main.jsx, config.js
+    ├── pages/       HomePage, CatalogPage, ProductPage, CartPage,
+    │                CheckoutPage, FavoritesPage, AuthPage,
+    │                ResetPasswordPage, AdminPage
+    ├── components/  Header, Footer, Intro(hero), Marquee, Promo,
+    │                ProductCard, ProductImage, Rating, UserMenu,
+    │                Icons, AuthRequiredDialog, SystemLogReporter,
+    │                SystemLogsPanel
+    ├── context/     CatalogContext, ShopContext, AuthContext
+    ├── lib/         supabase.js, orders.js, systemLogs.js
+    ├── data/        catalog.json (запасной), products.js, realProducts.js
+    ├── i18n/        I18nContext.jsx, translations.js
+    ├── admin/       db.js, colors.js, github.js
+    ├── assets/      elva-laventa-logo.svg
+    └── styles/      index.css   <-- ВЕСЬ ДИЗАЙН ЗДЕСЬ
+
+================================================================
+3. ПАЛИТРА И ШРИФТЫ  (src/styles/index.css, :root)
+================================================================
+ЦВЕТА (тёплый ivory + розовый бренд):
+  --bg              #faf6f3   тёплый ivory, основной фон
+  --bg-alt          #f3ebe6   вторичный фон
+  --ink             #2a1620   основной текст (почти чёрная ягода)
+  --ink-soft        #8a6270   вторичный текст
+  --plum            #a3104f   БРЕНДОВЫЙ тёмно-розовый (кнопки, акценты)
+  --lavender        #e5399a   яркий розовый акцент
+  --lavender-text   #a10f5b   тёмно-розовый для мелкого текста (AA)
+  --lavender-light  #f2c6d8
+  --lavender-mist   #f6e7ec   очень светлый фон чипов
+  --cream           #f1e7e0
+  --rose            #e5399a   (= lavender)
+  --gold            #c79a3e   звёзды рейтинга
+  --line            #e9ddd6   границы
+  --line-strong     #d8c8bf
+  --white           #ffffff
+  --sale            #b3124f   скидки/цены
+ВАЖНО: контраст проверен на AA/AAA — читаемость это жёсткое требование.
+
+ШРИФТЫ (Google Fonts, подключены в index.html):
+  --serif  'Cormorant Garamond' (400,500,600,700) — заголовки, бренд, цены
+  --sans   'Manrope' (300..700) — весь остальной текст
+
+ПРОЧИЕ ТОКЕНЫ:
+  --radius 14px / --radius-lg 22px / --maxw 1280px
+  --ease cubic-bezier(0.22, 1, 0.36, 1)
+  --shadow-sm/md/lg — мягкие тонированные тени rgba(42,22,32,...)
+
+================================================================
+4. СЕКЦИИ ГЛАВНОЙ (по порядку)  — src/pages/HomePage.jsx
+================================================================
+  1. Header            (sticky; лого, кнопка "Каталог"+выпадашка, поиск,
+                        переключатель языка, избранное, корзина, юзер-меню)
+  2. Hero / Intro      (бейдж-распродажа, крупный serif-заголовок с italic-
+                        акцентом, 2 CTA, блок статистики + coverflow-карусель
+                        товаров с автопрокруткой и точками)
+  3. Marquee           (бегущая строка-полоса преимуществ)
+  4. Popular products  (section#catalog-preview: eyebrow + заголовок +
+                        сетка 8 товаров по рейтингу + кнопка "Все товары")
+  5. Promo             (градиентный баннер-плашка с CTA)
+  6. Footer            (бренд+слоган, подписка на рассылку, 3 колонки
+                        ссылок: Магазин / Помощь / Контакты, соцсети, копирайт)
+
+================================================================
+5. ЛОГИКА — НЕ ЛОМАТЬ ПРИ РЕДИЗАЙНЕ
+================================================================
+Товары НЕ в массиве в коде: грузятся из Supabase (таблицы products,
+categories) через src/context/CatalogContext.jsx; при сбое повторный
+анонимный запрос, и лишь потом запасной src/data/catalog.json.
+Корзина и избранное — src/context/ShopContext.jsx: хранятся в localStorage
+для гостя и синхронизируются в Supabase (customer_cart_items,
+customer_favorites) для вошедшего; гостя на оформлении останавливает
+AuthRequiredDialog. Заказ идёт не с ценами из браузера, а через RPC
+place_order (src/lib/orders.js) — цена берётся на сервере, затем уходит
+уведомление в Telegram. Вход/Google/аккаунты — src/context/AuthContext.jsx,
+языки (az/ru/en) — src/i18n/. Ошибки пишутся в system_logs (src/lib/systemLogs.js).
+
+МАРШРУТЫ (src/App.jsx): / , /catalog , /product/:id , /cart , /checkout ,
+/favorites , /auth , /reset , /admin , * -> HomePage.
+
+ПРАВИЛА:
+  - Тексты только через t('ключ') из src/i18n/translations.js — НЕ хардкодить.
+  - Классы в JSX завязаны на index.css; переименовывать парами.
+  - Логику контекстов и orders.js не трогать, это только оформление.
+
+================================================================
+6. ТОВАРЫ (живые данные из БД, 15 шт; цены в AZN / ₼)
+================================================================
+  2001  Çiçəkli Maxi Don ................... 59
+  2002  Qırmızı Ürəkli Maxi Don ............ 49
+  2003  Çəhrayı Ürəkli Maxi Don ............ 49
+  2004  Qəhvəyi Çiçəkli Don ................ 55
+  2005  Narıncı Kətan Don .................. 65
+  2006  Bej Kətan Köynək Donu .............. 65
+  2007  Mavi Kətan Köynək Donu ............. 65
+  2008  Boz Kətan Don ...................... 65
+  2009  Bordo Kətan Don .................... 65
+  2010  Duman Boz Kətan Don ................ 65
+  2011  Qəhvəyi Kətan Köynək Donu .......... 65
+  2012  Parlaq Narıncı Kətan Don ........... 65
+  2013  Yaşıl Kətan Don .................... 65
+  2014  Zeytun Kətan Köynək Donu ........... 65
+  1034  "уууууу" ........................... 1223   <-- ТЕСТОВЫЙ МУСОР, удалить
+Все товары сейчас в категории "donlar" (платья). Скидок (old_price) нет,
+хотя вёрстка старой цены и бейджа "-N%" готова.
+
+КАТЕГОРИИ (7): donlar=Платья, bluzalar=Блузки, etekler=Юбки,
+salvarlar=Брюки, ust-geyim=Верхняя одежда, trikotaj=Трикотаж,
+aksesuarlar=Аксессуары.  (6 из 7 пока пустые)
+
+================================================================
+7. МЕНЮ / НАВИГАЦИЯ
+================================================================
+ШАПКА (src/components/Header.jsx):
+  - Логотип -> /
+  - "Каталог" (кнопка с выпадающим списком всех 7 категорий -> /catalog?cat=)
+  - Строка поиска (по названию, бренду и коду товара)
+  - Переключатель языка AZ / RU / EN
+  - Избранное -> /favorites
+  - Корзина -> /cart (со счётчиком)
+  - Юзер-меню (вход через Google, переключение аккаунтов)
+  Горизонтального меню-ссылок НЕТ (старые .nav-links/.navbar в CSS — мёртвый код).
+
+ПОДВАЛ (src/components/Footer.jsx), 3 колонки:
+  Магазин:  Новинки, Каталог, Верхняя одежда, Распродажа
+  Помощь:   Доставка, Возврат, Таблица размеров, FAQ
+  Контакты: контактные данные + соцсети
+  + форма подписки на рассылку, копирайт
+
+================================================================
+ЗАМЕТКИ ДЛЯ РЕДИЗАЙНЕРА
+================================================================
+- Редизайн уже начат: готовы токены/типографика/кнопки/карточки (шаг 1)
+  и герой (шаг 2). Направление — premium editorial fashion, тёплый ivory
+  + розовый бренд. Следующими шли marquee и promo.
+- Подход: CSS-first, логику не трогать.
+- Фото товаров в БД лежат с префиксом /elva-laventa/, поэтому на localhost
+  они не грузятся (показывается заглушка), на живом сайте — нормально.
+  Это НЕ баг, дизайн смотреть на живом сайте.
+- Мобильные брейкпоинты в index.css: 900px, 760px, 640px.
+- Учтены prefers-reduced-motion и :focus-visible — сохранить при правках.
