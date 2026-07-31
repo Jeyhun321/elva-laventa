@@ -6,10 +6,13 @@ export const IconSearch = (p) => (
   </svg>
 )
 
+// Ürək: x=12 oxuna görə TAM simmetrikdir (hər nöqtənin güzgü cütü var),
+// ona görə köhnə variantdakı kimi bir küncdən "ayaq" çıxmır.
+// Boş hal — yalnız kontur; dolu hal CSS-dən `fill: currentColor` alır.
 export const IconHeart = (p) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>
-    <path d="M12 20s-7-4.35-9.5-8.5C1 8.5 2.5 5.5 5.5 5.5c2 0 3.2 1.2 3.5 2 .3-.8 1.5-2 3.5-2 3 0 4.5 3 3 6C19 15.65 12 20 12 20Z" />
+    <path d="M12 20.6C8.5 17.6 3.5 13.6 3.5 9.4C3.5 6.6 5.6 4.6 8 4.6C9.8 4.6 11.3 5.7 12 7.2C12.7 5.7 14.2 4.6 16 4.6C18.4 4.6 20.5 6.6 20.5 9.4C20.5 13.6 15.5 17.6 12 20.6Z" />
   </svg>
 )
 

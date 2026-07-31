@@ -917,8 +917,9 @@ ul {
   position: absolute;
   bottom: 12px;
   right: 12px;
-  width: 38px;
-  height: 38px;
+  /* Toxunma sahəsi 44px — barmaqla rahat düşsün */
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
   display: grid;
@@ -1752,10 +1753,12 @@ a.product-name:hover {
   color: var(--lavender-text);
 }
 .product-fav.active {
-  color: var(--sale);
+  color: var(--plum);
   opacity: 1;
   transform: none;
 }
+/* Dolu hal: ürək brend rəngi ilə doldurulur (boş halda yalnız kontur) */
+.product-fav.active svg { fill: currentColor; }
 a.product-media {
   display: block;
 }
@@ -2206,7 +2209,8 @@ a.product-media {
   transition: all 0.18s ease;
 }
 .icon-square:hover { border-color: var(--lavender); }
-.icon-square.active { color: var(--sale); border-color: var(--sale); background: var(--lavender-mist); }
+.icon-square.active { color: var(--plum); border-color: var(--plum); background: var(--lavender-mist); }
+.icon-square.active svg { fill: currentColor; }
 .delivery-note {
   margin-top: 22px;
   padding: 14px 16px;
