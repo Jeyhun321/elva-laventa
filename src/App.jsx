@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import TabBar from './components/TabBar.jsx'
+import ShopAuthGate from './components/ShopAuthGate.jsx'
 import SystemLogReporter from './components/SystemLogReporter.jsx'
 import { useI18n } from './i18n/I18nContext.jsx'
 
@@ -64,6 +65,7 @@ export default function App() {
       </main>
       <Footer />
       <TabBar />
+      <ShopAuthGate />
     </>
   )
 }

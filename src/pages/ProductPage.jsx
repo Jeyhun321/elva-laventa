@@ -23,7 +23,6 @@ export default function ProductPage() {
   const [warn, setWarn] = useState(false)
   const [added, setAdded] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
-  const sizeFieldRef = useRef(null)
   const touch = useRef(null)
 
   if (!product) {
@@ -80,21 +79,16 @@ export default function ProductPage() {
     switchGalleryImage(dx < 0 ? 1 : -1)
   }
 
-  // Ölçü seçilməyibsə, alış panelindən ölçü blokuna aparırıq
-  const focusSize = () => {
-    setWarn(true)
-    sizeFieldRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }
-
-  // Qonaq da səbətə əlavə edə bilər — giriş yalnız sifarişin təsdiqindədir.
+  // Səbətə əlavə: giriş yoxlaması ShopContext-in içindədir (tək nöqtə).
+  // Girişsiz alıcıda addToCart false qaytarır və "daxil olun" pəncərəsi açılır.
   const handleAdd = () => {
     if (needsSize && !size) {
       setWarn(true)
       return
     }
-    addToCart(product.id, size, 1)
+    // Girişsizdirsə, false qayıdır — "səbətdədir ✓" yazmaq olmaz
+    if (!addToCart(product.id, size, 1)) return
     setAdded(true)
-    // 3 saniyə: alıcı "Səbətə keç" düyməsinə toxunmağa macal tapsın
     setTimeout(() => setAdded(false), 3000)
   }
 
@@ -103,7 +97,8 @@ export default function ProductPage() {
       setWarn(true)
       return
     }
-    addToCart(product.id, size, 1)
+    // Əlavə olunmayıbsa, səbətə keçmirik
+    if (!addToCart(product.id, size, 1)) return
     navigate('/cart')
   }
 
@@ -192,7 +187,7 @@ export default function ProductPage() {
             </div>
           )}
 
-          <div className="detail-field" ref={sizeFieldRef}>
+          <div className="detail-field">
             <span className="field-label">
               {t('size')}{needsSize && <em className="req"> *</em>}
             </span>
@@ -267,29 +262,6 @@ export default function ProductPage() {
         </section>
       )}
 
-      {/* Yapışqan alış paneli — yalnız mobildə (CSS), tab panelinin ÜSTÜNDƏ */}
-      <div className="buy-bar">
-        <div className="buy-bar-info">
-          <span className="buy-bar-price">{product.price} ₼</span>
-          <span className="buy-bar-meta">
-            {size ? `${t('size')}: ${size}` : (needsSize ? t('choose_size_first') : t('size'))}
-          </span>
-        </div>
-
-        {added ? (
-          <div className="buy-bar-done">
-            <span className="buy-bar-added">{t('added_to_cart')} ✓</span>
-            <Link to="/cart" className="btn btn-primary buy-bar-btn">{t('go_to_cart')}</Link>
-          </div>
-        ) : (
-          <button
-            className="btn btn-primary buy-bar-btn"
-            onClick={needsSize && !size ? focusSize : handleAdd}
-          >
-            <IconBag /> {t('add_to_cart')}
-          </button>
-        )}
-      </div>
     </div>
   )
 }

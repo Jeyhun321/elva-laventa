@@ -17,7 +17,8 @@ export default function ProductCard({ product, showRating = true }) {
   const fav = isFavorite(product.id)
   const tiltRef = useTilt({ max: 3, lift: -6 })
 
-  // Qonaq da səbətə əlavə edə bilər — giriş yalnız sifarişin təsdiqindədir.
+  // Giriş yoxlaması ShopContext-in içindədir (tək nöqtə): girişsiz alıcıda
+  // addToCart/toggleFavorite false qaytarır və "daxil olun" pəncərəsi açılır.
   const quickAdd = (e) => {
     e.preventDefault()
     e.stopPropagation()

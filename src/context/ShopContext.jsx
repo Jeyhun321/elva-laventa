@@ -9,8 +9,9 @@ const ShopContext = createContext(null)
 const CART_KEY_PREFIX = 'elva_cart:'
 const FAV_KEY_PREFIX = 'elva_favorites:'
 
-// Qonaq (girişsiz) alıcı da səbətdən istifadə edə bilər. Onun səbəti
-// yalnız brauzerdə saxlanılır; giriş edəndə hesabın səbətinə birləşdirilir.
+// Səbət və sevimlilər yalnız giriş etmiş alıcı üçündür.
+// "guest" açarı köhnə versiyadan qalan səbətlər üçün saxlanılır:
+// alıcı giriş edəndə onlar hesabın səbətinə birləşdirilir və silinir.
 const GUEST_ID = 'guest'
 
 const accountKey = (prefix, accountId) => `${prefix}${accountId}`
@@ -74,6 +75,11 @@ export function ShopProvider({ children }) {
   const [cart, setCart] = useState([])
   const [favorites, setFavorites] = useState([])
   const [loadedAccountId, setLoadedAccountId] = useState(null)
+  // Qonaq nəyəsə toxunanda "daxil olun" pəncərəsini açan siqnal.
+  // Bir yerdə saxlanılır ki, hansı düymə basılmasından asılı olmayaraq
+  // eyni pəncərə görünsün.
+  const [authPrompt, setAuthPrompt] = useState(null) // null | 'cart' | 'favorite'
+  const closeAuthPrompt = useCallback(() => setAuthPrompt(null), [])
 
   // Girişsiz alıcı üçün "guest" açarı istifadə olunur — səbəti yenə də yadda qalır.
   const storageId = accountId || GUEST_ID
@@ -91,11 +97,12 @@ export function ShopProvider({ children }) {
 
     if (loading) return undefined
 
-    // Qonaq: səbət yalnız brauzerdən oxunur, Supabase-ə heç nə getmir.
+    // Girişsiz alıcının səbəti YOXDUR — hər şey boşdur.
+    // (Köhnə "guest" açarı varsa, giriş anında hesaba birləşdiriləcək.)
     if (!accountId) {
-      setCart(normaliseCart(load(accountKey(CART_KEY_PREFIX, GUEST_ID), [])))
-      setFavorites(normaliseFavorites(load(accountKey(FAV_KEY_PREFIX, GUEST_ID), [])))
-      setLoadedAccountId(GUEST_ID)
+      setCart([])
+      setFavorites([])
+      setLoadedAccountId(null)
       return undefined
     }
 
@@ -195,18 +202,21 @@ export function ShopProvider({ children }) {
     return () => { cancelled = true }
   }, [accountId, cacheCart, cacheFavorites, loading])
 
-  // Qonaq da səbətdən istifadə edə bilər. Girişli alıcı üçün əvvəlki kimi
-  // sinxronizasiyanın bitməsini gözləyirik ki, yerli və uzaq səbət toqquşmasın.
-  const canChangeShop = loading
-    ? false
-    : accountId
-      ? loadedAccountId === accountId
-      : loadedAccountId === GUEST_ID
+  // Səbəti yalnız GİRİŞ ETMİŞ alıcı dəyişə bilər.
+  // Həm də sinxronizasiya bitməlidir ki, yerli və uzaq səbət toqquşmasın.
+  const canChangeShop = Boolean(!loading && accountId && loadedAccountId === accountId)
 
   // Supabase-ə yalnız girişli alıcı üçün yazırıq (qonaqda user_id yoxdur).
   const syncsToDatabase = Boolean(supabase && accountId)
 
   const addToCart = useCallback((id, size = null, qty = 1) => {
+    // TƏK YOXLAMA NÖQTƏSİ: girişsiz alıcı buradan keçə bilmir.
+    // Hansı düymə basılırsa basılsın (kart, məhsul səhifəsi, "indi al"),
+    // hamısı bu funksiyaya gəlir — deməli yan yol yoxdur.
+    if (!isGoogleUser) {
+      setAuthPrompt('cart')
+      return false
+    }
     if (!canChangeShop) return false
     const productId = Number(id)
     const amount = Math.max(1, Math.min(20, Number(qty) || 1))
@@ -231,7 +241,7 @@ export function ShopProvider({ children }) {
       }, { onConflict: 'user_id,product_id,size' })
     }
     return true
-  }, [accountId, cacheCart, canChangeShop, cart])
+  }, [accountId, cacheCart, canChangeShop, cart, isGoogleUser])
 
   const removeFromCart = useCallback((id, size = null) => {
     if (!canChangeShop) return false
@@ -280,6 +290,11 @@ export function ShopProvider({ children }) {
   }, [accountId, cacheCart, canChangeShop])
 
   const toggleFavorite = useCallback((id) => {
+    // TƏK YOXLAMA NÖQTƏSİ — sevimlilər üçün
+    if (!isGoogleUser) {
+      setAuthPrompt('favorite')
+      return false
+    }
     if (!canChangeShop) return false
     const productId = Number(id)
     const isNowFavorite = !favorites.includes(productId)
@@ -303,7 +318,7 @@ export function ShopProvider({ children }) {
       }
     }
     return true
-  }, [accountId, cacheFavorites, canChangeShop, favorites])
+  }, [accountId, cacheFavorites, canChangeShop, favorites, isGoogleUser])
 
   const isFavorite = useCallback((id) => favorites.includes(Number(id)), [favorites])
   const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.qty, 0), [cart])
@@ -320,8 +335,11 @@ export function ShopProvider({ children }) {
       isFavorite,
       cartCount,
       favCount: favorites.length,
-      // Artıq qonaq da alış-veriş edə bilər; giriş yalnız sifarişin təsdiqindədir.
-      canShop: !loading,
+      // Alış-veriş yalnız giriş etmiş alıcı üçündür
+      canShop: Boolean(!loading && isGoogleUser),
+      // Girişsiz cəhd olanda pəncərəni açmaq üçün
+      authPrompt,
+      closeAuthPrompt,
     }}>
       {children}
     </ShopContext.Provider>

@@ -3446,62 +3446,9 @@ a.product-media {
    şaquli sürüşmə isə səhifəyə qalsın */
 .gallery-main { touch-action: pan-y; }
 
-/* Yapışqan alış paneli — masaüstündə gizli */
-.buy-bar { display: none; }
 
 @media (max-width: 900px) {
-  .buy-bar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    /* Tab panelinin ÜSTÜNDƏ dayanır */
-    bottom: calc(65px + env(safe-area-inset-bottom, 0px));
-    z-index: 110;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    background: rgba(255, 246, 250, 0.97);
-    backdrop-filter: blur(14px);
-    border-top: 1px solid var(--line);
-    box-shadow: 0 -6px 24px rgba(42, 22, 32, 0.10);
-  }
 
-  .buy-bar-info { display: grid; gap: 2px; min-width: 0; }
-  .buy-bar-price {
-    font-family: var(--serif);
-    font-size: 1.45rem;
-    font-weight: 600;
-    color: var(--plum);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  .buy-bar-meta {
-    font-size: 0.74rem;
-    color: var(--ink-soft);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .buy-bar-btn {
-    margin-left: auto;
-    flex-shrink: 0;
-    min-height: 48px;
-    padding: 13px 22px;
-  }
-
-  .buy-bar-done { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-  .buy-bar-added {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--plum);
-    white-space: nowrap;
-  }
-  .buy-bar-done .buy-bar-btn { margin-left: 0; padding: 13px 18px; }
-
-  /* Səhifənin sonu panelin altında qalmasın */
-  .product-page { padding-bottom: 84px; }
 
   /* "Oxşar məhsullar": şəbəkə → üfüqi lent, səhifə uzanmasın */
   .related-grid {

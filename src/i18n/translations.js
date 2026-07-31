@@ -249,7 +249,8 @@ export const ui = {
     ru: '1–3 дня · бесплатно от 100 ₼',
     en: '1–3 days · free over 100 ₼',
   },
-  back_to_catalog: { az: '← Kataloqa qayıt', ru: '← Назад в каталог', en: '← Back to catalog' },
+  // Ox mətndə DEYİL, CSS-də (.back-link::before) — yoxsa iki ox görünür
+  back_to_catalog: { az: 'Kataloqa qayıt', ru: 'Назад в каталог', en: 'Back to catalog' },
   related: { az: 'Oxşar məhsullar', ru: 'Похожие товары', en: 'Related products' },
   choose_size_first: {
     az: 'Zəhmət olmasa ölçü seçin',
@@ -262,9 +263,9 @@ export const ui = {
     en: 'Open the product page to choose a size',
   },
   google_auth_required: {
-    az: 'Sifarişi təsdiqləmək üçün Google ilə daxil olun.',
-    ru: 'Чтобы подтвердить заказ, войдите через Google.',
-    en: 'Sign in with Google to confirm your order.',
+    az: 'Məhsulu səbətə əlavə etmək üçün Google ilə daxil olun.',
+    ru: 'Чтобы добавить товар в корзину, войдите через Google.',
+    en: 'Sign in with Google to add items to your cart.',
   },
   // Səbət artıq girişsiz işləyir — giriş yalnız sifarişin təsdiqindədir
   checkout_auth_required: {
@@ -396,7 +397,8 @@ export const ui = {
     ru: 'WhatsApp откроется с готовым сообщением — вам останется нажать «Отправить». После получения заказа мы свяжемся с вами.',
     en: 'WhatsApp opens with the message ready — just press “Send”. We will contact you once we receive the order.',
   },
-  back_to_cart: { az: '← Səbətə qayıt', ru: '← Назад в корзину', en: '← Back to cart' },
+  // Bu da .back-link sinfindədir — ox CSS-dən gəlir, mətndə olmamalıdır
+  back_to_cart: { az: 'Səbətə qayıt', ru: 'Назад в корзину', en: 'Back to cart' },
   remember_me: {
     az: 'Məlumatlarımı yadda saxla',
     ru: 'Запомнить мои данные',
