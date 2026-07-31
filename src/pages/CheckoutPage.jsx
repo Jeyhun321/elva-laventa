@@ -45,7 +45,7 @@ export const normalizeWhatsApp = (raw) => {
 export default function CheckoutPage() {
   const { t } = useI18n()
   const { getProduct, loading: catalogLoading } = useCatalog()
-  const { user, profile, isGoogleUser, loading } = useAuth()
+  const { user, profile, isSignedIn, loading } = useAuth()
   const { cart, clearCart } = useShop()
   const navigate = useNavigate()
   const formRef = useRef(null)
@@ -123,7 +123,7 @@ export default function CheckoutPage() {
 
     // Sifarişin TƏSDİQİ üçün giriş tələb olunur (place_order auth.uid() yazır).
     // Doldurulmuş məlumatları saxlayırıq ki, girişdən qayıdanda forma boş qalmasın.
-    if (!isGoogleUser) {
+    if (!isSignedIn) {
       try {
         localStorage.setItem(BUYER_KEY, JSON.stringify(buyer))
       } catch {
@@ -284,7 +284,7 @@ export default function CheckoutPage() {
           <button type="submit" className="btn btn-primary btn-lg full" disabled={busy}>
             {busy ? t('order_sending') : t('place_order')}
           </button>
-          {!loading && !isGoogleUser && (
+          {!loading && !isSignedIn && (
             <p className="wa-explain">{t('checkout_auth_required')}</p>
           )}
           <p className="wa-explain">{t('order_explain')}</p>

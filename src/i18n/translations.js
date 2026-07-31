@@ -373,10 +373,11 @@ export const ui = {
     ru: 'Не удалось отправить заказ. Попробуйте ещё раз.',
     en: 'Could not send the order. Please try again.',
   },
+  // Giriş artıq yalnız Google deyil — e-poçt da var
   order_auth_required: {
-    az: 'Sifariş üçün Google hesabınızla daxil olun.',
-    ru: 'Для оформления заказа войдите через Google.',
-    en: 'Sign in with Google to place an order.',
+    az: 'Sifariş üçün hesabınıza daxil olun.',
+    ru: 'Для оформления заказа войдите в аккаунт.',
+    en: 'Sign in to place an order.',
   },
   order_cart_empty: {
     az: 'Səbət boşdur. Əvvəl məhsul əlavə edin.',

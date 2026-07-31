@@ -1,14 +1,8 @@
 import { supabase } from './supabase.js'
 import { logSystemEvent } from './systemLogs.js'
 
-const isGoogleUser = (user) => {
-  const providers = [
-    user?.app_metadata?.provider,
-    ...(user?.identities || []).map((identity) => identity?.provider),
-  ].filter(Boolean)
-
-  return providers.includes('google')
-}
+// Sifariş üçün GİRİŞ kifayətdir — Google, ya e-poçt, fərqi yoxdur.
+// place_order bazada auth.uid() yazır, deməli sessiya mütləqdir.
 
 // ============================================================
 //  Sifarişlər — bazaya yazılır, WhatsApp-a yönləndirmə yoxdur
@@ -18,7 +12,7 @@ export const createOrder = async ({ buyer, lines, email = null }) => {
   if (!supabase) throw new Error('NO_DB')
 
   const { data: authData, error: authError } = await supabase.auth.getUser()
-  if (authError || !isGoogleUser(authData?.user)) throw new Error('GOOGLE_AUTH_REQUIRED')
+  if (authError || !authData?.user) throw new Error('AUTH_REQUIRED')
 
   // Brauzer yalnız id, ölçü və sayı göndərir — qiyməti baza özü qoyur
   const items = lines.map(({ item, product }) => ({
