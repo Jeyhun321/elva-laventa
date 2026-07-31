@@ -8,7 +8,7 @@ import { IconHeart, IconBag, IconStar, IconArrow } from '../components/Icons.jsx
 import ProductImage from '../components/ProductImage.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Rating from '../components/Rating.jsx'
-import { REAL_PRODUCT_GALLERIES } from '../data/realProducts.js'
+import { galleryForImage } from '../data/realProducts.js'
 
 export default function ProductPage() {
   const { id } = useParams()
@@ -36,14 +36,13 @@ export default function ProductPage() {
 
   const onSale = Boolean(product.oldPrice)
   const savedImages = product.images?.length ? product.images : (product.image ? [product.image] : [])
-  // Kod üzrə hazır qalereya (realProducts.js) YALNIZ variantı olmayan
-  // məhsullar üçündür: eyni kodlu rənglərdə o, bütün rənglərə EYNİ şəkilləri
-  // verərdi (narıncı don bej şəkilləri göstərirdi).
-  const hasVariants = (product.variants?.length || 0) > 1
-  const codeGallery = hasVariants ? [] : (REAL_PRODUCT_GALLERIES[product.code] || [])
+  // Qalereya məhsulun ÖZ şəklinin qovluğundan qurulur (linen-01, linen-02...).
+  // Koda görə axtarmaq olmaz: rəng variantlarında kod ortaqdır və narıncı don
+  // bej şəkillərini göstərərdi. Qovluq isə hər rəngdə fərqlidir.
+  const folderGallery = galleryForImage(savedImages[0] || product.image)
   const gallery = savedImages.length > 1
     ? savedImages
-    : (codeGallery.length ? codeGallery : savedImages)
+    : (folderGallery.length ? folderGallery : savedImages)
   const mainImage = selectedImage || gallery[0] || product.image
   const switchGalleryImage = (direction) => {
     const currentIndex = Math.max(0, gallery.indexOf(mainImage))

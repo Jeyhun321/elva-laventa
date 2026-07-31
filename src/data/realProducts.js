@@ -26,10 +26,26 @@ export const REAL_PRODUCTS = [
   dress('2014', 'Zeytun Kətan Köynək Donu', 'Qısa qollu, kəmərli, yüngül və rahat maxi don.', 65, ['#858b78'], 'linen-10', 2),
 ]
 
+const galleryFolder = (imagePath) => (imagePath || '').split('/').slice(-2, -1)[0] || ''
+const galleryCount = (folder) =>
+  ({ 'heart-pink': 2, 'floral-brown': 2, 'linen-10': 2 }[folder] || 3)
+
 export const REAL_PRODUCT_GALLERIES = Object.fromEntries(
   REAL_PRODUCTS.map((product) => {
-    const folder = product.image.split('/').slice(-2, -1)[0]
-    const count = { 'heart-pink': 2, 'floral-brown': 2, 'linen-10': 2 }[folder] || 3
-    return [product.code, photos(folder, count)]
+    const folder = galleryFolder(product.image)
+    return [product.code, photos(folder, galleryCount(folder))]
   }),
 )
+
+// Qalereya QOVLUQ üzrə. Rəng variantlarında kod ortaqdır, ona görə koda
+// görə axtarmaq olmaz — hər rəngin öz qovluğu var (linen-01, linen-02...).
+export const REAL_GALLERY_BY_FOLDER = Object.fromEntries(
+  REAL_PRODUCTS.map((product) => {
+    const folder = galleryFolder(product.image)
+    return [folder, photos(folder, galleryCount(folder))]
+  }),
+)
+
+// Məhsulun ÖZ şəklinin qovluğuna görə qalereyanı tapır
+export const galleryForImage = (imagePath) =>
+  REAL_GALLERY_BY_FOLDER[galleryFolder(imagePath)] || []
