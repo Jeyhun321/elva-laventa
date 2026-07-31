@@ -71,6 +71,10 @@ const normaliseFavorites = (items = []) => (Array.isArray(items) ? items : [])
 export function ShopProvider({ children }) {
   const { user, isSignedIn, loading } = useAuth()
   const accountId = isSignedIn ? user?.id : null
+  // Async Supabase responses must never update the cache/state of an account
+  // that became active after the request was started.
+  const activeAccountIdRef = useRef(accountId)
+  activeAccountIdRef.current = accountId
   const [cart, setCart] = useState([])
   const [favorites, setFavorites] = useState([])
   const [loadedAccountId, setLoadedAccountId] = useState(null)
@@ -118,7 +122,7 @@ export function ShopProvider({ children }) {
 
     const syncAccount = async () => {
       if (!supabase) {
-        if (cancelled) return
+        if (cancelled || activeAccountIdRef.current !== accountId) return
         setLoadedAccountId(accountId)
         return
       }
@@ -147,7 +151,7 @@ export function ShopProvider({ children }) {
         nextFavorites = remoteFavorites
       }
 
-      if (cancelled) return
+      if (cancelled || activeAccountIdRef.current !== accountId) return
       setCart(nextCart)
       setFavorites(nextFavorites)
       cacheCart(nextCart, accountId)
@@ -250,7 +254,7 @@ export function ShopProvider({ children }) {
     return true
   }, [accountId, cacheCart, canChangeShop])
 
-  const toggleFavorite = useCallback((id) => {
+  const toggleFavorite = useCallback(async (id) => {
     // TƏK YOXLAMA NÖQTƏSİ — sevimlilər üçün
     if (!isSignedIn) {
       setAuthPrompt('favorite')
@@ -263,23 +267,27 @@ export function ShopProvider({ children }) {
       ? [...favorites, productId]
       : favorites.filter((entry) => entry !== productId)
 
-    setFavorites(next)
-    cacheFavorites(next)
     if (syncsToDatabase) {
+      let error
       if (isNowFavorite) {
-        void supabase.from('customer_favorites').upsert(
+        ({ error } = await supabase.from('customer_favorites').upsert(
           { user_id: accountId, product_id: productId },
           { onConflict: 'user_id,product_id' }
-        )
+        ))
       } else {
-        void supabase.from('customer_favorites')
+        ({ error } = await supabase.from('customer_favorites')
           .delete()
           .eq('user_id', accountId)
-          .eq('product_id', productId)
+          .eq('product_id', productId))
       }
+      if (error) return false
     }
+
+    if (activeAccountIdRef.current !== accountId) return false
+    setFavorites(next)
+    cacheFavorites(next, accountId)
     return true
-  }, [accountId, cacheFavorites, canChangeShop, favorites, isSignedIn])
+  }, [accountId, cacheFavorites, canChangeShop, favorites, isSignedIn, syncsToDatabase])
 
   const isFavorite = useCallback((id) => visibleFavorites.includes(Number(id)), [visibleFavorites])
   const cartCount = useMemo(() => visibleCart.reduce((sum, item) => sum + item.qty, 0), [visibleCart])

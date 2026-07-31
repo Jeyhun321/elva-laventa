@@ -1,12 +1,14 @@
 # HANDOFF — текущий статус
 
-Обновлён: **2026-08-01 02:06**
+Обновлён: **2026-08-01 03:33**
 
 > Финальная публикация завершена: `c040ad4` отправлен в `main`; GitHub Pages workflow завершился `success`.
 
 ## Где остановились
 
-Новая mobile-правка проверена: удалён счётчик результатов рядом с заголовком каталога; на ≤640px рейтинг карточки не переносит текст отзывов, а название ограничено двумя строками с равной высотой для выравнивания цены и кнопки. RU/AZ/EN на 375px и desktop: overflow нет, console errors 0; `npm run build` успешен. Готово к deploy.
+Новая точечная задача опубликована в commit `b727ddf`: счётчик товаров отсутствует в исходнике; на ≤900px пустой unfocused placeholder плавно движется внутри search, при фокусе он статичен, при вводе скрыт; на desktop overlay выключен. Причина возврата favorites устранена: state/cache меняются только после успешного Supabase INSERT/DELETE, а async-ответы дополнительно сверяются с актуальным `user.id`. На 375px AZ/RU/EN и 1280px: счётчика нет, header/card layout корректен, console errors 0. Финальный build и diff-check OK. Далее push/deploy и production-check.
+
+Новая mobile-правка завершена: удалён счётчик результатов рядом с заголовком каталога; на ≤640px рейтинг карточки не переносит текст отзывов, а название ограничено двумя строками с равной высотой для выравнивания цены и кнопки. RU/AZ/EN на 375px и desktop: overflow нет, console errors 0; `npm run build` успешен. Deploy `00a63b9` завершился success; production на 375px проверен (14 карточек, count отсутствует, RU reviews nowrap, ошибок 0).
 
 Текущая задача из пяти пунктов:
 
@@ -70,3 +72,4 @@
 - Для текущих пяти задач изменены: `src/components/Header.jsx`, `src/styles/index.css`, `src/pages/CatalogPage.jsx`, `src/context/CatalogContext.jsx`, `src/App.jsx`, handoff-файлы.
 - Deploy выполнен: GitHub Pages workflow `30672171846` завершился `success` для `c040ad4`.
 - Коммит публикации: `c040ad4`.
+- Последний deploy: GitHub Pages workflow `30672984445` завершился `success` для `00a63b9`.

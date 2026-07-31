@@ -1501,6 +1501,7 @@ ul {
   font-size: 0.95rem;
   color: var(--ink);
 }
+.search-placeholder-marquee { display: none; }
 .search-btn {
   display: grid;
   place-items: center;
@@ -3773,7 +3774,7 @@ a.product-media {
 
   /* Axtarış: adi uzun sətir sahəsi (lupa yığımı ləğv edildi) */
   .search {
-    position: static;
+    position: relative;
     visibility: visible;
     opacity: 1;
     display: flex;
@@ -3797,6 +3798,37 @@ a.product-media {
     background: none;
     /* 16px — iOS fokusda səhifəni zumlamasın */
     font-size: 16px;
+  }
+  .search input::placeholder { color: transparent; }
+  .search input:focus::placeholder { color: var(--muted); }
+  .search-placeholder-marquee {
+    display: block;
+    position: absolute;
+    z-index: 0;
+    top: 50%;
+    right: 48px;
+    left: 0;
+    overflow: hidden;
+    padding: 0 14px;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1;
+    pointer-events: none;
+    transform: translateY(-50%);
+    white-space: nowrap;
+  }
+  .search-placeholder-marquee > span {
+    display: inline-block;
+    padding-right: 20px;
+    animation: search-placeholder-marquee 7s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  .search-placeholder-marquee.is-hidden { display: none; }
+  .search input { position: relative; z-index: 1; }
+  .search-btn { position: relative; z-index: 2; }
+  @keyframes search-placeholder-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-18%); }
   }
   .search:focus-within {
     border-color: var(--lavender);
@@ -3940,6 +3972,10 @@ a.product-media {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-placeholder-marquee > span { animation: none; }
 }
 
 .color-variant {
