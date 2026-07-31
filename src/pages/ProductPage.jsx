@@ -36,9 +36,14 @@ export default function ProductPage() {
 
   const onSale = Boolean(product.oldPrice)
   const savedImages = product.images?.length ? product.images : (product.image ? [product.image] : [])
+  // Kod üzrə hazır qalereya (realProducts.js) YALNIZ variantı olmayan
+  // məhsullar üçündür: eyni kodlu rənglərdə o, bütün rənglərə EYNİ şəkilləri
+  // verərdi (narıncı don bej şəkilləri göstərirdi).
+  const hasVariants = (product.variants?.length || 0) > 1
+  const codeGallery = hasVariants ? [] : (REAL_PRODUCT_GALLERIES[product.code] || [])
   const gallery = savedImages.length > 1
     ? savedImages
-    : (REAL_PRODUCT_GALLERIES[product.code] || savedImages)
+    : (codeGallery.length ? codeGallery : savedImages)
   const mainImage = selectedImage || gallery[0] || product.image
   const switchGalleryImage = (direction) => {
     const currentIndex = Math.max(0, gallery.indexOf(mainImage))
@@ -172,11 +177,37 @@ export default function ProductPage() {
             {onSale && <span className="save">-{discountPercent(product)}%</span>}
           </div>
 
-          {product.colors && (
+          {/* Rəng variantları: hər biri ayrıca məhsuldur (öz şəkilləri,
+              öz qiyməti, öz ölçüləri). Seçəndə həmin məhsula keçirik. */}
+          {product.variants?.length > 1 ? (
+            <div className="detail-field">
+              <span className="field-label">
+                {t('color')}
+                <em className="chosen-color">{product.colorName}</em>
+              </span>
+              <div className="color-variants">
+                {product.variants.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    className={`color-variant${v.id === product.id ? ' active' : ''}${v.inStock ? '' : ' out'}`}
+                    onClick={() => navigate(`/product/${v.id}`)}
+                    aria-pressed={v.id === product.id}
+                    title={v.inStock ? v.colorName : `${v.colorName} — ${t('out_of_stock')}`}
+                  >
+                    <span className="color-variant-dot" style={{ background: v.colorHex || '#ccc' }} />
+                    <span className="color-variant-name">{v.colorName}</span>
+                  </button>
+                ))}
+              </div>
+              {!product.inStock && (
+                <span className="size-warn">{t('out_of_stock')}</span>
+              )}
+            </div>
+          ) : product.colors?.length ? (
             <div className="detail-field">
               <span className="field-label">{t('color')}</span>
-              {/* Rəng seçilmir — bu, sadəcə məhsulun çalarlarıdır.
-                  Nöqtə 30px görünür, ətrafındakı sahə 44px-dir (rahat toxunuş). */}
+              {/* Variant yoxdursa — sadəcə məhsulun çalarları, seçilmir */}
               <div className="color-swatches">
                 {product.colors.map((c, i) => (
                   <span key={i} className="swatch-wrap">
@@ -185,7 +216,7 @@ export default function ProductPage() {
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
 
           <div className="detail-field">
             <span className="field-label">

@@ -3913,3 +3913,65 @@ a.product-media {
   .admin-row.variant-child { margin-left: 12px; }
   .variant-box { padding: 12px 12px 8px; }
 }
+
+/* ============================================================
+   Məhsul səhifəsi: rəng variantlarının seçilməsi
+   ============================================================ */
+.chosen-color {
+  font-style: normal;
+  margin-left: 8px;
+  color: var(--ink);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.color-variants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.color-variant {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;           /* rahat toxunuş */
+  padding: 7px 14px 7px 8px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease),
+    color 0.2s var(--ease);
+}
+.color-variant:hover { border-color: var(--lavender-light); }
+.color-variant.active {
+  border-color: var(--plum);
+  background: var(--lavender-mist);
+  color: var(--plum);
+  font-weight: 800;
+}
+
+.color-variant-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  flex: 0 0 auto;
+}
+.color-variant.active .color-variant-dot {
+  box-shadow: 0 0 0 2px var(--white), 0 0 0 4px var(--plum);
+}
+
+/* Stokda olmayan rəng: solğun və üstündən xətt */
+.color-variant.out { opacity: 0.55; }
+.color-variant.out .color-variant-name { text-decoration: line-through; }
+
+@media (max-width: 640px) {
+  .color-variant { font-size: 0.84rem; padding: 7px 12px 7px 7px; }
+  .color-variant-dot { width: 24px; height: 24px; }
+}

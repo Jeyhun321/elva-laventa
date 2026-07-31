@@ -193,6 +193,8 @@ export const ui = {
   },
   close: { az: 'Bağla', ru: 'Закрыть', en: 'Close' },
   language: { az: 'Dil', ru: 'Язык', en: 'Language' },
+  // Rəng variantları
+  out_of_stock: { az: 'Stokda yoxdur', ru: 'Нет в наличии', en: 'Out of stock' },
   // Mobil alış paneli (məhsul səhifəsi)
   added_to_cart: { az: 'Əlavə olundu', ru: 'Добавлено', en: 'Added' },
   go_to_cart: { az: 'Səbətə keç', ru: 'В корзину', en: 'Go to cart' },

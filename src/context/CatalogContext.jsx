@@ -25,9 +25,53 @@ const fromRow = (r) => ({
   rating: Number(r.rating),
   reviews: r.reviews,
   tag: r.tag,
+  // Rəng variantı (yeni sahələr; köhnə yerli faylda yoxdur — boş qalır)
+  colorName: r.color_name || '',
+  colorHex: r.color_hex || '',
+  isDefaultColor: r.is_default_color === true,
+  inStock: r.in_stock !== false,
 })
 
 const ALL = { id: 'all', label: { az: 'Hamısı', ru: 'Все', en: 'All' } }
+
+// Eyni KODLU məhsullar bir məhsulun rəngləridir.
+// Kataloqa hər qrupdan BİR məhsul gedir — əsas rəng.
+// Hər məhsula öz qrupunun rəng siyahısı (variants) əlavə olunur.
+const groupVariants = (list) => {
+  const groups = new Map()
+  list.forEach((p) => {
+    const key = (p.code || '').trim().toUpperCase() || `id:${p.id}`
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(p)
+  })
+
+  const withVariants = new Map() // id -> məhsul + variants
+  const forCatalog = []
+
+  groups.forEach((items) => {
+    // Rəngi olan variantlar; adı olmayanlar variant sayılmır
+    const named = items.filter((x) => (x.colorName || '').trim())
+    const variants = named.length > 1
+      ? named.map((x) => ({
+          id: x.id,
+          colorName: x.colorName,
+          colorHex: x.colorHex || x.colors?.[0] || '',
+          inStock: x.inStock,
+          price: x.price,
+        }))
+      : []
+
+    items.forEach((x) => withVariants.set(x.id, { ...x, variants }))
+
+    // Kataloq üçün: əsas rəng, yoxdursa — anbarda olan ilk, yoxdursa — birinci
+    const main = items.find((x) => x.isDefaultColor)
+      || items.find((x) => x.inStock)
+      || items[0]
+    forCatalog.push(withVariants.get(main.id))
+  })
+
+  return { forCatalog, byId: withVariants }
+}
 
 // Kataloq ictimaidir — girişsiz də oxunur. İstifadəçinin sessiya "vəsiqəsi"
 // xarab olarsa (məs. saat fərqi: "JWT issued at future"), bazadan oxumaq
@@ -110,20 +154,26 @@ export function CatalogProvider({ children }) {
 
   useEffect(() => { load() }, [load])
 
+  // products — bazadan gələn BÜTÜN sətirlər (hər rəng ayrıca sətirdir).
+  // Kataloq isə qruplaşdırılmış siyahını görür.
+  const { forCatalog, byId } = useMemo(() => groupVariants(products), [products])
+
   const value = useMemo(() => ({
-    products,
+    // Kataloq, ana səhifə, axtarış — hər məhsul BİR dəfə
+    products: forCatalog,
     categories,
     loading,
     source,
     reload: load,
-    getProduct: (id) => products.find((p) => p.id === Number(id)),
-    saleProducts: products.filter((p) => p.oldPrice),
+    // Məhsul səhifəsi konkret rəngi açır — ona görə bütün sətirlər üzrə axtarırıq
+    getProduct: (id) => byId.get(Number(id)),
+    saleProducts: forCatalog.filter((p) => p.oldPrice),
     priceBounds: () => {
-      if (!products.length) return { min: 0, max: 0 }
-      const prices = products.map((p) => p.price)
+      if (!forCatalog.length) return { min: 0, max: 0 }
+      const prices = forCatalog.map((p) => p.price)
       return { min: Math.min(...prices), max: Math.max(...prices) }
     },
-  }), [products, categories, loading, source, load])
+  }), [forCatalog, byId, categories, loading, source, load])
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
 }
