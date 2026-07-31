@@ -11,17 +11,21 @@ import useTilt from '../hooks/useTilt.js'
 
 export default function ProductCard({ product, showRating = true }) {
   const { t } = useI18n()
-  const { addToCart, toggleFavorite, isFavorite } = useShop()
+  const { addToCart, toggleFavorite, isFavorite, canShop, promptAuth } = useShop()
   const [notice, setNotice] = useState('')
   const onSale = Boolean(product.oldPrice)
   const fav = isFavorite(product.id)
   const tiltRef = useTilt({ max: 3, lift: -6 })
 
-  // Giriş yoxlaması ShopContext-in içindədir (tək nöqtə): girişsiz alıcıda
-  // addToCart/toggleFavorite false qaytarır və "daxil olun" pəncərəsi açılır.
+  // Yoxlama SIRASI: əvvəl GİRİŞ, sonra ölçü.
   const quickAdd = (e) => {
     e.preventDefault()
     e.stopPropagation()
+    if (!canShop) {
+      setNotice('')
+      promptAuth('cart')
+      return
+    }
     if (product.sizes?.length > 1) {
       setNotice(t('choose_size_on_product'))
       return

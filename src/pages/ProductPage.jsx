@@ -15,7 +15,7 @@ export default function ProductPage() {
   const navigate = useNavigate()
   const { t } = useI18n()
   const { getProduct, products } = useCatalog()
-  const { addToCart, toggleFavorite, isFavorite } = useShop()
+  const { addToCart, toggleFavorite, isFavorite, canShop, promptAuth } = useShop()
 
   const product = getProduct(id)
   const needsSize = product && product.sizes && product.sizes.length > 1
@@ -83,25 +83,31 @@ export default function ProductPage() {
     switchGalleryImage(dx < 0 ? 1 : -1)
   }
 
-  // Səbətə əlavə: giriş yoxlaması ShopContext-in içindədir (tək nöqtə).
-  // Girişsiz alıcıda addToCart false qaytarır və "daxil olun" pəncərəsi açılır.
+  // Yoxlama SIRASI: əvvəl GİRİŞ, sonra ölçü.
+  // Girişsiz alıcıdan ölçü soruşmağın mənası yoxdur — onsuz da əlavə edə bilmir.
   const handleAdd = () => {
+    if (!canShop) {
+      promptAuth('cart')
+      return
+    }
     if (needsSize && !size) {
       setWarn(true)
       return
     }
-    // Girişsizdirsə, false qayıdır — "səbətdədir ✓" yazmaq olmaz
     if (!addToCart(product.id, size, 1)) return
     setAdded(true)
     setTimeout(() => setAdded(false), 3000)
   }
 
   const handleBuy = () => {
+    if (!canShop) {
+      promptAuth('cart')
+      return
+    }
     if (needsSize && !size) {
       setWarn(true)
       return
     }
-    // Əlavə olunmayıbsa, səbətə keçmirik
     if (!addToCart(product.id, size, 1)) return
     navigate('/cart')
   }
@@ -180,11 +186,10 @@ export default function ProductPage() {
               öz qiyməti, öz ölçüləri). Seçəndə həmin məhsula keçirik. */}
           {product.variants?.length > 1 ? (
             <div className="detail-field">
-              <span className="field-label">
-                {t('color')}
-                <em className="chosen-color">{product.colorName}</em>
-              </span>
-              <div className="color-variants">
+              {/* Yalnız dairələr — mətn imzaları yoxdur.
+                  Rəngin adı aria-label/title-da qalır ki, ekran oxuyucu və
+                  siçan ipucu üçün düymə adsız olmasın. */}
+              <div className="color-variants" role="group" aria-label={t('color')}>
                 {product.variants.map((v) => (
                   <button
                     key={v.id}
@@ -192,10 +197,10 @@ export default function ProductPage() {
                     className={`color-variant${v.id === product.id ? ' active' : ''}${v.inStock ? '' : ' out'}`}
                     onClick={() => navigate(`/product/${v.id}`)}
                     aria-pressed={v.id === product.id}
+                    aria-label={v.inStock ? v.colorName : `${v.colorName} — ${t('out_of_stock')}`}
                     title={v.inStock ? v.colorName : `${v.colorName} — ${t('out_of_stock')}`}
                   >
                     <span className="color-variant-dot" style={{ background: v.colorHex || '#ccc' }} />
-                    <span className="color-variant-name">{v.colorName}</span>
                   </button>
                 ))}
               </div>

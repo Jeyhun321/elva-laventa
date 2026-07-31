@@ -3917,61 +3917,80 @@ a.product-media {
 /* ============================================================
    Məhsul səhifəsi: rəng variantlarının seçilməsi
    ============================================================ */
-.chosen-color {
-  font-style: normal;
-  margin-left: 8px;
-  color: var(--ink);
-  font-weight: 700;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
+/* Rəng seçimi: YALNIZ dairələr, mətn imzası yoxdur.
+   Rəngin adı aria-label/title-dadır. */
 .color-variants {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
 }
 
 .color-variant {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 44px;           /* rahat toxunuş */
-  padding: 7px 14px 7px 8px;
-  border: 1.5px solid var(--line);
-  border-radius: 999px;
-  background: var(--white);
-  color: var(--ink);
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
-  transition: border-color 0.2s var(--ease), background 0.2s var(--ease),
-    color 0.2s var(--ease);
-}
-.color-variant:hover { border-color: var(--lavender-light); }
-.color-variant.active {
-  border-color: var(--plum);
-  background: var(--lavender-mist);
-  color: var(--plum);
-  font-weight: 800;
+  /* Toxunma sahəsi 44px, görünən dairə isə 34px */
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: none;
 }
 
 .color-variant-dot {
-  width: 26px;
-  height: 26px;
+  position: relative;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 1.5px solid rgba(0, 0, 0, 0.12);
-  flex: 0 0 auto;
+  border: 1.5px solid rgba(0, 0, 0, 0.14);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
 }
+.color-variant:hover .color-variant-dot { transform: scale(1.06); }
+
+/* Seçilmiş rəng: brend rəngli halqa + ağ işarə */
 .color-variant.active .color-variant-dot {
-  box-shadow: 0 0 0 2px var(--white), 0 0 0 4px var(--plum);
+  box-shadow: 0 0 0 2.5px var(--white), 0 0 0 5px var(--plum);
+}
+.color-variant.active .color-variant-dot::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 
-/* Stokda olmayan rəng: sadəcə bir az solğun.
-   Üstündən xətt çəkilmir — istifadəçi onu bəyənmədi. */
-.color-variant.out { opacity: 0.6; }
+/* Stokda olmayan rəng — solğun */
+.color-variant.out { opacity: 0.45; }
+
+.color-variant:focus-visible { outline-offset: 4px; }
 
 @media (max-width: 640px) {
-  .color-variant { font-size: 0.84rem; padding: 7px 12px 7px 7px; }
-  .color-variant-dot { width: 24px; height: 24px; }
+  .color-variants { gap: 10px; }
+}
+
+/* ============================================================
+   Başlıq: telefonun yuxarı "təhlükəsiz sahəsi" (çəngəl/status bar)
+   ============================================================
+   env() dəstəklənmirsə 0 götürülür — adi ekranda heç nə dəyişmir. */
+@media (max-width: 900px) {
+  .header { padding-top: env(safe-area-inset-top, 0px); }
+}
+
+/* viewport-fit=cover açıldığı üçün səhifə artıq təhlükəsiz sahələrin
+   ALTINA da girir. Albom rejimində çəngəl yan tərəfdə olur — məzmun
+   onun altında qalmasın deyə yan boşluqları qoruyuruq. */
+@media (max-width: 900px) {
+  .container {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .tabbar {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
 }

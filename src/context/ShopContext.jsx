@@ -80,6 +80,8 @@ export function ShopProvider({ children }) {
   // eyni pəncərə görünsün.
   const [authPrompt, setAuthPrompt] = useState(null) // null | 'cart' | 'favorite'
   const closeAuthPrompt = useCallback(() => setAuthPrompt(null), [])
+  // Pəncərəni heç nə əlavə etmədən açmaq üçün (məs. ölçü soruşulmamışdan əvvəl)
+  const promptAuth = useCallback((kind = 'cart') => setAuthPrompt(kind), [])
 
   // Girişsiz alıcı üçün "guest" açarı istifadə olunur — səbəti yenə də yadda qalır.
   const storageId = accountId || GUEST_ID
@@ -340,6 +342,7 @@ export function ShopProvider({ children }) {
       // Girişsiz cəhd olanda pəncərəni açmaq üçün
       authPrompt,
       closeAuthPrompt,
+      promptAuth,
     }}>
       {children}
     </ShopContext.Provider>
