@@ -383,7 +383,11 @@ function Dashboard({ session, onExit }) {
       reloadSite()
       say('ok', 'Сохранено. Товар уже на сайте.')
     } catch (e) {
-      say('err', `Ошибка сохранения: ${e.message}`)
+      // Bazanın texniki mətnini insan dilinə çeviririk
+      const dup = e?.code === '23505' || /duplicate key|unique constraint/i.test(e?.message || '')
+      say('err', dup
+        ? `Не сохранено: у кода ${(p.code || '').trim()} уже есть цвет с таким названием. Впишите другое название цвета.`
+        : `Ошибка сохранения: ${e.message}`)
     } finally {
       setBusy('')
     }
@@ -635,6 +639,20 @@ function ProductForm({ value, categories, allProducts = [], saving, onCancel, on
     )
   }, [allProducts, p.code, p.id])
 
+  // Kod artıq mövcud olan koda dəyişdirilirsə, rəng adı BOŞ qalmamalıdır —
+  // yoxsa "kod + rəng" təkrarlanır və baza yazmağa icazə vermir.
+  // Ona görə adın ilk sözünü (adətən rəngdir) özümüz təklif edirik.
+  useEffect(() => {
+    if (!siblings.length) return
+    if ((p.colorName || '').trim()) return
+    const guess = (p.name?.az || '').trim().split(/\s+/)[0] || ''
+    if (!guess) return
+    if (takenColorNames.includes(guess.toLowerCase())) return
+    set({ colorName: guess, colorHex: p.colorHex || p.colors?.[0] || '' })
+    onNotify('ok', `Название цвета подставлено: «${guess}». Можно изменить.`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siblings.length, p.code])
+
   const toggleColor = (c) =>
     set({ colors: p.colors.includes(c) ? p.colors.filter((x) => x !== c) : [...p.colors, c] })
 
@@ -709,9 +727,18 @@ function ProductForm({ value, categories, allProducts = [], saving, onCancel, on
     }
   }
 
+  // Bu kodda hansı rəng adları artıq tutulub
+  const takenColorNames = useMemo(
+    () => siblings.map((s) => (s.colorName || '').trim().toLowerCase()),
+    [siblings],
+  )
+
   const validation = {
     name: !p.name.az.trim(),
     category: !p.category,
+    // Eyni kodda eyni rəng adı ola bilməz (baza da buna icazə vermir)
+    colorName: siblings.length > 0
+      && takenColorNames.includes((p.colorName || '').trim().toLowerCase()),
     price: !Number.isFinite(Number(p.price)) || Number(p.price) <= 0,
     images: !(p.images || []).length && !p.image?.trim(),
     sizes: !(p.sizes || []).length,
@@ -725,6 +752,7 @@ function ProductForm({ value, categories, allProducts = [], saving, onCancel, on
     validation.images && 'минимум одну фотографию',
     validation.sizes && 'минимум один размер',
     validation.oldPrice && 'старую цену больше текущей',
+    validation.colorName && `другое название цвета — «${(p.colorName || '').trim() || 'без названия'}» у кода ${p.code.trim()} уже занято`,
   ].filter(Boolean)
   const submit = () => {
     setAttemptedSave(true)
@@ -806,7 +834,13 @@ function ProductForm({ value, categories, allProducts = [], saving, onCancel, on
             {siblings.length > 0 && (
               <p className="variant-hint">
                 У кода <b>{p.code.trim()}</b> уже есть:{' '}
-                {siblings.map((s) => s.colorName || '(без названия)').join(', ')}
+                {siblings.map((s) => s.colorName || '(без названия цвета)').join(', ')}.
+                {' '}Впишите этому товару своё название цвета — так они станут
+                одним товаром с разными цветами.
+                {siblings.some((s) => !(s.colorName || '').trim()) && (
+                  <><br /><b>⚠ У одного варианта название цвета не задано</b> —
+                  откройте его и впишите, иначе на витрине образец будет без подписи.</>
+                )}
               </p>
             )}
 
