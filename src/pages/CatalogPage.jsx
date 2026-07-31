@@ -140,9 +140,6 @@ export default function CatalogPage() {
     <div className="container catalog-page">
       <div className="catalog-head">
         <h1 className="page-title">{title}</h1>
-        <span className="catalog-count">
-          {visible.length} {t('items')} {t('found')}
-        </span>
       </div>
 
       {/* Mobil panel: kateqoriya çipləri + filtr düyməsi. Masaüstündə gizlidir. */}

@@ -3356,7 +3356,22 @@ a.product-media {
   }
   .product-info { padding: 12px 12px 14px; gap: 7px; }
   .product-name,
-  a.product-name { font-size: 1rem; line-height: 1.2; }
+  a.product-name {
+    font-size: 1rem;
+    line-height: 1.2;
+    min-height: 2.4em;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  .rating { gap: 2px; white-space: nowrap; }
+  .rating-stars,
+  .rating b,
+  .rating small { flex-shrink: 0; }
+  .rating svg { width: 10px; height: 10px; }
+  .rating b { font-size: 0.66rem; }
+  .rating small { font-size: 0.6rem; white-space: nowrap; }
   .price-block .new { font-size: 1rem; }
   .product-brand { font-size: 0.68rem; }
   .card-code { font-size: 0.66rem; }
