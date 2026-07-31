@@ -9,36 +9,26 @@ const ShopContext = createContext(null)
 const CART_KEY_PREFIX = 'elva_cart:'
 const FAV_KEY_PREFIX = 'elva_favorites:'
 
-// Səbət və sevimlilər yalnız giriş etmiş alıcı üçündür.
-// "guest" açarı köhnə versiyadan qalan səbətlər üçün saxlanılır:
-// alıcı giriş edəndə onlar hesabın səbətinə birləşdirilir və silinir.
+// Səbət və sevimlilər YALNIZ giriş etmiş alıcı üçündür.
+//
+// Köhnə versiyada qonaq da səbətə əlavə edə bilirdi və giriş anında
+// həmin mallar hesaba KÖÇÜRÜLÜRDÜ. Bu köçürmə sonradan gözlənilməz
+// nəticə verdi: brauzerdə qalmış köhnə qonaq səbəti YENİ hesaba
+// "özü-özünə" düşürdü (istifadəçi heç nə əlavə etməmişdi).
+// Köçürmə ləğv edildi; köhnə açarlar isə bir dəfə təmizlənir.
 const GUEST_ID = 'guest'
+
+const clearLegacyGuestData = () => {
+  try {
+    localStorage.removeItem(`${CART_KEY_PREFIX}${GUEST_ID}`)
+    localStorage.removeItem(`${FAV_KEY_PREFIX}${GUEST_ID}`)
+  } catch {
+    // Storage bağlıdırsa — problem deyil.
+  }
+}
 
 const accountKey = (prefix, accountId) => `${prefix}${accountId}`
 
-const cartLineKey = (item) => `${item.id}|${item.size || ''}`
-
-// Eyni məhsul + eyni ölçü olarsa, sayları TOPLAYIRIQ (dublikat sətir yaranmır).
-// Olmayanlar sadəcə əlavə olunur. Maksimum say 20-dir.
-const mergeCarts = (base, extra) => {
-  const result = base.map((item) => ({ ...item }))
-  const index = new Map(result.map((item, i) => [cartLineKey(item), i]))
-
-  extra.forEach((item) => {
-    const key = cartLineKey(item)
-    if (index.has(key)) {
-      const target = result[index.get(key)]
-      target.qty = Math.min(20, target.qty + item.qty)
-    } else {
-      index.set(key, result.length)
-      result.push({ ...item })
-    }
-  })
-
-  return result
-}
-
-const mergeFavorites = (base, extra) => [...new Set([...base, ...extra])]
 
 const load = (key, fallback) => {
   try {
@@ -94,13 +84,15 @@ export function ShopProvider({ children }) {
     save(accountKey(FAV_KEY_PREFIX, id), next)
   }, [storageId])
 
+  // Köhnə qonaq açarlarını bir dəfə silirik (bax: clearLegacyGuestData)
+  useEffect(() => { clearLegacyGuestData() }, [])
+
   useEffect(() => {
     let cancelled = false
 
     if (loading) return undefined
 
     // Girişsiz alıcının səbəti YOXDUR — hər şey boşdur.
-    // (Köhnə "guest" açarı varsa, giriş anında hesaba birləşdiriləcək.)
     if (!accountId) {
       setCart([])
       setFavorites([])
@@ -110,27 +102,14 @@ export function ShopProvider({ children }) {
 
     const cachedCart = normaliseCart(load(accountKey(CART_KEY_PREFIX, accountId), []))
     const cachedFavorites = normaliseFavorites(load(accountKey(FAV_KEY_PREFIX, accountId), []))
-    // Giriş anında qonaq səbəti — hesabın səbəti ilə birləşdiriləcək
-    const guestCart = normaliseCart(load(accountKey(CART_KEY_PREFIX, GUEST_ID), []))
-    const guestFavorites = normaliseFavorites(load(accountKey(FAV_KEY_PREFIX, GUEST_ID), []))
 
-    setCart(guestCart.length ? mergeCarts(cachedCart, guestCart) : cachedCart)
-    setFavorites(guestFavorites.length ? mergeFavorites(cachedFavorites, guestFavorites) : cachedFavorites)
+    setCart(cachedCart)
+    setFavorites(cachedFavorites)
     setLoadedAccountId(null)
 
     const syncAccount = async () => {
       if (!supabase) {
-        // Baza olmasa belə, birləşmə itməsin: nəticəni brauzerdə saxlayırıq
-        // və qonaq səbətini təmizləyirik.
         if (cancelled) return
-        if (guestCart.length) {
-          cacheCart(mergeCarts(cachedCart, guestCart), accountId)
-          save(accountKey(CART_KEY_PREFIX, GUEST_ID), [])
-        }
-        if (guestFavorites.length) {
-          cacheFavorites(mergeFavorites(cachedFavorites, guestFavorites), accountId)
-          save(accountKey(FAV_KEY_PREFIX, GUEST_ID), [])
-        }
         setLoadedAccountId(accountId)
         return
       }
@@ -152,13 +131,10 @@ export function ShopProvider({ children }) {
       if (!cartResult.error) {
         const remoteCart = normaliseCart(cartResult.data || [])
         // Bazadakı səbət əsasdır; boşdursa, brauzerdəki nüsxə götürülür.
-        const base = remoteCart.length ? remoteCart : cachedCart
-        // Qonaq səbəti həmişə üstünə əlavə olunur (saylar toplanır).
-        nextCart = guestCart.length ? mergeCarts(base, guestCart) : base
+        nextCart = remoteCart.length ? remoteCart : cachedCart
 
-        // Bazaya yazmaq lazımdırsa yazırıq: ya qonaq malları gəlib,
-        // ya da baza boş idi və brauzerdəki nüsxəni köçürürük.
-        const mustPush = guestCart.length > 0 || (!remoteCart.length && cachedCart.length > 0)
+        // Baza boş idisə, brauzerdəki nüsxəni ora köçürürük.
+        const mustPush = !remoteCart.length && cachedCart.length > 0
         if (mustPush && nextCart.length) {
           await supabase.from('customer_cart_items').upsert(
             nextCart.map((item) => ({
@@ -174,10 +150,9 @@ export function ShopProvider({ children }) {
 
       if (!favoritesResult.error) {
         const remoteFavorites = normaliseFavorites(favoritesResult.data || [])
-        const base = remoteFavorites.length ? remoteFavorites : cachedFavorites
-        nextFavorites = guestFavorites.length ? mergeFavorites(base, guestFavorites) : base
+        nextFavorites = remoteFavorites.length ? remoteFavorites : cachedFavorites
 
-        const mustPush = guestFavorites.length > 0 || (!remoteFavorites.length && cachedFavorites.length > 0)
+        const mustPush = !remoteFavorites.length && cachedFavorites.length > 0
         if (mustPush && nextFavorites.length) {
           await supabase.from('customer_favorites').upsert(
             nextFavorites.map((productId) => ({ user_id: accountId, product_id: productId })),
@@ -191,11 +166,6 @@ export function ShopProvider({ children }) {
       setFavorites(nextFavorites)
       cacheCart(nextCart, accountId)
       cacheFavorites(nextFavorites, accountId)
-
-      // Birləşmə bitdi — qonaq səbətini silirik ki, növbəti girişdə
-      // saylar TƏKRAR toplanmasın.
-      if (guestCart.length) save(accountKey(CART_KEY_PREFIX, GUEST_ID), [])
-      if (guestFavorites.length) save(accountKey(FAV_KEY_PREFIX, GUEST_ID), [])
 
       setLoadedAccountId(accountId)
     }
