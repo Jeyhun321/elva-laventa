@@ -3841,3 +3841,75 @@ a.product-media {
   /* 268px-də noqtələr şəklin üstünə çıxırdı — 300px təhlükəsiz həddir */
   .showcase-stage { height: 300px; }
 }
+
+/* ============================================================
+   Admin: rəng variantları (eyni kod = bir məhsulun rəngləri)
+   ============================================================ */
+.variant-box {
+  margin: 4px 0 6px;
+  padding: 14px 16px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-alt);
+}
+.variant-head { display: grid; gap: 3px; margin-bottom: 12px; }
+.variant-head span { font-size: 0.9rem; font-weight: 700; color: var(--ink); }
+.variant-head em {
+  font-style: normal;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+.variant-hint {
+  margin: 0 0 12px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: var(--lavender-mist);
+  color: var(--lavender-text);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.variant-hex {
+  width: 100%;
+  height: 44px;
+  padding: 3px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  cursor: pointer;
+}
+
+/* Siyahıda variant sətri: girinti + rəng nöqtəsi */
+.admin-row.variant-child { margin-left: 22px; }
+.admin-row-variant {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.variant-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex: 0 0 auto;
+}
+.variant-main {
+  font-style: normal;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--plum);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+@media (max-width: 640px) {
+  .admin-row.variant-child { margin-left: 12px; }
+  .variant-box { padding: 12px 12px 8px; }
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { adminSupabase, isConfigured } from '../lib/supabase.js'
 import { loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin } from '../admin/db.js'
@@ -59,6 +59,11 @@ const emptyProduct = (catId) => ({
   reviews: 0,
   tag: '',
   isActive: true,
+  // Rəng variantı: boş ad = adi məhsul, variant deyil
+  colorName: '',
+  colorHex: '',
+  isDefaultColor: false,
+  inStock: true,
 })
 
 export default function AdminPage() {
@@ -398,6 +403,26 @@ function Dashboard({ session, onExit }) {
 
   const catLabel = (id) => categories.find((c) => c.id === id)?.label?.ru || id
 
+  // Eyni kodlu rənglər siyahıda yan-yana dursun: əvvəl əsas rəng,
+  // sonra qalanları (onlar sola girinti ilə göstərilir).
+  const groupedProducts = useMemo(() => {
+    const groups = new Map()
+    products.forEach((p) => {
+      const key = (p.code || '').trim().toUpperCase() || `id:${p.id}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key).push(p)
+    })
+
+    const out = []
+    groups.forEach((list) => {
+      const sorted = [...list].sort(
+        (a, b) => (b.isDefaultColor === true) - (a.isDefaultColor === true) || a.id - b.id,
+      )
+      sorted.forEach((p, i) => out.push({ ...p, isVariantChild: list.length > 1 && i > 0 }))
+    })
+    return out
+  }, [products])
+
   return (
     <div className="container admin">
       <div className="admin-head">
@@ -441,8 +466,8 @@ function Dashboard({ session, onExit }) {
       {busy === 'load' && <p className="admin-sub">Загружаю…</p>}
 
       <div className="admin-list">
-        {products.map((p) => (
-          <div className={`admin-row${p.isActive ? '' : ' inactive'}`} key={p.id}>
+        {groupedProducts.map((p) => (
+          <div className={`admin-row${p.isActive ? '' : ' inactive'}${p.isVariantChild ? ' variant-child' : ''}`} key={p.id}>
             <div className="admin-thumb">
               {p.image ? <img src={p.image} alt="" /> : <span className="no-photo">нет фото</span>}
             </div>
@@ -451,7 +476,15 @@ function Dashboard({ session, onExit }) {
               <span className="admin-row-meta">
                 код {p.code || '—'} · {p.brand} · {catLabel(p.category)}
                 {!p.isActive && ' · скрыт'}
+                {!p.inStock && ' · нет в наличии'}
               </span>
+              {p.colorName && (
+                <span className="admin-row-variant">
+                  <i className="variant-dot" style={{ background: p.colorHex || p.colors?.[0] || '#ccc' }} />
+                  {p.colorName}
+                  {p.isDefaultColor && <em className="variant-main">основной</em>}
+                </span>
+              )}
             </div>
             <div className="admin-row-price">
               {p.oldPrice ? <s>{p.oldPrice} ₼</s> : null}
@@ -473,6 +506,7 @@ function Dashboard({ session, onExit }) {
         <ProductForm
           value={form}
           categories={categories}
+          allProducts={products}
           saving={busy === 'save'}
           onCancel={() => setForm(null)}
           onSave={onSave}
@@ -585,12 +619,21 @@ function OrdersPanel({ onNotify }) {
 }
 
 /* ---------------- Форма товара ---------------- */
-function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) {
+function ProductForm({ value, categories, allProducts = [], saving, onCancel, onSave, onNotify }) {
   const [p, setP] = useState(value)
   const [uploading, setUploading] = useState(false)
   const [detecting, setDetecting] = useState(false)
   const [attemptedSave, setAttemptedSave] = useState(false)
   const [suggestions, setSuggestions] = useState([]) // fotodan tapılan tonlar
+
+  // Bu kodla artıq mövcud olan DİGƏR rənglər (özü siyahıya düşmür)
+  const siblings = useMemo(() => {
+    const code = (p.code || '').trim().toUpperCase()
+    if (!code) return []
+    return allProducts.filter(
+      (x) => (x.code || '').trim().toUpperCase() === code && x.id !== p.id,
+    )
+  }, [allProducts, p.code, p.id])
 
   const toggleColor = (c) =>
     set({ colors: p.colors.includes(c) ? p.colors.filter((x) => x !== c) : [...p.colors, c] })
@@ -750,6 +793,59 @@ function ProductForm({ value, categories, saving, onCancel, onSave, onNotify }) 
             <label className="fld">
               <span>Бренд</span>
               <input value={p.brand} onChange={(e) => set({ brand: e.target.value })} />
+            </label>
+          </div>
+
+          {/* --- Rəng variantı: eyni kodlu məhsullar bir qrupdur --- */}
+          <div className="variant-box">
+            <div className="variant-head">
+              <span>Цвет товара (вариант)</span>
+              <em>Товары с одинаковым кодом = один товар с разными цветами</em>
+            </div>
+
+            {siblings.length > 0 && (
+              <p className="variant-hint">
+                У кода <b>{p.code.trim()}</b> уже есть:{' '}
+                {siblings.map((s) => s.colorName || '(без названия)').join(', ')}
+              </p>
+            )}
+
+            <div className="fld-2">
+              <label className="fld">
+                <span>Название цвета</span>
+                <input
+                  value={p.colorName}
+                  onChange={(e) => set({ colorName: e.target.value })}
+                  placeholder="пусто = обычный товар без вариантов"
+                />
+              </label>
+              <label className="fld">
+                <span>Оттенок для витрины</span>
+                <input
+                  type="color"
+                  className="variant-hex"
+                  value={p.colorHex || p.colors?.[0] || '#e5399a'}
+                  onChange={(e) => set({ colorHex: e.target.value })}
+                />
+              </label>
+            </div>
+
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={p.isDefaultColor}
+                onChange={(e) => set({ isDefaultColor: e.target.checked })}
+              />
+              <span>Основной цвет — показывать этот в каталоге</span>
+            </label>
+
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={p.inStock}
+                onChange={(e) => set({ inStock: e.target.checked })}
+              />
+              <span>Есть в наличии</span>
             </label>
           </div>
 

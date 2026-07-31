@@ -34,6 +34,11 @@ export const fromRow = (r) => ({
   reviews: r.reviews ?? 0,
   tag: r.tag || '',
   isActive: r.is_active !== false,
+  // Rəng variantları: eyni kodlu məhsullar bir qrupdur
+  colorName: r.color_name || '',
+  colorHex: r.color_hex || '',
+  isDefaultColor: r.is_default_color === true,
+  inStock: r.in_stock !== false,
 })
 
 // Panel forması → baza sətri
@@ -65,6 +70,12 @@ const toRow = (p) => {
     reviews: Number(p.reviews) || 0,
     tag: p.tag || null,
     is_active: p.isActive !== false,
+    // Rəng variantı. Boş color_name = adi məhsul (variant yoxdur).
+    // Əsas rəngi baza özü tənzimləyir (products_zdefault_color triggeri).
+    color_name: (p.colorName || '').trim(),
+    color_hex: (p.colorHex || '').trim() || (p.colors || [])[0] || '',
+    is_default_color: p.isDefaultColor === true,
+    in_stock: p.inStock !== false,
   }
 }
 
