@@ -231,7 +231,7 @@ export default function ProductPage() {
                 <button
                   key={s}
                   className={`size-btn${size === s ? ' active' : ''}`}
-                  onClick={() => { setSize(s); setWarn(false) }}
+                  onClick={() => { setSize((selectedSize) => selectedSize === s ? null : s); setWarn(false) }}
                 >
                   {s}
                 </button>
