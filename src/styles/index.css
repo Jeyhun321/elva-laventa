@@ -1259,8 +1259,6 @@ ul {
 
 @media (max-width: 760px) {
   .promo { padding: 52px 34px; }
-  .hero-mini-card { left: 50%; transform: translateX(-50%); bottom: 12px; }
-  .hero-mini-card:hover { transform: translateX(-50%) translateY(-3px); }
 }
 
 @media (max-width: 640px) {
@@ -3591,6 +3589,12 @@ a.product-media {
   /* --- 3. Şəkillərin üstündəki lövhə tamamilə gizlənir:
          nə ad, nə qiymət. Masaüstündə mərkəzi kartda qalır. --- */
   .showcase-price { display: none; }
+
+  /* --- 3b. "Yeni kolleksiya 2026 / BAX" kartı da gizlənir.
+         Kart absolute-dur (şəklin üstündə "üzür"), ona görə silinməsi
+         axında boşluq yaratmır — sadəcə donun aşağısı açılır.
+         Masaüstündə kart yerindədir və klik olunur. --- */
+  .hero-mini-card { display: none; }
 
   /* --- 4. "Kataloqa qayıt" düyməsi --- */
   .back-link {
