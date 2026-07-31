@@ -94,7 +94,7 @@ export default function CatalogPage() {
     if (q) {
       const needle = q.toLowerCase().trim()
       list = list.filter((p) =>
-        String(p.code || '').toLowerCase().includes(needle) ||
+        String(p.code || '').toLowerCase().trim() === needle ||
         Object.values(p.name).some((n) => n.toLowerCase().includes(needle)) ||
         p.brand.toLowerCase().includes(needle)
       )

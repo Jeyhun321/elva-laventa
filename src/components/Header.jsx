@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
@@ -12,6 +12,7 @@ export default function Header() {
   const { cartCount, favCount } = useShop()
   const { categories } = useCatalog()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [query, setQuery] = useState('')
   const [catOpen, setCatOpen] = useState(false)
@@ -51,6 +52,13 @@ export default function Header() {
     const q = query.trim()
     navigate(q ? `/catalog?q=${encodeURIComponent(q)}` : '/catalog')
     setCatOpen(false)
+  }
+
+  const changeSearch = (value) => {
+    setQuery(value)
+    if (!value.trim() && location.pathname === '/catalog') {
+      navigate('/catalog', { replace: true })
+    }
   }
 
   const goCategory = (id) => {
@@ -95,7 +103,7 @@ export default function Header() {
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => changeSearch(e.target.value)}
             placeholder={t('search_placeholder')}
             aria-label={t('search_placeholder')}
           />

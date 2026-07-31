@@ -3530,6 +3530,8 @@ a.product-media {
    ============================================================ */
 @media (max-width: 900px) {
 
+  .product-page > .back-link { margin-top: 12px; }
+
   /* --- 1. Ana səhifə: karusel yuxarı, mətn aşağı --- */
   .intro-grid > .showcase { order: -1; }
   .intro-grid > .intro-copy { order: 0; margin-top: 8px; }

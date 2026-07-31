@@ -5,6 +5,11 @@ import localCatalog from '../data/catalog.json'
 
 const CatalogContext = createContext(null)
 
+const localProducts = localCatalog.products.map((p) => ({
+  ...p,
+  code: p.code || String(1000 + Number(p.id)),
+}))
+
 // Baza sətrini saytın gözlədiyi formata çevirir
 // Kod yoxdursa (yerli ehtiyat nüsxə), id-dən düzəldirik: 1 -> 1001
 export const makeCode = (id) => String(1000 + Number(id))
@@ -97,12 +102,10 @@ const fetchAnonCatalog = async () => {
 
 export function CatalogProvider({ children }) {
   // Baza cavab verməsə, sayt boş qalmasın deyə yerli fayl ehtiyatdır
-  const [products, setProducts] = useState(
-    localCatalog.products.map((p) => ({ ...p, code: p.code || makeCode(p.id) }))
-  )
-  const [categories, setCategories] = useState(localCatalog.categories)
+  const [products, setProducts] = useState(() => isConfigured ? [] : localProducts)
+  const [categories, setCategories] = useState(() => isConfigured ? [] : localCatalog.categories)
   const [loading, setLoading] = useState(isConfigured)
-  const [source, setSource] = useState('local')
+  const [source, setSource] = useState(isConfigured ? 'loading' : 'local')
 
   const load = useCallback(async () => {
     if (!isConfigured || !supabase) return
@@ -138,6 +141,8 @@ export function CatalogProvider({ children }) {
         return
       } catch (anonError) {
         console.warn('Kataloq bazadan yüklənmədi, yerli surət istifadə olunur:', e.message)
+        setProducts(localProducts)
+        setCategories(localCatalog.categories)
         void logSystemEvent({
           level: 'warning',
           source: 'catalog',
