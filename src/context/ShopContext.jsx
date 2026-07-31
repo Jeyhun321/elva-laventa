@@ -60,8 +60,8 @@ const normaliseFavorites = (items) => items
   .filter(Number.isFinite)
 
 export function ShopProvider({ children }) {
-  const { user, isGoogleUser, loading } = useAuth()
-  const accountId = isGoogleUser ? user?.id : null
+  const { user, isSignedIn, loading } = useAuth()
+  const accountId = isSignedIn ? user?.id : null
   const [cart, setCart] = useState([])
   const [favorites, setFavorites] = useState([])
   const [loadedAccountId, setLoadedAccountId] = useState(null)
@@ -185,7 +185,7 @@ export function ShopProvider({ children }) {
     // TƏK YOXLAMA NÖQTƏSİ: girişsiz alıcı buradan keçə bilmir.
     // Hansı düymə basılırsa basılsın (kart, məhsul səhifəsi, "indi al"),
     // hamısı bu funksiyaya gəlir — deməli yan yol yoxdur.
-    if (!isGoogleUser) {
+    if (!isSignedIn) {
       setAuthPrompt('cart')
       return false
     }
@@ -213,7 +213,7 @@ export function ShopProvider({ children }) {
       }, { onConflict: 'user_id,product_id,size' })
     }
     return true
-  }, [accountId, cacheCart, canChangeShop, cart, isGoogleUser])
+  }, [accountId, cacheCart, canChangeShop, cart, isSignedIn])
 
   const removeFromCart = useCallback((id, size = null) => {
     if (!canChangeShop) return false
@@ -263,7 +263,7 @@ export function ShopProvider({ children }) {
 
   const toggleFavorite = useCallback((id) => {
     // TƏK YOXLAMA NÖQTƏSİ — sevimlilər üçün
-    if (!isGoogleUser) {
+    if (!isSignedIn) {
       setAuthPrompt('favorite')
       return false
     }
@@ -290,7 +290,7 @@ export function ShopProvider({ children }) {
       }
     }
     return true
-  }, [accountId, cacheFavorites, canChangeShop, favorites, isGoogleUser])
+  }, [accountId, cacheFavorites, canChangeShop, favorites, isSignedIn])
 
   const isFavorite = useCallback((id) => favorites.includes(Number(id)), [favorites])
   const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.qty, 0), [cart])
@@ -308,7 +308,7 @@ export function ShopProvider({ children }) {
       cartCount,
       favCount: favorites.length,
       // Alış-veriş yalnız giriş etmiş alıcı üçündür
-      canShop: Boolean(!loading && isGoogleUser),
+      canShop: Boolean(!loading && isSignedIn),
       // Girişsiz cəhd olanda pəncərəni açmaq üçün
       authPrompt,
       closeAuthPrompt,
