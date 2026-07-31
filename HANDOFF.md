@@ -2,7 +2,7 @@
 
 Обновлён: **2026-08-01 02:06**
 
-> Финальная публикация: build и UI-проверка 375px/1280px успешны; изменения закоммичены, выполняется push в `main` для GitHub Pages.
+> Финальная публикация завершена: `c040ad4` отправлен в `main`; GitHub Pages workflow завершился `success`.
 
 ## Где остановились
 
@@ -66,5 +66,5 @@
 
 - Ветка: `main`.
 - Для текущих пяти задач изменены: `src/components/Header.jsx`, `src/styles/index.css`, `src/pages/CatalogPage.jsx`, `src/context/CatalogContext.jsx`, `src/App.jsx`, handoff-файлы.
-- Deploy не выполнялся.
-- Коммит публикации: `cecbdb2`.
+- Deploy выполнен: GitHub Pages workflow `30672171846` завершился `success` для `c040ad4`.
+- Коммит публикации: `c040ad4`.
