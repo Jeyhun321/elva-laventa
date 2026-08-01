@@ -42,3 +42,6 @@
 - **[03:33]** Финальный `npm run build` и `git diff --check`: OK. Далее commit/push и production-check.
 - **[03:33]** Создан commit `b727ddf` (`Fix mobile search and favorite sync`); далее push в `main`, GitHub Pages и production-check.
 - **[03:33]** Commit дополнен handoff и отправлен как `e8fdcba`; GitHub Pages workflow `30673540932` завершился success. Production 375px: 14 карточек, счётчик отсутствует, placeholder анимируется внутри input, console errors 0.
+- **[03:45]** Получена финальная задача: production favorites bug остаётся; отдельно нужен менее массивный mobile-бейдж «Новинка». Начата точечная диагностика цепочки favorites, затем будут build/UI/deploy.
+- **[04:05]** Найдена remaining race condition favorites: проверка только `user.id` не отличала старый сеанс A от нового после A→B→A. Добавлен session-token на каждую активацию аккаунта; stale SELECT/DELETE/UPSERT больше не применяются к state/cache. На ≤640px бейдж «Новинка» уменьшен до компактной полупрозрачной capsule-label. Далее build и UI/deploy.
+- **[04:05]** Build и diff-check: OK. Локально: 375px RU «Новинка» 64×18px внутри фото; AZ/EN без переполнения; 1280px сохраняет исходный desktop-бейдж; console errors 0. Далее deploy и production-check.

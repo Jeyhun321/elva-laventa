@@ -3377,6 +3377,18 @@ a.product-media {
   .product-brand { font-size: 0.68rem; }
   .card-code { font-size: 0.66rem; }
   .add-btn { width: 40px; height: 40px; }
+  .product-tag {
+    top: 8px;
+    left: 8px;
+    padding: 3px 7px;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 2px 8px rgba(83, 29, 59, 0.12);
+    font-size: 0.59rem;
+    letter-spacing: 0.04em;
+    line-height: 1.15;
+    backdrop-filter: blur(3px);
+  }
 }
 
 /* Hərəkəti azaltma: panel və pərdə sıçrayışsız görünür */

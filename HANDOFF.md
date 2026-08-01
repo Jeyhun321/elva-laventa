@@ -6,7 +6,7 @@
 
 ## Где остановились
 
-Новая точечная задача опубликована в commit `e8fdcba`: счётчик товаров отсутствует в исходнике; на ≤900px пустой unfocused placeholder плавно движется внутри search, при фокусе он статичен, при вводе скрыт; на desktop overlay выключен. Причина возврата favorites устранена: state/cache меняются только после успешного Supabase INSERT/DELETE, а async-ответы дополнительно сверяются с актуальным `user.id`. На 375px AZ/RU/EN и 1280px: счётчика нет, header/card layout корректен, console errors 0. Build/diff-check OK. GitHub Pages workflow `30673540932` завершился success; production на 375px проверен: 14 карточек, счётчика нет, placeholder анимируется внутри input, console errors 0.
+Финальные две правки готовы к публикации. Причина favorites: guard сравнивал только `user.id`, поэтому при A→B→A старый async-ответ первого сеанса A мог примениться к новому сеансу A. Исправлено токеном активации аккаунта: stale SELECT/mutation больше не могут перезаписывать state/cache. Mobile-бейдж «Новинка» уменьшен до 64×18px на RU (AZ/EN адаптируются по тексту) и сделан лёгкой прозрачной capsule-label в углу; desktop не изменён. Локально: build OK, 375px/1280px, console errors 0. Далее deploy и production-check.
 
 Новая mobile-правка завершена: удалён счётчик результатов рядом с заголовком каталога; на ≤640px рейтинг карточки не переносит текст отзывов, а название ограничено двумя строками с равной высотой для выравнивания цены и кнопки. RU/AZ/EN на 375px и desktop: overflow нет, console errors 0; `npm run build` успешен. Deploy `00a63b9` завершился success; production на 375px проверен (14 карточек, count отсутствует, RU reviews nowrap, ошибок 0).
 

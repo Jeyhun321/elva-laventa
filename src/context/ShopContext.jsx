@@ -71,10 +71,17 @@ const normaliseFavorites = (items = []) => (Array.isArray(items) ? items : [])
 export function ShopProvider({ children }) {
   const { user, isSignedIn, loading } = useAuth()
   const accountId = isSignedIn ? user?.id : null
-  // Async Supabase responses must never update the cache/state of an account
-  // that became active after the request was started.
-  const activeAccountIdRef = useRef(accountId)
-  activeAccountIdRef.current = accountId
+  // An account may be switched A → B → A while an earlier request is still
+  // pending. The user id alone is not enough to identify the current session:
+  // give each activation its own token so stale A responses cannot overwrite
+  // a later A session.
+  const accountSessionRef = useRef({ accountId, version: 0 })
+  if (accountSessionRef.current.accountId !== accountId) {
+    accountSessionRef.current = {
+      accountId,
+      version: accountSessionRef.current.version + 1,
+    }
+  }
   const [cart, setCart] = useState([])
   const [favorites, setFavorites] = useState([])
   const [loadedAccountId, setLoadedAccountId] = useState(null)
@@ -102,6 +109,7 @@ export function ShopProvider({ children }) {
 
   useEffect(() => {
     let cancelled = false
+    const accountSession = accountSessionRef.current
 
     if (loading) return undefined
 
@@ -122,7 +130,7 @@ export function ShopProvider({ children }) {
 
     const syncAccount = async () => {
       if (!supabase) {
-        if (cancelled || activeAccountIdRef.current !== accountId) return
+        if (cancelled || accountSessionRef.current !== accountSession) return
         setLoadedAccountId(accountId)
         return
       }
@@ -151,7 +159,7 @@ export function ShopProvider({ children }) {
         nextFavorites = remoteFavorites
       }
 
-      if (cancelled || activeAccountIdRef.current !== accountId) return
+      if (cancelled || accountSessionRef.current !== accountSession) return
       setCart(nextCart)
       setFavorites(nextFavorites)
       cacheCart(nextCart, accountId)
@@ -261,6 +269,7 @@ export function ShopProvider({ children }) {
       return false
     }
     if (!canChangeShop) return false
+    const accountSession = accountSessionRef.current
     const productId = Number(id)
     const isNowFavorite = !favorites.includes(productId)
     const next = isNowFavorite
@@ -283,7 +292,7 @@ export function ShopProvider({ children }) {
       if (error) return false
     }
 
-    if (activeAccountIdRef.current !== accountId) return false
+    if (accountSessionRef.current !== accountSession) return false
     setFavorites(next)
     cacheFavorites(next, accountId)
     return true
