@@ -82,6 +82,10 @@ export function ShopProvider({ children }) {
       version: accountSessionRef.current.version + 1,
     }
   }
+  // The latest favorite request wins within the same account too. Without this
+  // sequence, an older SELECT can arrive after a DELETE and rebuild the list
+  // from its earlier snapshot.
+  const favoritesRequestRef = useRef(0)
   const [cart, setCart] = useState([])
   const [favorites, setFavorites] = useState([])
   const [loadedAccountId, setLoadedAccountId] = useState(null)
@@ -106,6 +110,7 @@ export function ShopProvider({ children }) {
   useEffect(() => {
     let cancelled = false
     const accountSession = accountSessionRef.current
+    const favoritesRequest = ++favoritesRequestRef.current
 
     if (loading) return undefined
 
@@ -153,7 +158,11 @@ export function ShopProvider({ children }) {
         nextFavorites = remoteFavorites
       }
 
-      if (cancelled || accountSessionRef.current !== accountSession) return
+      if (
+        cancelled
+        || accountSessionRef.current !== accountSession
+        || favoritesRequestRef.current !== favoritesRequest
+      ) return
       setCart(nextCart)
       setFavorites(nextFavorites)
       cacheCart(nextCart, accountId)
@@ -263,6 +272,7 @@ export function ShopProvider({ children }) {
     }
     if (!canChangeShop) return false
     const accountSession = accountSessionRef.current
+    const favoritesRequest = ++favoritesRequestRef.current
     const productId = Number(id)
     const isNowFavorite = !favorites.includes(productId)
 
@@ -280,7 +290,11 @@ export function ShopProvider({ children }) {
         .eq('user_id', accountId)
         .eq('product_id', productId))
     }
-    if (error || accountSessionRef.current !== accountSession) return false
+    if (
+      error
+      || accountSessionRef.current !== accountSession
+      || favoritesRequestRef.current !== favoritesRequest
+    ) return false
 
     // A mutation is never allowed to rebuild the UI from a closure or cache.
     // Read the current account's authoritative list after a successful write.
@@ -289,7 +303,11 @@ export function ShopProvider({ children }) {
       .select('product_id')
       .eq('user_id', accountId)
 
-    if (selectError || accountSessionRef.current !== accountSession) return false
+    if (
+      selectError
+      || accountSessionRef.current !== accountSession
+      || favoritesRequestRef.current !== favoritesRequest
+    ) return false
     setFavorites(normaliseFavorites(data || []))
     return true
   }, [accountId, canChangeShop, favorites, isSignedIn, syncsToDatabase])
