@@ -85,7 +85,7 @@ export default function ProductPage() {
 
   // Yoxlama SIRASI: əvvəl GİRİŞ, sonra ölçü.
   // Girişsiz alıcıdan ölçü soruşmağın mənası yoxdur — onsuz da əlavə edə bilmir.
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!canShop) {
       promptAuth('cart')
       return
@@ -94,12 +94,12 @@ export default function ProductPage() {
       setWarn(true)
       return
     }
-    if (!addToCart(product.id, size, 1)) return
+    if (!(await addToCart(product.id, size, 1))) return
     setAdded(true)
     setTimeout(() => setAdded(false), 3000)
   }
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
     if (!canShop) {
       promptAuth('cart')
       return
@@ -108,7 +108,7 @@ export default function ProductPage() {
       setWarn(true)
       return
     }
-    if (!addToCart(product.id, size, 1)) return
+    if (!(await addToCart(product.id, size, 1))) return
     navigate('/cart')
   }
 

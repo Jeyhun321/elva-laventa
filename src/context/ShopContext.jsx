@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './AuthContext.jsx'
+import { useCatalog } from './CatalogContext.jsx'
 import { supabase } from '../lib/supabase.js'
 
 const ShopContext = createContext(null)
@@ -70,6 +71,7 @@ const normaliseFavorites = (items = []) => (Array.isArray(items) ? items : [])
 
 export function ShopProvider({ children }) {
   const { user, isSignedIn, loading } = useAuth()
+  const { products, getProduct } = useCatalog()
   const accountId = isSignedIn ? user?.id : null
   // An account may be switched A → B → A while an earlier request is still
   // pending. The user id alone is not enough to identify the current session:
@@ -86,6 +88,7 @@ export function ShopProvider({ children }) {
   // sequence, an older SELECT can arrive after a DELETE and rebuild the list
   // from its earlier snapshot.
   const favoritesRequestRef = useRef(0)
+  const cartRequestRef = useRef(0)
   const [cart, setCart] = useState([])
   const [favorites, setFavorites] = useState([])
   const [loadedAccountId, setLoadedAccountId] = useState(null)
@@ -104,6 +107,24 @@ export function ShopProvider({ children }) {
     save(accountKey(CART_KEY_PREFIX, id), { accountId: id, items: next })
   }, [storageId])
 
+  const refreshCart = useCallback(async (accountSession, cartRequest) => {
+    const { data, error } = await supabase
+      .from('customer_cart_items')
+      .select('product_id, size, quantity')
+      .eq('user_id', accountId)
+
+    if (
+      error
+      || accountSessionRef.current !== accountSession
+      || cartRequestRef.current !== cartRequest
+    ) return false
+
+    const next = normaliseCart(data || [])
+    setCart(next)
+    cacheCart(next, accountId)
+    return true
+  }, [accountId, cacheCart])
+
   // Köhnə qonaq açarlarını bir dəfə silirik (bax: clearLegacyGuestData)
   useEffect(() => { clearLegacyGuestData() }, [])
 
@@ -111,6 +132,7 @@ export function ShopProvider({ children }) {
     let cancelled = false
     const accountSession = accountSessionRef.current
     const favoritesRequest = ++favoritesRequestRef.current
+    const cartRequest = ++cartRequestRef.current
 
     if (loading) return undefined
 
@@ -162,6 +184,7 @@ export function ShopProvider({ children }) {
         cancelled
         || accountSessionRef.current !== accountSession
         || favoritesRequestRef.current !== favoritesRequest
+        || cartRequestRef.current !== cartRequest
       ) return
       setCart(nextCart)
       setFavorites(nextFavorites)
@@ -184,7 +207,7 @@ export function ShopProvider({ children }) {
   // Supabase-ə yalnız girişli alıcı üçün yazırıq (qonaqda user_id yoxdur).
   const syncsToDatabase = Boolean(supabase && accountId)
 
-  const addToCart = useCallback((id, size = null, qty = 1) => {
+  const addToCart = useCallback(async (id, size = null, qty = 1) => {
     // TƏK YOXLAMA NÖQTƏSİ: girişsiz alıcı buradan keçə bilmir.
     // Hansı düymə basılırsa basılsın (kart, məhsul səhifəsi, "indi al"),
     // hamısı bu funksiyaya gəlir — deməli yan yol yoxdur.
@@ -193,76 +216,66 @@ export function ShopProvider({ children }) {
       return false
     }
     if (!canChangeShop) return false
+    if (!syncsToDatabase) return false
+    const accountSession = accountSessionRef.current
+    const cartRequest = ++cartRequestRef.current
     const productId = Number(id)
     const amount = Math.max(1, Math.min(20, Number(qty) || 1))
     const index = cart.findIndex((item) => item.id === productId && item.size === size)
-    const nextCart = index === -1
-      ? [...cart, { id: productId, size, qty: amount }]
-      : cart.map((item, itemIndex) => (
-          itemIndex === index
-            ? { ...item, qty: Math.min(20, item.qty + amount) }
-            : item
-        ))
+    const quantity = index === -1 ? amount : Math.min(20, cart[index].qty + amount)
+    const { error } = await supabase.from('customer_cart_items').upsert({
+      user_id: accountId,
+      product_id: productId,
+      size: size || '',
+      quantity,
+    }, { onConflict: 'user_id,product_id,size' })
+    if (error) return false
+    return refreshCart(accountSession, cartRequest)
+  }, [accountId, canChangeShop, cart, isSignedIn, refreshCart, syncsToDatabase])
 
-    setCart(nextCart)
-    cacheCart(nextCart)
-    if (syncsToDatabase) {
-      const item = nextCart.find((entry) => entry.id === productId && entry.size === size)
-      void supabase.from('customer_cart_items').upsert({
-        user_id: accountId,
-        product_id: productId,
-        size: size || '',
-        quantity: item?.qty || amount,
-      }, { onConflict: 'user_id,product_id,size' })
-    }
-    return true
-  }, [accountId, cacheCart, canChangeShop, cart, isSignedIn])
-
-  const removeFromCart = useCallback((id, size = null) => {
+  const removeFromCart = useCallback(async (id, size = null) => {
     if (!canChangeShop) return false
+    if (!syncsToDatabase) return false
+    const accountSession = accountSessionRef.current
+    const cartRequest = ++cartRequestRef.current
     const productId = Number(id)
-    setCart((previous) => {
-      const next = previous.filter((item) => !(item.id === productId && item.size === size))
-      cacheCart(next)
-      return next
-    })
-    if (syncsToDatabase) void supabase.from('customer_cart_items')
+    const { error } = await supabase.from('customer_cart_items')
       .delete()
       .eq('user_id', accountId)
       .eq('product_id', productId)
       .eq('size', size || '')
-    return true
-  }, [accountId, cacheCart, canChangeShop])
+    if (error) return false
+    return refreshCart(accountSession, cartRequest)
+  }, [accountId, canChangeShop, refreshCart, syncsToDatabase])
 
-  const setQty = useCallback((id, size, qty) => {
+  const setQty = useCallback(async (id, size, qty) => {
     const amount = Number(qty)
     if (amount <= 0) return removeFromCart(id, size)
     if (!canChangeShop) return false
+    if (!syncsToDatabase) return false
+    const accountSession = accountSessionRef.current
+    const cartRequest = ++cartRequestRef.current
     const productId = Number(id)
     const safeQty = Math.min(20, amount)
-    setCart((previous) => {
-      const next = previous.map((item) => (
-        item.id === productId && item.size === size ? { ...item, qty: safeQty } : item
-      ))
-      cacheCart(next)
-      return next
-    })
-    if (syncsToDatabase) void supabase.from('customer_cart_items').upsert({
+    const { error } = await supabase.from('customer_cart_items').upsert({
       user_id: accountId,
       product_id: productId,
       size: size || '',
       quantity: safeQty,
     }, { onConflict: 'user_id,product_id,size' })
-    return true
-  }, [accountId, cacheCart, canChangeShop, removeFromCart])
+    if (error) return false
+    return refreshCart(accountSession, cartRequest)
+  }, [accountId, canChangeShop, refreshCart, removeFromCart, syncsToDatabase])
 
   const clearCart = useCallback(async () => {
     if (!canChangeShop) return false
-    setCart([])
-    cacheCart([])
-    if (syncsToDatabase) await supabase.from('customer_cart_items').delete().eq('user_id', accountId)
-    return true
-  }, [accountId, cacheCart, canChangeShop])
+    if (!syncsToDatabase) return false
+    const accountSession = accountSessionRef.current
+    const cartRequest = ++cartRequestRef.current
+    const { error } = await supabase.from('customer_cart_items').delete().eq('user_id', accountId)
+    if (error) return false
+    return refreshCart(accountSession, cartRequest)
+  }, [accountId, canChangeShop, refreshCart, syncsToDatabase])
 
   const toggleFavorite = useCallback(async (id) => {
     // TƏK YOXLAMA NÖQTƏSİ — sevimlilər üçün
@@ -312,13 +325,20 @@ export function ShopProvider({ children }) {
     return true
   }, [accountId, canChangeShop, favorites, isSignedIn, syncsToDatabase])
 
-  const isFavorite = useCallback((id) => visibleFavorites.includes(Number(id)), [visibleFavorites])
-  const cartCount = useMemo(() => visibleCart.reduce((sum, item) => sum + item.qty, 0), [visibleCart])
+  const visibleFavoriteIds = useMemo(
+    () => visibleFavorites.filter((id) => products.some((product) => product.id === id)),
+    [products, visibleFavorites]
+  )
+  const isFavorite = useCallback((id) => visibleFavoriteIds.includes(Number(id)), [visibleFavoriteIds])
+  const cartCount = useMemo(
+    () => visibleCart.reduce((sum, item) => (getProduct(item.id) ? sum + item.qty : sum), 0),
+    [getProduct, visibleCart]
+  )
 
   return (
     <ShopContext.Provider value={{
       cart: visibleCart,
-      favorites: visibleFavorites,
+      favorites: visibleFavoriteIds,
       addToCart,
       removeFromCart,
       setQty,
@@ -326,7 +346,7 @@ export function ShopProvider({ children }) {
       toggleFavorite,
       isFavorite,
       cartCount,
-      favCount: visibleFavorites.length,
+      favCount: visibleFavoriteIds.length,
       // Alış-veriş yalnız giriş etmiş alıcı üçündür
       canShop: Boolean(!loading && isSignedIn),
       // Girişsiz cəhd olanda pəncərəni açmaq üçün
