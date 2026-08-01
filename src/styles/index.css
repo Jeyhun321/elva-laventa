@@ -3823,7 +3823,8 @@ a.product-media {
     overflow: hidden;
     padding: 0 14px;
     color: var(--muted);
-    font-size: 16px;
+    font-size: 15px;
+    font-weight: 400;
     line-height: 1;
     pointer-events: none;
     transform: translateY(-50%);

@@ -6,7 +6,7 @@
 
 ## Где остановились
 
-Новые follow-up готовы к deploy: orphan ID больше не показывает badge в избранном/корзине — count берёт только реальные товары каталога. Cart теперь повторяет надёжную модель favorites: mutation → fresh SELECT → применить только последнюю cart-операцию session-token; old SELECT не возвращает удалённую позицию. Страница товара ждёт успешный ответ cart-mutation перед подтверждением/переходом. Память каждого аккаунта остаётся в Supabase по его `user.id`; cache cart используется только как owned fallback до успешного remote SELECT. Diff-check и production build: OK. Далее commit, deploy и production-check.
+Новая точечная UI/navigation-правка готова к deploy: при фактической смене `user.id` приложение возвращает на главную, но не сбрасывает обычный refresh/deep link; logo ведёт на главную с полной перезагрузкой; на mobile placeholder поиска чуть легче/меньше. При медленном каталоге главная сразу показывает статичный контент, а не пустой spinner; каталог и прочие data-зависимые маршруты по-прежнему ждут свежие данные. Build/diff-check: OK. Далее deploy и production-check.
 
 Новая mobile-правка завершена: удалён счётчик результатов рядом с заголовком каталога; на ≤640px рейтинг карточки не переносит текст отзывов, а название ограничено двумя строками с равной высотой для выравнивания цены и кнопки. RU/AZ/EN на 375px и desktop: overflow нет, console errors 0; `npm run build` успешен. Deploy `00a63b9` завершился success; production на 375px проверен (14 карточек, count отсутствует, RU reviews nowrap, ошибок 0).
 

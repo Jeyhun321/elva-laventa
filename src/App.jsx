@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useRef } from 'react'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -7,6 +7,7 @@ import ShopAuthGate from './components/ShopAuthGate.jsx'
 import SystemLogReporter from './components/SystemLogReporter.jsx'
 import { useI18n } from './i18n/I18nContext.jsx'
 import { useCatalog } from './context/CatalogContext.jsx'
+import { useAuth } from './context/AuthContext.jsx'
 
 // Ana səhifə dərhal lazımdır — ayrıca yüklənmir.
 import HomePage from './pages/HomePage.jsx'
@@ -30,6 +31,23 @@ function ScrollToTop() {
   return null
 }
 
+function AccountHomeRedirect() {
+  const { user, loading } = useAuth()
+  const navigate = useNavigate()
+  const previousAccountId = useRef(undefined)
+
+  useEffect(() => {
+    if (loading) return
+    const nextAccountId = user?.id || null
+    if (previousAccountId.current !== undefined && previousAccountId.current !== nextAccountId && nextAccountId) {
+      navigate('/', { replace: true })
+    }
+    previousAccountId.current = nextAccountId
+  }, [loading, navigate, user?.id])
+
+  return null
+}
+
 // Səhifə yüklənənə qədər qısa göstərici (boş ekran qalmasın)
 function RouteLoading() {
   const { t } = useI18n()
@@ -43,14 +61,17 @@ function RouteLoading() {
 
 export default function App() {
   const { loading: catalogLoading } = useCatalog()
+  const location = useLocation()
+  const showHomeWhileCatalogLoads = location.pathname === '/'
 
   return (
     <>
       <ScrollToTop />
+      <AccountHomeRedirect />
       <SystemLogReporter />
       <Header />
       <main>
-        {catalogLoading ? <RouteLoading /> : (
+        {catalogLoading && !showHomeWhileCatalogLoads ? <RouteLoading /> : (
           <Suspense fallback={<RouteLoading />}>
             <Routes>
               <Route path="/" element={<HomePage />} />

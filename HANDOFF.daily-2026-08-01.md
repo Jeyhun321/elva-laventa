@@ -56,3 +56,7 @@
 - **[04:56]** Исправлен асинхронный caller cart: ProductPage показывает «добавлено» или переходит в cart только после успешной записи/свежего SELECT, а не по truthy Promise.
 - **[04:56]** `git diff --check` OK. Первая build в sandbox остановлена ограничением Windows (`esbuild` не может прочитать `vite.config.js`); запускается та же build вне sandbox.
 - **[04:57]** Production build вне sandbox: OK (118 modules transformed). Далее commit/push и production-check.
+- **[04:58]** Commit `d68681a` (`Fix cart sync and orphan badges`) отправлен в `main`; ожидается GitHub Pages deploy и production-check.
+- **[04:59]** GitHub Pages workflow `30676069231` для `d68681a`: success. Production smoke-check 375px/1280px: badges 0 для гостевой сессии, console errors 0. Живая A/B проверка требует авторизованных аккаунтов владельца.
+- **[05:00]** Начата точечная правка: account switch → home, logo → hard reload home, mobile search placeholder немного меньше/легче; home не блокируется spinner при медленной загрузке каталога.
+- **[05:01]** Production build и diff-check: OK. Redirect учитывает только смену account id, обычный refresh/deep link не затрагивается. Далее deploy.

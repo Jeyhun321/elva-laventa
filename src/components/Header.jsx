@@ -70,9 +70,9 @@ export default function Header() {
   return (
     <header className={`header${scrolled ? ' scrolled' : ''}`}>
       <div className="container header-inner">
-        <Link to="/" className="brand brand-logo" aria-label="Elva LaVenta">
+        <a href={import.meta.env.BASE_URL} className="brand brand-logo" aria-label="Elva LaVenta">
           <img className="brand-logo-image" src={flowerLogo} alt="Elva LaVenta" />
-        </Link>
+        </a>
 
         <div className="cat-wrap" ref={catRef}>
           <button
