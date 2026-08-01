@@ -100,10 +100,6 @@ export function ShopProvider({ children }) {
     save(accountKey(CART_KEY_PREFIX, id), { accountId: id, items: next })
   }, [storageId])
 
-  const cacheFavorites = useCallback((next, id = storageId) => {
-    save(accountKey(FAV_KEY_PREFIX, id), { accountId: id, items: next })
-  }, [storageId])
-
   // Köhnə qonaq açarlarını bir dəfə silirik (bax: clearLegacyGuestData)
   useEffect(() => { clearLegacyGuestData() }, [])
 
@@ -123,10 +119,8 @@ export function ShopProvider({ children }) {
     }
 
     const cachedCart = normaliseCart(loadOwnedCache(accountKey(CART_KEY_PREFIX, accountId), accountId, []))
-    const cachedFavorites = normaliseFavorites(loadOwnedCache(accountKey(FAV_KEY_PREFIX, accountId), accountId, []))
 
     setCart(cachedCart)
-    setFavorites(cachedFavorites)
 
     const syncAccount = async () => {
       if (!supabase) {
@@ -147,7 +141,7 @@ export function ShopProvider({ children }) {
       ])
 
       let nextCart = cachedCart
-      let nextFavorites = cachedFavorites
+      let nextFavorites = []
 
       if (!cartResult.error) {
         const remoteCart = normaliseCart(cartResult.data || [])
@@ -163,14 +157,13 @@ export function ShopProvider({ children }) {
       setCart(nextCart)
       setFavorites(nextFavorites)
       cacheCart(nextCart, accountId)
-      cacheFavorites(nextFavorites, accountId)
 
       setLoadedAccountId(accountId)
     }
 
     void syncAccount()
     return () => { cancelled = true }
-  }, [accountId, cacheCart, cacheFavorites, loading])
+  }, [accountId, cacheCart, loading])
 
   // Səbəti yalnız GİRİŞ ETMİŞ alıcı dəyişə bilər.
   // Həm də sinxronizasiya bitməlidir ki, yerli və uzaq səbət toqquşmasın.
@@ -272,31 +265,34 @@ export function ShopProvider({ children }) {
     const accountSession = accountSessionRef.current
     const productId = Number(id)
     const isNowFavorite = !favorites.includes(productId)
-    const next = isNowFavorite
-      ? [...favorites, productId]
-      : favorites.filter((entry) => entry !== productId)
 
-    if (syncsToDatabase) {
-      let error
-      if (isNowFavorite) {
-        ({ error } = await supabase.from('customer_favorites').upsert(
-          { user_id: accountId, product_id: productId },
-          { onConflict: 'user_id,product_id' }
-        ))
-      } else {
-        ({ error } = await supabase.from('customer_favorites')
-          .delete()
-          .eq('user_id', accountId)
-          .eq('product_id', productId))
-      }
-      if (error) return false
+    if (!syncsToDatabase) return false
+
+    let error
+    if (isNowFavorite) {
+      ({ error } = await supabase.from('customer_favorites').upsert(
+        { user_id: accountId, product_id: productId },
+        { onConflict: 'user_id,product_id' }
+      ))
+    } else {
+      ({ error } = await supabase.from('customer_favorites')
+        .delete()
+        .eq('user_id', accountId)
+        .eq('product_id', productId))
     }
+    if (error || accountSessionRef.current !== accountSession) return false
 
-    if (accountSessionRef.current !== accountSession) return false
-    setFavorites(next)
-    cacheFavorites(next, accountId)
+    // A mutation is never allowed to rebuild the UI from a closure or cache.
+    // Read the current account's authoritative list after a successful write.
+    const { data, error: selectError } = await supabase
+      .from('customer_favorites')
+      .select('product_id')
+      .eq('user_id', accountId)
+
+    if (selectError || accountSessionRef.current !== accountSession) return false
+    setFavorites(normaliseFavorites(data || []))
     return true
-  }, [accountId, cacheFavorites, canChangeShop, favorites, isSignedIn, syncsToDatabase])
+  }, [accountId, canChangeShop, favorites, isSignedIn, syncsToDatabase])
 
   const isFavorite = useCallback((id) => visibleFavorites.includes(Number(id)), [visibleFavorites])
   const cartCount = useMemo(() => visibleCart.reduce((sum, item) => sum + item.qty, 0), [visibleCart])

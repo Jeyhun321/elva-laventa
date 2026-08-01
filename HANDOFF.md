@@ -6,7 +6,7 @@
 
 ## Где остановились
 
-Финальные две правки готовы к публикации. Причина favorites: guard сравнивал только `user.id`, поэтому при A→B→A старый async-ответ первого сеанса A мог примениться к новому сеансу A. Исправлено токеном активации аккаунта: stale SELECT/mutation больше не могут перезаписывать state/cache. Mobile-бейдж «Новинка» уменьшен до 64×18px на RU (AZ/EN адаптируются по тексту) и сделан лёгкой прозрачной capsule-label в углу; desktop не изменён. Локально: build OK, 375px/1280px, console errors 0. Далее deploy и production-check.
+В работе повторная диагностика favorites по видео. В коде нет второго provider/realtime/listener: проблема в смешении cache/remote на первоначальной загрузке и в `setFavorites(next)` после DELETE, где `next` был вычислен из старого замыкания. Исправлено: для вошедшего пользователя favorites больше не читаются/сохраняются в localStorage (writer удалён); initial load и каждое успешное DELETE/UPSERT завершаются только fresh `SELECT customer_favorites` текущего `user.id`, защищённым токеном сеанса. Build/diff-check OK; далее production deploy и проверка сценария.
 
 Новая mobile-правка завершена: удалён счётчик результатов рядом с заголовком каталога; на ≤640px рейтинг карточки не переносит текст отзывов, а название ограничено двумя строками с равной высотой для выравнивания цены и кнопки. RU/AZ/EN на 375px и desktop: overflow нет, console errors 0; `npm run build` успешен. Deploy `00a63b9` завершился success; production на 375px проверен (14 карточек, count отсутствует, RU reviews nowrap, ошибок 0).
 
