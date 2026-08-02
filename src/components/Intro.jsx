@@ -11,8 +11,6 @@ import flowerLogo from '../assets/elva-laventa-logo.svg'
 // yalnız sağ tərəfdə, şəffaf və pointer-events: none.
 const PETALS = [0, 1, 2, 3, 4, 5]
 
-const AUTOPLAY_MS = 2500
-
 // Заголовок с выделенным italic-словом (hero_title_em) — премиум-акцент.
 function HeroTitle({ text, em }) {
   if (!em || !text.includes(em)) return <>{text}</>
@@ -37,7 +35,6 @@ export default function Intro() {
     return [...saleProducts, ...products.filter((product) => !saleIds.has(product.id))].slice(0, 7)
   }, [saleProducts, products])
   const [active, setActive] = useState(0)
-  const [paused, setPaused] = useState(false)
 
   const step = (dir) =>
     setActive((a) => (SHOW.length ? (a + dir + SHOW.length) % SHOW.length : 0))
@@ -46,13 +43,6 @@ export default function Intro() {
   useEffect(() => {
     if (SHOW.length && active >= SHOW.length) setActive(0)
   }, [SHOW.length, active])
-
-  // Avtomatik dəyişmə
-  useEffect(() => {
-    if (paused || SHOW.length < 2) return
-    const tm = setInterval(() => step(-1), AUTOPLAY_MS)
-    return () => clearInterval(tm)
-  }, [paused, SHOW.length])
 
   const slotName = (i) => {
     const n = SHOW.length
@@ -87,31 +77,6 @@ export default function Intro() {
             </Link>
           </div>
 
-          {/* Sosial sübut: üst-üstə düşən avatarlar. Uydurma foto yoxdur — sadə qradient dairələr. */}
-          <div className="intro-proof">
-            <span className="proof-avatars" aria-hidden="true">
-              <i className="proof-av av-1" />
-              <i className="proof-av av-2" />
-              <i className="proof-av av-3" />
-              <i className="proof-av av-4" />
-            </span>
-            <span className="proof-text">{t('hero_proof')}</span>
-          </div>
-
-          <div className="intro-stats">
-            <div className="intro-stat">
-              <b>{products.length || 0}+</b>
-              <span>{t('stat_products')}</span>
-            </div>
-            <div className="intro-stat">
-              <b>500+</b>
-              <span>{t('stat_customers')}</span>
-            </div>
-            <div className="intro-stat">
-              <b>4.9</b>
-              <span>{t('stat_rating')}</span>
-            </div>
-          </div>
         </div>
 
         <div className="showcase">
@@ -123,11 +88,7 @@ export default function Intro() {
           </div>
 
           <div className="showcase-tilt" ref={tiltRef}>
-            <div
-              className="showcase-stage"
-              onMouseEnter={() => setPaused(true)}
-              onMouseLeave={() => setPaused(false)}
-            >
+            <div className="showcase-stage">
               {SHOW.map((product, i) => (
                 <ShowcaseCard
                   key={product.id}
@@ -136,12 +97,6 @@ export default function Intro() {
                 />
               ))}
             </div>
-
-            {/* Üzən dairəvi endirim nişanı */}
-            <span className="hero-badge-round" aria-hidden="true">
-              <em>{t('hero_off_label')}</em>
-              <b>40%</b>
-            </span>
 
             {/* Aşağıda kiçik "yeni kolleksiya" kartı */}
             <Link to="/catalog" className="hero-mini-card">

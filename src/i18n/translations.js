@@ -183,6 +183,26 @@ export const ui = {
   },
   hero_card_cta: { az: 'Bax', ru: 'Смотреть', en: 'Shop now' },
   hero_off_label: { az: 'endirim', ru: 'скидка до', en: 'up to' },
+  brand_statement_title: {
+    az: 'Hər gün üçün seçilmiş zəriflik',
+    ru: 'Элегантность, выбранная на каждый день',
+    en: 'Elegance chosen for every day',
+  },
+  brand_statement_text: {
+    az: 'ELVA kolleksiyası gündəlik rahatlığı incə siluetlər və asan kombinlərlə birləşdirir.',
+    ru: 'Коллекция ELVA объединяет комфорт на каждый день с лаконичными силуэтами, которые легко сочетать.',
+    en: 'The ELVA collection brings everyday comfort together with considered silhouettes that are easy to wear.',
+  },
+  brand_statement_cta: { az: 'Kolleksiyaya bax', ru: 'Смотреть коллекцию', en: 'Explore the collection' },
+  benefits_title: { az: 'ELVA ilə rahat seçim', ru: 'Выбирать с ELVA легко', en: 'Choosing with ELVA is simple' },
+  benefits_intro: {
+    az: 'Məhsulu seçin, sevimlilərə əlavə edin və sifarişi bir neçə addımda tamamlayın.',
+    ru: 'Выбирайте модели, сохраняйте избранное и оформляйте заказ в несколько шагов.',
+    en: 'Choose a style, save favorites, and place an order in a few simple steps.',
+  },
+  benefit_choice: { az: 'Kolleksiyada rəng, ölçü və model üzrə rahat seçim.', ru: 'Удобный выбор по цвету, размеру и модели.', en: 'Easy choice by colour, size, and style.' },
+  benefit_contact: { az: 'Sifarişdən sonra WhatsApp ilə əlaqə saxlayırıq.', ru: 'После заказа мы свяжемся с вами в WhatsApp.', en: 'We will contact you on WhatsApp after your order.' },
+  benefit_languages: { az: 'Sayt Azərbaycan, rus və ingilis dillərində əlçatandır.', ru: 'Сайт доступен на азербайджанском, русском и английском.', en: 'The store is available in Azerbaijani, Russian, and English.' },
 
   // Kateqoriyalar zolağı
   cats_eyebrow: { az: 'Kateqoriyalar', ru: 'Категории', en: 'Categories' },

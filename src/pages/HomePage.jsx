@@ -3,9 +3,10 @@ import { useCatalog } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import useReveal from '../hooks/useReveal.js'
 import Intro from '../components/Intro.jsx'
-import Marquee from '../components/Marquee.jsx'
 import Categories from '../components/Categories.jsx'
 import Promo from '../components/Promo.jsx'
+import BrandStatement from '../components/BrandStatement.jsx'
+import BenefitsSection from '../components/BenefitsSection.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import { IconArrow } from '../components/Icons.jsx'
 
@@ -20,7 +21,6 @@ export default function HomePage() {
   return (
     <>
       <Intro />
-      <Marquee />
       <Categories />
 
       <section className="section" id="catalog-preview">
@@ -51,6 +51,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      <BrandStatement />
+      <BenefitsSection />
       <Promo />
     </>
   )
