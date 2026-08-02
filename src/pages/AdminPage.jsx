@@ -279,14 +279,27 @@ function AdminSetupRequired({ onExit }) {
   )
 }
 
+const OTP_RESEND_COOLDOWN = 30 // секунд между отправками кода
+
 function EmailOtpScreen({ session, onVerified, onExit }) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
   const [err, setErr] = useState('')
+  const [cooldown, setCooldown] = useState(0)
   const email = ADMIN_OTP_EMAIL
 
+  // Обратный отсчёт до возможности повторной отправки.
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const id = setInterval(() => setCooldown((s) => (s <= 1 ? 0 : s - 1)), 1000)
+    return () => clearInterval(id)
+  }, [cooldown])
+
+  // Отправка кода — ТОЛЬКО по явному действию пользователя (клик по кнопке).
+  // Никакого авто-запуска при монтировании/refresh/деплое.
   const sendCode = useCallback(async () => {
+    if (busy || cooldown > 0) return // защита от повторных писем (быстрые клики / до истечения 30 с)
     setBusy(true); setErr('')
     try {
       const { error } = await adminSupabase.auth.signInWithOtp({
@@ -295,20 +308,19 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
       })
       if (error) throw error
       setSent(true)
+      setCooldown(OTP_RESEND_COOLDOWN) // блокируем повторную отправку на 30 секунд
     } catch (e) {
       setErr(e.message)
     } finally {
       setBusy(false)
     }
-  }, [email])
-
-  useEffect(() => { sendCode() }, [sendCode])
+  }, [email, busy, cooldown])
 
   const verify = async (e) => {
     e.preventDefault()
     const token = code.replace(/\s/g, '')
-    if (!/^\d{6,8}$/.test(token)) {
-      setErr('Введите код из письма.')
+    if (!/^\d{6}$/.test(token)) {
+      setErr('Введите 6-значный код из письма.')
       return
     }
     setBusy(true); setErr('')
@@ -318,27 +330,49 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
       saveAdminOtpVerification(session.user.id)
       onVerified()
     } catch {
-      setErr('Код не подошёл или уже истёк. Запросите новый код.')
+      setErr('Код неверный, устарел или уже использован. Запросите новый код.')
     } finally {
       setBusy(false)
     }
   }
 
+  const resendLabel = cooldown > 0
+    ? `Отправить код ещё раз через ${cooldown} с`
+    : (sent ? 'Отправить код ещё раз' : 'Отправить код на почту')
+
   return (
     <div className="container admin">
       <div className="login-box admin-gate-box">
         <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Подтвердите вход</h1>
-        <p className="admin-sub">Мы отправили одноразовый код на <strong>{email}</strong>. Код действует 15 минут.</p>
-        <form onSubmit={verify} className="login-form">
-          <label className="fld">
-            <span>Код из письма</span>
-            <input className="otp-code" inputMode="numeric" autoComplete="one-time-code" maxLength="8" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus />
-          </label>
-          {err && <div className="admin-msg err">{err}</div>}
-          {sent && <div className="admin-msg ok">Письмо отправлено. Проверьте также папку «Спам».</div>}
-          <button className="btn btn-primary full" disabled={busy}>{busy ? 'Проверяю…' : 'Подтвердить код'}</button>
-          <button type="button" className="link-btn forgot-link" onClick={sendCode} disabled={busy}>Отправить код ещё раз</button>
-        </form>
+        <p className="admin-sub">
+          {sent
+            ? <>Одноразовый код отправлен на <strong>{email}</strong>. Действителен только последний код — введите его.</>
+            : <>Чтобы войти в панель, запросите одноразовый код на <strong>{email}</strong>.</>}
+        </p>
+
+        {!sent && (
+          <button type="button" className="btn btn-primary full" onClick={sendCode} disabled={busy || cooldown > 0}>
+            {busy ? 'Отправляю…' : resendLabel}
+          </button>
+        )}
+
+        {sent && (
+          <form onSubmit={verify} className="login-form">
+            <label className="fld">
+              <span>Код из письма</span>
+              <input className="otp-code" inputMode="numeric" autoComplete="one-time-code" maxLength="6" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus />
+            </label>
+            {err && <div className="admin-msg err">{err}</div>}
+            <div className="admin-msg ok">Письмо отправлено. Проверьте также папку «Спам».</div>
+            <button className="btn btn-primary full" disabled={busy}>{busy ? 'Проверяю…' : 'Подтвердить код'}</button>
+            <button type="button" className="link-btn forgot-link" onClick={sendCode} disabled={busy || cooldown > 0}>
+              {resendLabel}
+            </button>
+          </form>
+        )}
+
+        {!sent && err && <div className="admin-msg err">{err}</div>}
+
         <button type="button" className="continue-link link-btn" onClick={onExit}>Выйти из учётной записи</button>
       </div>
     </div>
