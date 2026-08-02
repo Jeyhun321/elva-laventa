@@ -46,7 +46,7 @@ export default function CheckoutPage() {
   const { t } = useI18n()
   const { getProduct, loading: catalogLoading } = useCatalog()
   const { user, profile, isSignedIn, loading } = useAuth()
-  const { cart, clearCart } = useShop()
+  const { cart, clearCart, markOrderCompleted } = useShop()
   const navigate = useNavigate()
   const formRef = useRef(null)
 
@@ -156,6 +156,10 @@ export default function CheckoutPage() {
 
       setDone(order)
       await clearCart()
+      // Səbət UĞURLU sifarişdən sonra boşaldı — boş səbət səhifəsi bunu bilməlidir,
+      // ki "Alış-verişə davam et" göstərsin (əl ilə silmədən fərqli). Yalnız uğurdan
+      // sonra çağırılır: xəta olsa, bu sətrə çatmırıq (tələb 3, 6).
+      markOrderCompleted()
     } catch (error) {
       setErr(t(getOrderErrorKey(error)))
     } finally {

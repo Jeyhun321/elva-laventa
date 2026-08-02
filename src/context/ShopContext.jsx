@@ -92,6 +92,13 @@ export function ShopProvider({ children }) {
   const [cart, setCart] = useState([])
   const [favorites, setFavorites] = useState([])
   const [loadedAccountId, setLoadedAccountId] = useState(null)
+  // Səbətin niyə boşaldığını fərqləndirmək üçün QISA ÖMÜRLÜ işarə:
+  // yalnız uğurlu sifarişdən sonra true olur. Yaddaşda (in-memory) saxlanılır —
+  // refresh/yeni sessiya onu SIFIRLAYIR, ona görə "sifariş verildi" mətni
+  // yalançı qalmır. localStorage/sessionStorage-a YAZILMIR (tələb 4).
+  const [orderJustCompleted, setOrderJustCompleted] = useState(false)
+  const markOrderCompleted = useCallback(() => setOrderJustCompleted(true), [])
+  const clearOrderCompleted = useCallback(() => setOrderJustCompleted(false), [])
   // Qonaq nəyəsə toxunanda "daxil olun" pəncərəsini açan siqnal.
   // Bir yerdə saxlanılır ki, hansı düymə basılmasından asılı olmayaraq
   // eyni pəncərə görünsün.
@@ -127,6 +134,10 @@ export function ShopProvider({ children }) {
 
   // Köhnə qonaq açarlarını bir dəfə silirik (bax: clearLegacyGuestData)
   useEffect(() => { clearLegacyGuestData() }, [])
+
+  // Hesab dəyişəndə (giriş/çıxış, yeni sessiya) "sifariş verildi" işarəsini sıfırla —
+  // yeni hesab köhnə sifarişin mətnini əsla görməməlidir (tələb 4).
+  useEffect(() => { setOrderJustCompleted(false) }, [accountId])
 
   useEffect(() => {
     let cancelled = false
@@ -230,6 +241,9 @@ export function ShopProvider({ children }) {
       quantity,
     }, { onConflict: 'user_id,product_id,size' })
     if (error) return false
+    // Yeni məhsul əlavə edilirsə — "sifariş verildi" işarəsi artıq aktual deyil
+    // (tələb 5: sifarişdən sonra yeni məhsul → sonra əl ilə silmə → yenə "başla").
+    setOrderJustCompleted(false)
     return refreshCart(accountSession, cartRequest)
   }, [accountId, canChangeShop, cart, isSignedIn, refreshCart, syncsToDatabase])
 
@@ -343,6 +357,10 @@ export function ShopProvider({ children }) {
       removeFromCart,
       setQty,
       clearCart,
+      // Səbətin niyə boşaldığını fərqləndirmək üçün (uğurlu sifariş vs əl ilə silmə)
+      orderJustCompleted,
+      markOrderCompleted,
+      clearOrderCompleted,
       toggleFavorite,
       isFavorite,
       cartCount,

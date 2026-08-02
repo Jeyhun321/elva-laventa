@@ -316,6 +316,8 @@ export const ui = {
     en: 'Add items you like from the catalog.',
   },
   go_shopping: { az: 'Alış-verişə başla', ru: 'Начать покупки', en: 'Start shopping' },
+  // Uğurlu sifarişdən sonra boş səbətdə göstərilir (əl ilə silmədən fərqli)
+  continue_shopping: { az: 'Alış-verişə davam et', ru: 'Продолжить покупки', en: 'Continue shopping' },
   subtotal: { az: 'Cəm', ru: 'Сумма', en: 'Subtotal' },
   discount_total: { az: 'Endirim', ru: 'Скидка', en: 'Discount' },
   total: { az: 'Yekun', ru: 'Итого', en: 'Total' },

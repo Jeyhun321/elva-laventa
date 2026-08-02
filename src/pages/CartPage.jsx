@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
@@ -8,7 +9,11 @@ import ProductImage from '../components/ProductImage.jsx'
 export default function CartPage() {
   const { t } = useI18n()
   const { getProduct, loading: catalogLoading } = useCatalog()
-  const { cart, setQty, removeFromCart } = useShop()
+  const { cart, setQty, removeFromCart, orderJustCompleted, clearOrderCompleted } = useShop()
+
+  // "Sifariş verildi" işarəsi QISA ÖMÜRLÜdür: səbət səhifəsindən çıxanda sıfırlanır,
+  // beləliklə səbəti təkrar açanda yanlış "davam et" mətni qalmır (tələb 4).
+  useEffect(() => () => clearOrderCompleted(), [clearOrderCompleted])
 
   const lines = cart
     .map((item) => ({ item, product: getProduct(item.id) }))
@@ -29,7 +34,9 @@ export default function CartPage() {
       <div className="container empty-state" style={{ padding: '90px 0' }}>
         <h2 className="page-title">{t('cart_empty')}</h2>
         <p>{t('cart_empty_desc')}</p>
-        <Link to="/catalog" className="btn btn-primary">{t('go_shopping')}</Link>
+        <Link to="/catalog" className="btn btn-primary">
+          {t(orderJustCompleted ? 'continue_shopping' : 'go_shopping')}
+        </Link>
       </div>
     )
   }
