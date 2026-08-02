@@ -81,6 +81,16 @@ export default function CheckoutPage() {
     if (lines.length === 0 && !done) navigate('/cart', { replace: true })
   }, [lines.length, done, navigate, loading, catalogLoading])
 
+  // Yalnız UĞURLU sifarişdən sonra (done set olanda) təsdiq blokunu görünən sahəyə qaldırırıq.
+  // Problem: mobil-də istifadəçi uzun formanın sonunda (footer/tabbar yanında) qalırdı və
+  // yuxarıdakı təsdiq kartını görmürdü. Səhifənin başına qaldırırıq — sticky şapka təbii
+  // olaraq kartın üstündə qalır, kart tam görünür, footer-ə düşmürük. Blok artıq başdadırsa
+  // (scrollY === 0, adətən desktop) — heç nə etmirik, lazımsız sıçrayış olmasın (tələb 8).
+  useEffect(() => {
+    if (!done) return
+    if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [done])
+
   // Hesaba girmişsə, adı avtomatik dolsun
   useEffect(() => {
     if (profile?.name) {
@@ -180,7 +190,7 @@ export default function CheckoutPage() {
               {t('order_number')}: <b>{done.order_no}</b>
             </div>
           )}
-          <Link to="/catalog" className="btn btn-primary">{t('go_shopping')}</Link>
+          <Link to="/catalog" className="btn btn-primary">{t('continue_shopping')}</Link>
         </div>
       </div>
     )

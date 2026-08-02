@@ -468,4 +468,61 @@
   - [ ] G. Проверить AZ / RU / EN.
   - [ ] H. Проверить mobile и desktop.
 - **Regression History:** NOT VERIFIED (изменения в рабочем дереве, не закоммичены/не задеплоены; `vite build` — успешно). Полная регрессия сейчас не выполняется (политика Fix Verification).
-- **Notes:** Исправление затронуло `src/context/ShopContext.jsx`, `src/pages/CheckoutPage.jsx`, `src/pages/CartPage.jsx`, `src/i18n/translations.js`. Существующая очистка корзины после заказа (`clearCart`) не изменена (требование 6). Прежнего B-ID не было.
+- **Notes:** Исправление затронуло `src/context/ShopContext.jsx`, `src/pages/CheckoutPage.jsx`, `src/pages/CartPage.jsx`, `src/i18n/translations.js`. Существующая очистка корзины после заказа (`clearCart`) не изменена (требование 6). Прежнего B-ID не было. **Уточнение (см. LAV-BUG-014):** эта правка меняла CTA на странице **корзины** (`CartPage`), но реальный экран после заказа — блок `done` в `CheckoutPage`, поэтому визуально CTA не изменился; настоящая первопричина закрыта в LAV-BUG-014.
+
+## LAV-BUG-014 — На экране подтверждения заказа неверный CTA («Alış-verişə başla»)
+- **Module:** Checkout / Order confirmation (CheckoutPage `done`)
+- **Platform:** both
+- **Environment:** Working tree (не закоммичено, не задеплоено)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (скриншот, mobile)
+- **Found Date:** 2026-08-02
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification
+- **Release:** Pre-1.0
+- **Description:** После успешного оформления заказа на экране подтверждения («Sifarişiniz qəbul edildi!») кнопка показывала «Alış-verişə başla» вместо «Alış-verişə davam et».
+- **Steps to Reproduce:**
+  1. Успешно оформить заказ.
+  2. Посмотреть кнопку на экране подтверждения.
+- **Expected Result:** AZ «Alış-verişə davam et» / RU «Продолжить покупки» / EN «Continue shopping».
+- **Actual Result:** «Alış-verişə başla» (`go_shopping`).
+- **Root Cause:** Экран подтверждения — это **отдельный компонент** (блок `done` в `src/pages/CheckoutPage.jsx`), у которого кнопка была жёстко привязана к ключу `go_shopping`. Предыдущая правка (LAV-BUG-013) меняла CTA только в `CartPage` (пустая корзина) и добавляла состояние `orderJustCompleted` — но после заказа пользователь видит **не** `CartPage`, а экран подтверждения `CheckoutPage`, который это состояние не читал. Поэтому текст на реальном экране не менялся.
+- **Fix Summary:** Кнопка на экране подтверждения (`CheckoutPage` блок `done`) переведена на ключ `continue_shopping` (`src/pages/CheckoutPage.jsx:190`). Блок `done` рендерится **только** после реально успешного заказа (`if (done)`), поэтому CTA однозначно корректный без доп. флагов. Ключ `continue_shopping` (az «Alış-verişə davam et», ru «Продолжить покупки», en «Continue shopping») уже существует в `translations.js`. Текст не хардкодится. CTA пустой корзины (`CartPage`) остаётся `go_shopping` для обычных сценариев.
+- **Fix Verification checklist:**
+  - [ ] A/B. Успешно оформить заказ (mobile и desktop) → CTA = «Alış-verişə davam et».
+  - [ ] C. Удалить последний товар вручную → CTA пустой корзины = «Alış-verişə başla».
+  - [ ] D. Открыть изначально пустую корзину → «Alış-verişə başla».
+  - [ ] E. Неуспешный заказ → экран подтверждения не показывается.
+  - [ ] F. Проверить AZ / RU / EN.
+- **Regression History:** NOT VERIFIED (в рабочем дереве; `vite build` — успешно). Полная регрессия не выполняется (политика Fix Verification).
+- **Notes:** Связан с LAV-BUG-013 (та правка не отработала, т.к. таргетила другой компонент). Файл: `src/pages/CheckoutPage.jsx`. Прежнего B-ID не было.
+
+## LAV-BUG-015 — После заказа на мобильном страница остаётся внизу (у футера), карточка подтверждения не видна
+- **Module:** Checkout / Order confirmation (CheckoutPage `done`)
+- **Platform:** mobile (desktop — без вреда)
+- **Environment:** Working tree (не закоммичено, не задеплоено)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (скриншот, mobile)
+- **Found Date:** 2026-08-02
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification
+- **Release:** Pre-1.0
+- **Description:** На мобильном после успешного заказа пользователь оставался в нижней части страницы (рядом с футером/таббаром); блок подтверждения находился выше и не попадал в видимую область.
+- **Steps to Reproduce:**
+  1. На мобильном заполнить длинную форму заказа (прокрутка вниз к кнопке «Отправить»).
+  2. Успешно оформить заказ.
+- **Expected Result:** Сразу виден блок подтверждения (иконка успеха, «Sifarişiniz qəbul edildi!», текст про 5 минут, номер заказа, кнопка). Не попадать к футеру.
+- **Actual Result:** Пользователь оставался внизу у футера; карточка подтверждения была выше видимой области.
+- **Root Cause:** При `setDone(order)` содержимое заменяется на короткий блок подтверждения, но позиция скролла сохранялась с конца длинной формы — верх страницы (где карточка) не показывался; автоскролла не было.
+- **Fix Summary:** Добавлен `useEffect` с зависимостью `[done]`: **только** после успешного заказа (`done` truthy) выполняется `window.scrollTo({ top: 0, behavior: 'auto' })`. Guard `if (window.scrollY > 0)` — если уже вверху (обычно desktop), скролл не выполняется (нет лишнего прыжка, требование 8). Скролл к началу страницы → sticky-шапка естественно остаётся над карточкой, верх карточки не скрыт (требование 6), к футеру не уводит. Момент — после рендера (в effect), без жёстких координат (0 = верх страницы).
+- **Fix Verification checklist:**
+  - [ ] A. Успешно оформить заказ на mobile → сразу виден блок подтверждения, не футер.
+  - [ ] B. Успешно оформить заказ на desktop → нет лишнего неудобного скролла.
+  - [ ] E. Неуспешный заказ → автоскролл не выполняется (экран подтверждения не показывается).
+  - [ ] Верх карточки подтверждения не скрыт под sticky-шапкой.
+- **Regression History:** NOT VERIFIED (в рабочем дереве; `vite build` — успешно). Живая проверка на мобильном за владельцем. Полная регрессия не выполняется (политика Fix Verification).
+- **Notes:** Файл: `src/pages/CheckoutPage.jsx` (useEffect на `[done]`). Отдельный баг от LAV-BUG-014 (не объединять). Прежнего B-ID не было.

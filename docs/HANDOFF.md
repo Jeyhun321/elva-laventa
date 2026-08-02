@@ -15,7 +15,10 @@ Full raw day-by-day log lives in DAILY.md; project changelog in HISTORY.md.
 
 # Last Completed Task
 
-**Пустая корзина: различие ручного удаления и успешного заказа (`LAV-BUG-013`, в рабочем дереве, не закоммичено/не задеплоено).** После успешного заказа на странице пустой корзины теперь показывается «Alış-verişə davam et» (i18n-ключ `continue_shopping`), после ручного удаления последнего товара — прежний «Alış-verişə başla» (`go_shopping`). Реализовано через кратко­живущее in-memory состояние `orderJustCompleted` в `ShopContext` (не localStorage/sessionStorage → не переживает refresh/новую сессию): `CheckoutPage` вызывает `markOrderCompleted()` только после реально успешного заказа; `CartPage` выбирает текст и сбрасывает флаг при уходе со страницы; флаг также сбрасывается при добавлении товара и смене аккаунта. Существующая очистка корзины (`clearCart`) не тронута. Файлы: `src/context/ShopContext.jsx`, `src/pages/CheckoutPage.jsx`, `src/pages/CartPage.jsx`, `src/i18n/translations.js`. `vite build` — успешно. Статус — FIXED (Fix Verification, полная регрессия не выполнялась).
+**Экран подтверждения заказа: правильный CTA + автоскролл (`LAV-BUG-014`, `LAV-BUG-015`, в рабочем дереве, НЕ закоммичено/не задеплоено — ждёт команды пользователя).** Первопричина: экран после заказа — это блок `done` в `src/pages/CheckoutPage.jsx` (отдельный компонент), а прошлая правка LAV-BUG-013 меняла CTA только в `CartPage`, которого пользователь после заказа не видит. **LAV-BUG-014:** кнопка на экране подтверждения переведена с `go_shopping` на `continue_shopping` («Alış-verişə davam et» / «Продолжить покупки» / «Continue shopping»); блок `done` рендерится только после успешного заказа, поэтому CTA однозначно корректен. **LAV-BUG-015:** добавлен `useEffect` на `[done]` — после успешного заказа `window.scrollTo({top:0})` (guard `scrollY>0` против лишнего прыжка на desktop), чтобы на мобильном сразу была видна карточка подтверждения, а не футер; sticky-шапка остаётся над карточкой. Изменён только `src/pages/CheckoutPage.jsx`. `vite build` — успешно. Статусы обоих — FIXED (Fix Verification, полная регрессия не выполнялась).
+
+Предыдущая задача:
+**Пустая корзина: различие ручного удаления и успешного заказа (`LAV-BUG-013`, задеплоено в `ff8a82b`).** После успешного заказа на странице пустой корзины теперь показывается «Alış-verişə davam et» (i18n-ключ `continue_shopping`), после ручного удаления последнего товара — прежний «Alış-verişə başla» (`go_shopping`). Реализовано через кратко­живущее in-memory состояние `orderJustCompleted` в `ShopContext` (не localStorage/sessionStorage → не переживает refresh/новую сессию): `CheckoutPage` вызывает `markOrderCompleted()` только после реально успешного заказа; `CartPage` выбирает текст и сбрасывает флаг при уходе со страницы; флаг также сбрасывается при добавлении товара и смене аккаунта. Существующая очистка корзины (`clearCart`) не тронута. Файлы: `src/context/ShopContext.jsx`, `src/pages/CheckoutPage.jsx`, `src/pages/CartPage.jsx`, `src/i18n/translations.js`. `vite build` — успешно. Статус — FIXED (Fix Verification, полная регрессия не выполнялась).
 
 Предыдущая задача:
 **Изменение QA-политики регрессии (только документация).** Убрано правило обязательной полной регрессии после каждого исправленного бага. Новая политика: после фикса QA выполняет **Fix Verification** — проверяет **только сам исправленный сценарий** (чек-лист этого бага); полная Regression Suite (весь `BUGS.md`) прогоняется **только** перед релизом, перед крупными обновлениями и после значительных изменений архитектуры. Все исправленные баги остаются в `docs/BUGS.md`; `BUGS.md` — единый Regression Suite. Обновлены: `docs/BUGS.md` (раздел Regression Strategy переписан: Fix Verification / полная Suite по триггерам / пострелизная / опциональный daily smoke), `docs/BUG_PROCESS.md` (переходы `READY FOR QA → REGRESSION PASSED` = Fix Verification; полная Suite только на `→ READY FOR RELEASE`; секция «Связь со стратегией регрессии»). `src/` не трогался. Ссылки в START.md/AI_WORKFLOW.md остаются валидными — правок не потребовалось.
@@ -24,11 +27,9 @@ Full raw day-by-day log lives in DAILY.md; project changelog in HISTORY.md.
 
 # Files Changed
 
-Эта задача (`LAV-BUG-013`, код + docs): `src/context/ShopContext.jsx`, `src/pages/CheckoutPage.jsx`, `src/pages/CartPage.jsx`, `src/i18n/translations.js`, `docs/BUGS.md` (LAV-BUG-013), `docs/HANDOFF.md`.
+Эта задача (`LAV-BUG-014` + `LAV-BUG-015`, НЕ закоммичено): `src/pages/CheckoutPage.jsx` (CTA `done`-экрана → `continue_shopping`; useEffect автоскролла на `[done]`), `docs/BUGS.md` (LAV-BUG-014, LAV-BUG-015), `docs/HANDOFF.md`.
 
-Незакоммиченная правка (админ-OTP): `src/pages/AdminPage.jsx` (6-значный OTP, `LAV-BUG-012`) — в этой задаче не менялась.
-
-Ранее закоммичено (`a91b052`, push сделан, деплой на момент коммита висел в `queued`): QA-система `docs/BUGS.md` + `docs/BUG_PROCESS.md`.
+Ранее задеплоено: `ff8a82b` (LAV-BUG-013, корзина), `ecf4e3b` (LAV-BUG-012, OTP), `a91b052` (QA-система). Ветка `main`.
 
 Актуальный кластер правок последних задач:
 - `src/components/Header.jsx`, `src/styles/index.css`, `src/pages/CatalogPage.jsx`, `src/context/CatalogContext.jsx`, `src/App.jsx` — навигация, поиск, каталог, loading-state.
@@ -84,7 +85,7 @@ Full raw day-by-day log lives in DAILY.md; project changelog in HISTORY.md.
 RECOVERY PROMPT FOR CODEX
 ==================================================
 Recovery ID:
-R-20260802-093004
+R-20260802-103612
 
 (Полностью самодостаточный блок. Скопируй целиком и вставь в Codex CLI.
  Перезаписывается целиком после каждой задачи; отражает только текущее состояние.)
@@ -96,12 +97,11 @@ R-20260802-093004
    email+пароль), заказы; деплой на GitHub Pages; есть админ-панель; i18n на трёх
    языках (az/ru/en); уведомления о заказах в Telegram.
 
-3. ТЕКУЩЕЕ СОСТОЯНИЕ: последний коммит main — a91b052 (QA bug-tracking docs; push сделан,
-   деплой-workflow на момент коммита висел в queued — GitHub Actions не начал обработку).
-   В рабочем дереве незакоммичены: правка админ-OTP (6-значный код) в src/pages/AdminPage.jsx
-   и текущая правка LAV-BUG-013 (пустая корзина) в src/context/ShopContext.jsx,
-   src/pages/CheckoutPage.jsx, src/pages/CartPage.jsx, src/i18n/translations.js + docs.
-   В ЭТОЙ задаче ничего не коммитилось и не деплоилось.
+3. ТЕКУЩЕЕ СОСТОЯНИЕ: последние задеплоенные коммиты main: ecf4e3b (OTP LAV-BUG-012),
+   ff8a82b (корзина LAV-BUG-013), a91b052 (QA-система). В рабочем дереве НЕЗАКОММИЧЕНА
+   текущая правка LAV-BUG-014/015 (экран подтверждения) в src/pages/CheckoutPage.jsx + docs.
+   В ЭТОЙ задаче ничего не коммитилось/пушилось/деплоилось (по прямому указанию пользователя —
+   ждать отдельной команды commit/push/deploy).
 
 4. УЖЕ РЕАЛИЗОВАНО: цветовые варианты товара (один код = один товар с цветами-строками);
    вход через Google и email; заказ для любого вошедшего (фронт); мобильная переработка
@@ -110,34 +110,31 @@ R-20260802-093004
    localStorage-кэша для вошедшего); локальный просмотр логов; премиум-редизайн.
    Админ-вход: пароль/Google → gate роли admin → OTP-подтверждение (Supabase Auth OTP).
 
-5. ПОСЛЕДНЯЯ ЗАДАЧА (ЭТА, код + docs): LAV-BUG-013 — пустая корзина теперь различает ручное
-   удаление и успешный заказ. После успешного заказа на странице пустой корзины показывается
-   «Alış-verişə davam et» (i18n-ключ continue_shopping: az «Alış-verişə davam et», ru
-   «Продолжить покупки», en «Continue shopping»); после ручного удаления последнего товара —
-   прежний «Alış-verişə başla» (go_shopping). РЕАЛИЗАЦИЯ: в ShopContext добавлено КРАТКО­ЖИВУЩЕЕ
-   in-memory состояние orderJustCompleted (НЕ localStorage/sessionStorage → refresh/новая сессия
-   его сбрасывают, ложного «заказ оформлен» не остаётся). CheckoutPage вызывает
-   markOrderCompleted() ТОЛЬКО после реально успешного заказа (после clearCart(); при ошибке
-   строка недостижима). CartPage выбирает текст по orderJustCompleted и сбрасывает флаг при
-   уходе со страницы (cleanup effect). Флаг также сбрасывается при добавлении товара (addToCart)
-   и при смене аккаунта (effect на accountId). Существующая очистка корзины clearCart НЕ изменена
-   (требование 6). Статус LAV-BUG-013 — FIXED (Fix Verification; полная регрессия не выполнялась
-   по действующей политике). НЕ закоммичено, НЕ задеплоено.
-   Незакоммиченная правка админ-OTP (6-значный Supabase OTP; Dashboard Email OTP length = 6;
-   проверка /^\d{6}$/, maxLength="6"; нет авто-отправки, только по клику, cooldown 30 c) с
-   более раннего шага — на месте, не закоммичено/не задеплоено. QA-система (BUGS.md 20-полевой
-   шаблон, BUG_PROCESS.md, Fix-Verification политика) закоммичена в a91b052.
+5. ПОСЛЕДНЯЯ ЗАДАЧА (ЭТА, код + docs, НЕ закоммичено): два бага экрана подтверждения заказа.
+   ПЕРВОПРИЧИНА: экран после заказа — блок `done` в src/pages/CheckoutPage.jsx (отдельный
+   компонент), а прошлая правка LAV-BUG-013 меняла CTA только в CartPage, которого пользователь
+   после заказа НЕ видит → визуально ничего не менялось.
+   LAV-BUG-014 (CTA): кнопка на экране подтверждения переведена с go_shopping на continue_shopping
+   («Alış-verişə davam et» / «Продолжить покупки» / «Continue shopping»). Блок `done` рендерится
+   только после успешного заказа (if (done)) → CTA однозначно корректен без доп. флагов.
+   LAV-BUG-015 (автоскролл mobile): добавлен useEffect на [done] — после успешного заказа
+   window.scrollTo({top:0,behavior:'auto'}) с guard `if (window.scrollY > 0)` (нет лишнего прыжка
+   на desktop, требование 8); скролл к началу → sticky-шапка над карточкой, к футеру не уводит.
+   Изменён ТОЛЬКО src/pages/CheckoutPage.jsx. Оба статуса — FIXED (Fix Verification; полная
+   регрессия не выполнялась). Ключ continue_shopping уже был в translations.js (из LAV-BUG-013).
+   ПРИМЕЧАНИЕ: state orderJustCompleted в ShopContext/CartPage (из LAV-BUG-013, задеплоено в
+   ff8a82b) оставлен как есть — он не мешает и корректно даёт «başla» для сценариев C/D.
 
-6. ИЗМЕНЁННЫЕ ФАЙЛЫ (эта задача): src/context/ShopContext.jsx, src/pages/CheckoutPage.jsx,
-   src/pages/CartPage.jsx, src/i18n/translations.js, docs/BUGS.md (LAV-BUG-013), docs/HANDOFF.md.
-   Незакоммиченный src/pages/AdminPage.jsx (6-значный OTP) — с предыдущего шага, не тронут.
+6. ИЗМЕНЁННЫЕ ФАЙЛЫ (эта задача): src/pages/CheckoutPage.jsx, docs/BUGS.md (LAV-BUG-014,
+   LAV-BUG-015), docs/HANDOFF.md. Ничего не коммитилось/пушилось/деплоилось.
 
 7. ВЫПОЛНЕННЫЕ ПРОВЕРКИ (эта задача): npm run build (vite) — УСПЕШНО. Проверено рассуждением по
    сценариям A–F (ручное удаление → «başla»; успешный заказ → «davam et»; refresh → сброс;
-   добавить+удалить → «başla»; неуспешный заказ → без очистки и без нового текста); i18n az/ru/en
-   добавлены. Живая проверка в браузере (mobile/desktop) НЕ выполнялась — ожидает Fix Verification
-   владельцем. git status: в этой задаче изменены 4 файла src/ (ShopContext, CheckoutPage,
-   CartPage, translations) + docs; чужая/параллельная работа и OTP-правка не тронуты.
+   сценариям A–F (успешный заказ → «davam et» на экране подтверждения + автоскролл к началу;
+   ручное удаление/пустая корзина → «başla»; неуспешный заказ → нет экрана подтверждения, нет
+   скролла). Живая проверка в браузере (mobile/desktop) НЕ выполнялась — ожидает Fix Verification
+   владельцем. git status: в этой задаче изменён 1 файл src/ (CheckoutPage) + docs; прочая
+   незакоммиченная/параллельная работа не тронута.
 
 8. ЧТО НЕЛЬЗЯ НАРУШАТЬ: НЕ ломать существующий вход в админку (пункт 13 запроса) — этап 1
    намеренно оставляет Supabase Auth OTP, чтобы вход не сломался; гостевая корзина намеренно
@@ -186,28 +183,23 @@ Branch:
   main
 
 Current task:
-  LAV-BUG-013 — пустая корзина различает ручное удаление («Alış-verişə başla») и успешный
-  заказ («Alış-verişə davam et») через кратко­живущее in-memory orderJustCompleted в
-  ShopContext. Статус FIXED (Fix Verification). НЕ закоммичено, НЕ задеплоено.
+  LAV-BUG-014 (CTA экрана подтверждения → continue_shopping) + LAV-BUG-015 (автоскролл к
+  началу после успешного заказа на mobile). Изменён только src/pages/CheckoutPage.jsx.
+  Оба FIXED (Fix Verification). НЕ закоммичено/не пушилось/не деплоилось.
 
 Expected modified files:
-  - src/context/ShopContext.jsx
   - src/pages/CheckoutPage.jsx
-  - src/pages/CartPage.jsx
-  - src/i18n/translations.js
   - docs/BUGS.md
   - docs/HANDOFF.md
-  (src/pages/AdminPage.jsx — незакоммичен с предыдущего шага, в этой задаче не менялся)
 
 Git status summary:
-  Не закоммичено. В этой задаче изменены 4 файла src/ (ShopContext, CheckoutPage, CartPage,
-  translations) + docs/BUGS.md, docs/HANDOFF.md. src/pages/AdminPage.jsx — с предыдущего шага
-  (OTP → 6 цифр), не тронут. Последний коммит main — a91b052 (QA docs). Прочая незакоммиченная
-  работа (.codex/hooks.json, untracked-инструкции, renames) — НЕ трогать и НЕ подметать.
-  В этой задаче ничего не коммитилось/деплоилось.
+  Не закоммичено. В этой задаче изменён src/pages/CheckoutPage.jsx + docs/BUGS.md, docs/HANDOFF.md.
+  Последние задеплоенные коммиты main: ecf4e3b, ff8a82b, a91b052. Прочая незакоммиченная работа
+  (.codex/hooks.json, untracked-инструкции, renames) — НЕ трогать и НЕ подметать. В этой задаче
+  НЕ коммитилось/пушилось/деплоилось (ждём отдельной команды пользователя).
 
 Documentation updated:
-  YES (docs/BUGS.md — LAV-BUG-013 со статусом FIXED и Fix Verification checklist; docs/HANDOFF.md)
+  YES (docs/BUGS.md — LAV-BUG-014 и LAV-BUG-015, статус FIXED, Fix Verification checklists; docs/HANDOFF.md)
 
 Last verified build:
   vite build — SUCCESS (npm run build, 2026-08-02).
@@ -216,7 +208,7 @@ Last verified tests:
   NOT VERIFIED (автоматических тестов в проекте нет; lint-скрипта нет)
 
 Recovery confidence:
-  MEDIUM — код LAV-BUG-013 реализован, vite build успешен, логика проверена по сценариям A–F;
-  но живая проверка в браузере (mobile/desktop, реальный заказ) НЕ выполнялась (Fix Verification
-  за владельцем). Изменения не закоммичены. Незакоммиченная правка OTP с предыдущего шага сохранена.
+  MEDIUM — код LAV-BUG-014/015 реализован (правка одного файла CheckoutPage), vite build успешен,
+  логика проверена по сценариям A–F; но живая проверка в браузере (mobile/desktop, реальный заказ)
+  НЕ выполнялась (Fix Verification за владельцем). Изменения не закоммичены — ждут команды пользователя.
 ```
