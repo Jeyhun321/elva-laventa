@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
@@ -8,20 +8,22 @@ import SystemLogReporter from './components/SystemLogReporter.jsx'
 import { useI18n } from './i18n/I18nContext.jsx'
 import { useCatalog } from './context/CatalogContext.jsx'
 import { useAuth } from './context/AuthContext.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { lazyWithRetry } from './lib/recovery.js'
 
 // Ana səhifə dərhal lazımdır — ayrıca yüklənmir.
 import HomePage from './pages/HomePage.jsx'
 
 // Qalan səhifələr yalnız açılanda yüklənir (route-based code splitting).
 // Beləliklə ana səhifədə admin paneli, sifariş və kataloq kodu yüklənmir.
-const CatalogPage = lazy(() => import('./pages/CatalogPage.jsx'))
-const ProductPage = lazy(() => import('./pages/ProductPage.jsx'))
-const CartPage = lazy(() => import('./pages/CartPage.jsx'))
-const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'))
-const FavoritesPage = lazy(() => import('./pages/FavoritesPage.jsx'))
-const AuthPage = lazy(() => import('./pages/AuthPage.jsx'))
-const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx'))
-const AdminPage = lazy(() => import('./pages/AdminPage.jsx'))
+const CatalogPage = lazyWithRetry(() => import('./pages/CatalogPage.jsx'))
+const ProductPage = lazyWithRetry(() => import('./pages/ProductPage.jsx'))
+const CartPage = lazyWithRetry(() => import('./pages/CartPage.jsx'))
+const CheckoutPage = lazyWithRetry(() => import('./pages/CheckoutPage.jsx'))
+const FavoritesPage = lazyWithRetry(() => import('./pages/FavoritesPage.jsx'))
+const AuthPage = lazyWithRetry(() => import('./pages/AuthPage.jsx'))
+const ResetPasswordPage = lazyWithRetry(() => import('./pages/ResetPasswordPage.jsx'))
+const AdminPage = lazyWithRetry(() => import('./pages/AdminPage.jsx'))
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -73,7 +75,8 @@ export default function App() {
       <main>
         {catalogLoading && !showHomeWhileCatalogLoads ? <RouteLoading /> : (
           <Suspense fallback={<RouteLoading />}>
-            <Routes>
+            <ErrorBoundary key={location.pathname}>
+              <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/catalog" element={<CatalogPage />} />
               <Route path="/product/:id" element={<ProductPage />} />
@@ -85,7 +88,8 @@ export default function App() {
               {/* Gizli idarə paneli — menyuda göstərilmir */}
               <Route path="/admin" element={<AdminPage />} />
               <Route path="*" element={<HomePage />} />
-            </Routes>
+              </Routes>
+            </ErrorBoundary>
           </Suspense>
         )}
       </main>

@@ -91,6 +91,14 @@ export default function CheckoutPage() {
     if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: 'auto' })
   }, [done])
 
+  // Təsdiq ekranı yalnız uğurlu sifarişdən sonra görünür. İstifadəçi özü CTA-ya
+  // basarsa və ya səhifədən çıxarsa cleanup taymeri ləğv edir.
+  useEffect(() => {
+    if (!done) return
+    const id = window.setTimeout(() => navigate('/', { replace: true }), 3000)
+    return () => window.clearTimeout(id)
+  }, [done, navigate])
+
   // Hesaba girmişsə, adı avtomatik dolsun
   useEffect(() => {
     if (profile?.name) {

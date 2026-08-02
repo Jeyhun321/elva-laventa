@@ -526,3 +526,61 @@
   - [ ] Верх карточки подтверждения не скрыт под sticky-шапкой.
 - **Regression History:** NOT VERIFIED (в рабочем дереве; `vite build` — успешно). Живая проверка на мобильном за владельцем. Полная регрессия не выполняется (политика Fix Verification).
 - **Notes:** Файл: `src/pages/CheckoutPage.jsx` (useEffect на `[done]`). Отдельный баг от LAV-BUG-014 (не объединять). Прежнего B-ID не было.
+
+## LAV-BUG-016 — Белый экран после простоя и нового деплоя
+- **Module:** App shell / route loading
+- **Platform:** both
+- **Environment:** Production after a new deployment
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner (report)
+- **Found Date:** 2026-08-02
+- **Developer:** Codex
+- **QA:** Pending (owner) — Fix Verification
+- **Release:** Pre-1.0
+- **Description:** После долгого простоя открытая вкладка могла показать белый экран; обычный refresh восстанавливал сайт.
+- **Steps to Reproduce:**
+  1. Оставить вкладку со старой версией приложения открытой.
+  2. Выпустить новую версию, в которой старые Vite-чанки больше недоступны.
+  3. Открыть lazy-маршрут или вернуться к вкладке.
+- **Expected Result:** Подтверждённая ошибка загрузки устаревшего чанка один раз обновляет страницу; другие ошибки не приводят к белому экрану и показывают локализованный fallback.
+- **Actual Result:** Ошибка dynamic import размонтировала React-дерево, поскольку вокруг маршрутов не было ErrorBoundary.
+- **Root Cause:** `App.jsx` загружал восемь маршрутов через обычный `lazy(() => import())`. После deploy запрос старого файла мог вернуть 404; `Suspense` не обрабатывает error, а ErrorBoundary отсутствовал.
+- **Fix Summary:** Добавлены `lazyWithRetry` и глобальная обработка stale-chunk ошибок (`src/lib/recovery.js`): sessionStorage guard разрешает ровно один reload в 30 секунд и логирует подавленные попытки. `ErrorBoundary` вокруг маршрутов восстанавливает stale-chunk через тот же guard, а для любых других React-ошибок логирует событие и выводит доступный fallback с кнопкой обновления. Все восемь lazy-маршрутов переведены на helper; тексты fallback добавлены для AZ/RU/EN.
+- **Fix Verification checklist:**
+  - [ ] Mobile: сымитировать ошибку stale Vite-чанка → страница обновляется ровно один раз и открывает актуальную версию.
+  - [ ] Desktop: повторная ошибка в течение 30 секунд не создаёт reload loop.
+  - [ ] Mobile и desktop: обычная React-ошибка показывает локализованную кнопку «Обновить», а не белый экран.
+  - [ ] Проверить AZ / RU / EN.
+- **Regression History:** NOT VERIFIED (локальная production-сборка успешна; live-проверка требует сценарий со старым чанком).
+- **Notes:** ServiceWorker в проекте отсутствует. Ручной reload не зависит от system log и остаётся доступен, если пользователь не авторизован.
+
+## LAV-BUG-017 — После успешного заказа не было автоматического возврата на главную
+- **Module:** Checkout / order confirmation
+- **Platform:** both
+- **Environment:** Production
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (report)
+- **Found Date:** 2026-08-02
+- **Developer:** Codex
+- **QA:** Pending (owner) — Fix Verification
+- **Release:** Pre-1.0
+- **Description:** Экран подтверждения успешного заказа оставался открытым бессрочно.
+- **Steps to Reproduce:**
+  1. Успешно оформить заказ.
+  2. Не нажимать кнопку продолжения покупок.
+- **Expected Result:** Через ~3 секунды происходит переход на главную; CTA «Продолжить покупки» остаётся мгновенным.
+- **Actual Result:** Блок `done` оставался на странице без таймера.
+- **Root Cause:** После `setDone(order)` в `CheckoutPage` отсутствовала отложенная навигация.
+- **Fix Summary:** Добавлен effect, который создаёт трёхсекундный таймер только при `done` и вызывает `navigate('/', { replace: true })`. Cleanup отменяет таймер при ручном переходе, размонтировании и изменении состояния; повторный заказ не создаётся.
+- **Fix Verification checklist:**
+  - [ ] Mobile: успешный заказ → карточка подтверждения видна, затем через ~3 секунды главная страница.
+  - [ ] Desktop: успешный заказ → тот же переход без повторной отправки заказа.
+  - [ ] На карточке нажать «Продолжить покупки» до таймера → немедленный переход в каталог без последующей навигации.
+  - [ ] Неуспешный заказ не запускает таймер.
+  - [ ] Проверить AZ / RU / EN.
+- **Regression History:** NOT VERIFIED (локальная production-сборка успешна; live-заказ не выполнялся).
+- **Notes:** CTA и существующий scroll-to-top из LAV-BUG-014/015 не менялись.

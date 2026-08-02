@@ -369,6 +369,17 @@ export const ui = {
     ru: 'В течение 5 минут мы свяжемся с вами в WhatsApp.',
     en: 'We will contact you on WhatsApp within 5 minutes.',
   },
+  recovery_title: {
+    az: 'Səhifəni yeniləmək lazımdır',
+    ru: 'Страницу нужно обновить',
+    en: 'This page needs to be refreshed',
+  },
+  recovery_text: {
+    az: 'Sayt yenilənib. Zəhmət olmasa səhifəni yenidən açın.',
+    ru: 'Сайт был обновлён. Пожалуйста, перезагрузите страницу.',
+    en: 'The site has been updated. Please reload the page.',
+  },
+  recovery_reload: { az: 'Yenilə', ru: 'Обновить', en: 'Reload' },
   order_number: { az: 'Sifariş nömrəsi', ru: 'Номер заказа', en: 'Order number' },
   order_failed: {
     az: 'Sifariş göndərilmədi. Yenidən cəhd edin.',
