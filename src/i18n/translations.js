@@ -369,6 +369,11 @@ export const ui = {
     ru: 'В течение 5 минут мы свяжемся с вами в WhatsApp.',
     en: 'We will contact you on WhatsApp within 5 minutes.',
   },
+  order_redirect_notice: {
+    az: '{seconds} san. sonra əsas səhifəyə yönləndiriləcəksiniz.',
+    ru: 'Вы будете перенаправлены на главную страницу через {seconds} с.',
+    en: 'You will be redirected to the home page in {seconds} seconds.',
+  },
   recovery_title: {
     az: 'Səhifəni yeniləmək lazımdır',
     ru: 'Страницу нужно обновить',

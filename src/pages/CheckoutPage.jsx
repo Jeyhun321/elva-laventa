@@ -9,6 +9,7 @@ import { CURRENCY } from '../config.js'
 import ProductImage from '../components/ProductImage.jsx'
 
 const BUYER_KEY = 'elva_buyer'
+const ORDER_REDIRECT_SECONDS = 10
 
 const ORDER_ERROR_KEY_BY_CODE = {
   AUTH_REQUIRED: 'order_auth_required',
@@ -65,6 +66,7 @@ export default function CheckoutPage() {
   const [touched, setTouched] = useState({})
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(null) // {order_no}
+  const [redirectSeconds, setRedirectSeconds] = useState(ORDER_REDIRECT_SECONDS)
   const [err, setErr] = useState('')
 
   const lines = cart
@@ -95,8 +97,15 @@ export default function CheckoutPage() {
   // basarsa və ya səhifədən çıxarsa cleanup taymeri ləğv edir.
   useEffect(() => {
     if (!done) return
-    const id = window.setTimeout(() => navigate('/', { replace: true }), 3000)
-    return () => window.clearTimeout(id)
+    setRedirectSeconds(ORDER_REDIRECT_SECONDS)
+    const intervalId = window.setInterval(() => {
+      setRedirectSeconds((seconds) => Math.max(0, seconds - 1))
+    }, 1000)
+    const timeoutId = window.setTimeout(() => navigate('/', { replace: true }), ORDER_REDIRECT_SECONDS * 1000)
+    return () => {
+      window.clearInterval(intervalId)
+      window.clearTimeout(timeoutId)
+    }
   }, [done, navigate])
 
   // Hesaba girmişsə, adı avtomatik dolsun
@@ -193,6 +202,9 @@ export default function CheckoutPage() {
           <div className="order-check">✓</div>
           <h1>{t('order_ok_title')}</h1>
           <p className="order-ok-text">{t('order_ok_text')}</p>
+          <p className="order-ok-text">
+            {t('order_redirect_notice').replace('{seconds}', redirectSeconds)}
+          </p>
           {done.order_no && (
             <div className="order-no">
               {t('order_number')}: <b>{done.order_no}</b>
