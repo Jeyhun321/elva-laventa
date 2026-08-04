@@ -33,7 +33,7 @@ Commit `b366f88` (`chore: add AI workflow docs and project scaffolding`):
 
 - Elva LaVenta — React/Vite storefront, Supabase backend (Frankfurt), деплой на GitHub Pages.
 - `package.json` scripts: `dev`, `build`, `preview`, `logs`.
-- HEAD: `b366f88` на `main`.
+- HEAD: `a15a2cd` на `main` (product commit `84a0b36`; scaffolding `b366f88`; этот handoff-refresh `a15a2cd`).
 
 ## Known Issues
 
@@ -55,7 +55,7 @@ Recovery ID: R-20260804-081344
 
 1. **Проект:** Elva LaVenta — React/Vite storefront магазина одежды с Supabase (Frankfurt) и деплоем на GitHub Pages.
 2. **Описание:** интернет-магазин LaVenta с каталогом, избранным, корзиной, checkout через WhatsApp, admin-панелью, поддержкой трёх языков AZ/RU/EN.
-3. **Текущее состояние:** рабочее дерево чистое, `main` синхронизирован с `origin/main`, HEAD = `b366f88`. Готов к новой задаче.
+3. **Текущее состояние:** рабочее дерево чистое, `main` синхронизирован с `origin/main`, HEAD = `a15a2cd`. Готов к новой задаче.
 4. **Что реализовано:** полноценная витрина + fashion UI polish главной (`84a0b36`); AI-workflow документация и scaffolding (`b366f88`).
 5. **Последняя задача:** housekeeping-коммит `b366f88` — добавлены `.claude/*.md` политики, `CLAUDE.md`, `AGENTS.md`, `START.md`, `DESKTOP_START.md`, `AI_WORKFLOW.md`, `AI_SETUP/`, полная система `docs/`; `.codex/hooks.json` переведён на PowerShell syntax; root HANDOFF.daily/HISTORY перенесены в `docs/`.
 6. **Изменённые файлы:** см. commit `b366f88` (только docs/scaffolding, `src/` не тронут).
@@ -75,7 +75,7 @@ Branch: main
 Current task: housekeeping commit b366f88 completed; awaiting next product task
 Expected modified files:
   - none (working tree clean)
-Git status summary: clean, main == origin/main, HEAD b366f88
+Git status summary: clean, main == origin/main, HEAD a15a2cd
 Documentation updated: YES
 Last verified build: NOT VERIFIED this session (no source changes)
 Last verified tests: none (no test scripts in package.json)
