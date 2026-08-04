@@ -2,7 +2,9 @@
 
 ## Current Status
 
-Выполнен крупный UI/UX polish витрины ELVA LaVenta без изменения бизнес-логики: новая цельная композиция главной страницы, статичный image-led hero, улучшенные карточки, header/footer и адаптивные interaction states. Изменения подготовлены к отдельному commit/push.
+Последняя завершённая продуктовая работа — fashion UI polish главной страницы — уже находится в `main` в commit `84a0b36` (`feat: polish Laventa fashion UI and homepage experience`). Новая продуктовая задача в этой сессии не начиналась.
+
+Рабочее дерево **не чистое**. В нём есть изменения служебных файлов, удаления старых root-документов и набор untracked project/AI-документов. Их авторство и намерение в этой сессии не подтверждались; не добавлять их в commit без отдельной проверки.
 
 ## Current Branch
 
@@ -10,56 +12,60 @@
 
 ## Last Completed Task
 
-### Fashion UI polish
+### Fashion UI polish — committed
 
-- Hero использует реальные фото из текущего каталога, поддерживает AZ/RU/EN и больше не меняет карточки автоматически. Убраны неподтверждённые social proof/метрики и жёстко заданный процент скидки.
-- Главная страница теперь строится как: hero → быстрые категории → подборка товаров → короткий брендовый блок → реальные преимущества магазина → текущий promo CTA → footer.
-- Добавлены `BrandStatement` и `BenefitsSection`: тексты опираются только на существующую функциональность (выбор модели, избранное/заказ, контакт в WhatsApp, три языка).
-- Карточки товаров получили более спокойную визуальную иерархию, компактные unified badges, тонкий desktop hover, доступный touch/focus behaviour и стабильные image proportions.
-- Header получил единый compact sticky-state и active feedback. Footer очищен от фиктивной newsletter-формы и неработающих `#` social/help links; сохранены рабочие каталог и контакты.
-- Обновлены spacing tokens, responsive layouts от 480px до desktop и `prefers-reduced-motion` overrides. Не добавлялись новые пакеты, внешние фото, градиенты или бизнес-изменения.
+- Статичный hero на реальных product images с AZ/RU/EN текстами; без fake social proof, метрик и hardcoded скидки.
+- Главная: hero → быстрые категории → подборка → brand statement → преимущества → существующий promo CTA → footer.
+- Добавлены `BrandStatement` и `BenefitsSection`; карточки, header, footer и responsive/motion states выровнены визуально без изменений бизнес-логики.
+- Удалены фиктивные newsletter/social/help destinations из footer; сохранены реальные каталог и контакты.
 
-## Files Changed
+## Last Verified Checks
 
-- `src/components/Intro.jsx` — честный статичный hero.
-- `src/components/BrandStatement.jsx` — новый компактный brand block.
-- `src/components/BenefitsSection.jsx` — новый блок правдивых преимуществ.
-- `src/pages/HomePage.jsx` — обновлённая последовательность главной.
-- `src/components/Footer.jsx` — только реальные destinations и контакты.
-- `src/styles/index.css` — tokens, hierarchy, responsive fashion polish, states/motion.
-- `src/i18n/translations.js` — тексты AZ/RU/EN для новой композиции.
-- `docs/HANDOFF.md`.
+- По предыдущему handoff: `npm run build` (`vite build`) завершился успешно, 121 modules transformed.
+- По предыдущему handoff: `git diff --check` завершился успешно до commit `84a0b36`.
+- В текущей сессии: `git diff --check` выполнен на текущем незакоммиченном diff без сообщений об ошибках.
+- В `package.json` нет scripts для lint или tests.
+- Визуальная browser QA после commit `84a0b36` в этой сессии: NOT VERIFIED.
 
-## Checks Performed
+## Current Working Tree — Preserve and Review
 
-- `git diff --check` — успешно.
-- `npm run build` (`vite build`) — успешно, 121 modules transformed.
-- В package.json отсутствуют lint и test scripts.
-- Локальный Vite server запускался. Доступный browser automation surface отсутствует (`No browser is available`), поэтому интерактивная live-проверка 360/390/412/768/1024/1366/1440 и console inspection — NOT VERIFIED.
+Tracked changes:
 
-## Known Issues / Risks
+- `M .codex/hooks.json` — hook-команды заменены с POSIX shell syntax на PowerShell syntax.
+- `D HANDOFF.daily-2026-08-01.md`
+- `D HISTORY.md`
 
-- После deploy владелец должен вручную проверить hero, sticky header, product card tap/hover, search, favorites, cart, order confirmation и AZ/RU/EN на mobile/tablet/desktop.
-- В рабочем дереве есть параллельные изменения и untracked инструкции/документация; они не относятся к UI polish и не должны попасть в commit.
+Untracked files/directories include `.claude/`, `AGENTS.md`, `START.md`, `CLAUDE.md`, `AI_SETUP/`, `AI_WORKFLOW.md`, `DESKTOP_START.md`, `Website-Laventa.code-workspace`, and several `docs/` files (`DAILY.md`, `DECISIONS.md`, `FEATURES.md`, `HISTORY.md`, `MEDIA_ANALYSIS.md`, `TODO.md`, `AI_SYSTEM_TESTS.md`).
+
+These changes are outside the committed UI task. Preserve them; inspect content and intent before staging, committing, reverting, or deleting anything.
+
+## Risks
+
+- The prior handoff was stale: it referred to baseline `a02b117` and described the UI task as pending, while `84a0b36` already contains it.
+- No current uncommitted source-code product changes were found by `git status`; do not create a follow-up UI commit unless a new task requires it.
+- Manual verification of hero, sticky header, product card interactions, search, favorites, cart, checkout, and AZ/RU/EN at mobile/tablet/desktop remains NOT VERIFIED in this session.
 
 ## Next Recommended Step
 
-Создать один узкий commit только из redesign-файлов, выполнить `git push origin main` (GitHub Pages deploy запускается автоматически), сразу передать владельцу ссылку на Actions и не ждать workflow.
+1. Start from `docs/HANDOFF.md`, `git status --short`, `git diff`, and `git log -3 --oneline`.
+2. Decide whether the untracked AI/project-documentation set and deletions are intentional housekeeping. Handle it as a separate, reviewed commit if desired.
+3. Only then take the next user product task; do not mix it with the pending workspace housekeeping.
 
 ## Context For Next Session
 
 ### RECOVERY PROMPT FOR CODEX
 
-1. Проект: Elva LaVenta — React/Vite storefront с Supabase и GitHub Pages.
-2. Выполнен UI/UX fashion polish главной: статичный hero на реальных product images, categories, curated products, brand statement, benefits и promo. Функциональность магазина не менялась.
-3. Изменённые task files: `src/components/Intro.jsx`, `src/components/BrandStatement.jsx` (new), `src/components/BenefitsSection.jsx` (new), `src/components/Footer.jsx`, `src/pages/HomePage.jsx`, `src/styles/index.css`, `src/i18n/translations.js`, `docs/HANDOFF.md`.
-4. Hero не autoplay, без fake social proof/stats/hardcoded sale percentage. Footer не содержит newsletter или fake social links.
-5. Checks: `git diff --check` and `npm run build` succeeded (121 modules). No lint/tests scripts. Browser visual QA NOT VERIFIED because browser surface unavailable.
-6. Перед commit проверить exact task file set, не затрагивать `.codex/hooks.json`, удалённые historical files и untracked documentation/instructions. Затем push main, не ждать GitHub Actions.
+You are continuing LaVenta on `main`. HEAD is `84a0b36` (`feat: polish Laventa fashion UI and homepage experience`), which already contains the fashion homepage polish. Do not repeat or re-commit that task.
+
+Before any implementation, preserve the dirty working tree and inspect it: `.codex/hooks.json` is modified, `HANDOFF.daily-2026-08-01.md` and root `HISTORY.md` are deleted, and a large project/AI documentation set is untracked. Their intent is unverified. Keep cleanup separate from product changes.
+
+The previous build result was successful before `84a0b36`; visual post-commit QA is not verified in this session. `package.json` has only `dev`, `build`, `preview`, and `logs` scripts.
 
 ### SESSION CHECKSUM
 
 - Branch: `main`
-- Last committed baseline: `a02b117`
-- Task state: fashion UI polish implemented and build verified; pending commit/push/deploy.
-- Manual responsive QA: NOT VERIFIED.
+- HEAD: `84a0b368de66d56279fa02ee4de937b38aa85152`
+- Last product commit: fashion UI polish completed
+- Current task: safe handoff to Claude Code completed; no new product implementation
+- Working tree: dirty; preserve and review separately
+- Browser visual QA after current HEAD: NOT VERIFIED
