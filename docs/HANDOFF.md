@@ -78,7 +78,7 @@ Expected modified files:
   - src/styles/index.css
   - docs/BUGS.md
   - docs/HANDOFF.md
-Git status summary: committed & pushed to main; SHA — см. git log -1
+Git status summary: committed & pushed to main; SHA ec30e77 (1f7734a..ec30e77)
 Documentation updated: YES
 Last verified build: npm run build — успешно, 2026-08-06
 Last verified tests: нет test-скриптов; inactivity + desktop live QA — PASSED; mobile live рендер — NOT VERIFIED
