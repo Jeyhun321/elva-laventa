@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Переработана верхняя часть главной страницы: hero сделан компактнее и добавлена переиспользуемая система промо-блоков (Trendyol-подход к UX, но фирменный boutique-стиль LaVenta сохранён). Изменения закоммичены и запушены в `main`; деплой на GitHub Pages запускается автоматически (push-триггер). SHA — см. `SESSION CHECKSUM` ниже / `git log -1`.
+Переработана верхняя часть главной страницы: hero сделан компактнее и добавлена переиспользуемая система промо-блоков (Trendyol-подход к UX, но фирменный boutique-стиль LaVenta сохранён). Изменения закоммичены (`fd5548d`) и запушены в `main`; деплой на GitHub Pages запущен автоматически (push-триггер).
 
 ## Current Branch
 
@@ -83,7 +83,7 @@ Expected modified files:
   - src/components/PromoCardGrid.jsx (new)
   - src/components/HorizontalProductSection.jsx (new)
   - src/data/promos.js (new)
-Git status summary: committed & pushed to main; SHA — см. git log -1
+Git status summary: committed & pushed to main; SHA fd5548d (90ba0d9..fd5548d)
 Documentation updated: YES
 Last verified build: npm run build — успешно (125 modules, CSS ≈83.94 kB), 2026-08-06
 Last verified tests: нет test-скриптов в package.json (не запускались); desktop live QA — PASSED; mobile live — NOT VERIFIED
