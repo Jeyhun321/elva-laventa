@@ -38,6 +38,13 @@ export const IconArrow = (p) => (
   </svg>
 )
 
+export const IconArrowLeft = (p) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M19 12H5M11 18l-6-6 6-6" />
+  </svg>
+)
+
 export const IconMenu = (p) => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.8" strokeLinecap="round" {...p}>

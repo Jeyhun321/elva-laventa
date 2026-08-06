@@ -728,3 +728,78 @@
   - [ ] Desktop: 6 категорий ровно, заголовок категорий на месте, регрессий нет.
 - **Regression History:** NOT VERIFIED live на мобиле (инструмент не эмулирует узкий viewport). Проверено: `vite build` — успешно; desktop live QA (vite preview) — DOM: `.cats-menu-btn`=нет, `.cat-drawer-root`=нет, eyebrow в Populyar=нет, «KOLLEKSİYA» не встречается, категории=6, центр заголовка = центр ссылки (delta=0), `scrollWidth ≤ innerWidth`; иконка Settings рендерится как шестерёнка (zoom). Живая мобильная проверка — за владельцем.
 - **Notes:** Изменены: `src/components/Categories.jsx`, `src/components/Header.jsx`, `src/components/Icons.jsx`, `src/pages/HomePage.jsx`, `src/styles/index.css`. Логика Settings/каталога/бизнес-логика не менялись. Прежнего B-ID не было.
+
+## LAV-BUG-023 — Mobile header: кнопка «Kataloq» съедает ширину поиска; нет быстрых действий; мелкая Account-иконка
+- **Module:** Header (mobile)
+- **Platform:** mobile (desktop — без регрессий)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (скриншоты + Trendyol-референс)
+- **Found Date:** 2026-08-06
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification
+- **Description:** (1) Рядом с поиском стояла большая бордовая кнопка «Kataloq», занимавшая полезную ширину строки поиска. (2) В мобильном header не было удобных быстрых действий (Favorites/Cart были только в нижней навигации). (3) Account-иконка была слишком маленькой.
+- **Expected Result:** Первая строка header: `[логотип] [Account][Favorites][Cart][Language]` (ровно 4 элемента справа, в этом порядке); вторая строка: широкое поле поиска на всю ширину + кнопка поиска. Иконки Account/Favorites/Cart — единый outline-стиль, одинаковый размер, удобная область нажатия; Account заметнее. На 320px всё помещается без горизонтального скролла.
+- **Root Cause:** На мобиле показывалась `.cat-wrap` (кнопка «Kataloq»), а `.header-actions > .header-icon` (Favorites/Cart) были скрыты (`display:none`); Account (`.user-menu > .header-icon`) был мелким (svg 20px), порядок элементов — Language, Account.
+- **Fix Summary:** На мобиле (`≤900px`, только CSS): `.cat-wrap` скрыт (каталог доступен через нижнюю навигацию, круглые категории и back-кнопку); поиск `flex: 1 1 100%` — вся ширина 2-й строки; Favorites/Cart снова показаны (`display:inline-flex`); порядок через `order`: Account(1)→Favorites(2)→Cart(3)→Language(4); Account/Favorites/Cart приведены к единым круглым outline-кнопкам 44px (svg 22px, `border` + `--white`), Account-аватар увеличен до 30px; `count-badge` смещён в правый-верхний угол круга (не перекрывает иконку); `lang-select-btn` компактный (min-width 54, height 44). Брейкпоинт `≤360px` дополнительно уменьшает логотип/иконки/язык — все элементы помещаются на 320px без горизонтального скролла. Desktop не тронут (`.cat-wrap`, favorites/cart, dropdown каталога сохранены). Существующая логика Account/Favorites/Cart/Language не менялась.
+- **Fix Verification checklist:**
+  - [ ] 320/360/375/390: 1-я строка — логотип + 4 иконки (Account, Favorites, Cart, Language) без горизонтального скролла; логотип не обрезан.
+  - [ ] 2-я строка — поиск на всю ширину + кнопка поиска; placeholder статичен (см. LAV-BUG-022).
+  - [ ] Иконки Account/Favorites/Cart одного размера/стиля; счётчики Favorites/Cart не перекрывают иконку и сохраняют значения.
+  - [ ] Переходы Account/Favorites/Cart/Language работают как раньше; язык AZ/RU/EN не ломает layout.
+  - [ ] Desktop: кнопка «Kataloq» и её dropdown на месте, регрессий нет.
+- **Regression History:** NOT VERIFIED live на мобиле (инструмент не эмулирует узкий viewport). Проверено: `vite build` — успешно; desktop live QA — `.cat-wrap` display:block, favorites/cart display:flex, back-btn none, нет гориз. скролла. Живая мобильная проверка — за владельцем.
+- **Notes:** Только CSS (`src/styles/index.css`); JSX header не менялся. Прежнего B-ID не было.
+
+## LAV-BUG-024 — Страница всех товаров: дублирующий заголовок «Hamısı», нет кнопки возврата
+- **Module:** Catalog (CatalogPage head)
+- **Platform:** mobile (desktop — заголовок сохранён)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P3
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (скриншот)
+- **Found Date:** 2026-08-06
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification
+- **Description:** На странице каталога сверху отдельно отображался большой заголовок «Hamısı», дублирующий активный фильтр (чип «Hamısı» в списке). Также отсутствовала понятная кнопка возврата назад.
+- **Expected Result:** На мобиле большой заголовок категории удалён (чип-фильтр «Hamısı» остаётся); слева — минималистичная outline-кнопка возврата `←` (`navigate(-1)` с fallback на главную при прямом входе); фильтры/товары поднимаются выше, без пустого контейнера.
+- **Root Cause:** `.catalog-head > .page-title` всегда показывал имя активной категории (дублировал чип); кнопки возврата не было.
+- **Fix Summary:** В `CatalogPage.jsx` добавлена `back-btn` (`←`, `IconArrowLeft`) с `goBack`: `location.key && location.key !== 'default' ? navigate(-1) : navigate('/')` (fallback на главную при отсутствии истории; без циклов/двойной навигации). `.page-title` оставлен в разметке (desktop не меняется), но на мобиле скрыт через CSS (`@media(max-width:900px){ .catalog-head .page-title{display:none} .back-btn{display:inline-flex} }`); `.catalog-head` margin уменьшен на мобиле. Логика фильтров/чипов не тронута. i18n: добавлен ключ `back` (AZ «Geri» / RU «Назад» / EN «Back»).
+- **Fix Verification checklist:**
+  - [ ] Mobile: нет большого заголовка «Hamısı»; чип «Hamısı» и фильтры работают; товары/фильтры подняты выше, пустого контейнера нет.
+  - [ ] Кнопка `←`: из внутреннего перехода → назад; при прямом открытии `/catalog` → на главную; без циклов.
+  - [ ] Desktop: заголовок категории остаётся, back-кнопка скрыта; регрессий нет.
+  - [ ] AZ/RU/EN: подпись/aria «back» локализованы.
+- **Regression History:** NOT VERIFIED live на мобиле. Проверено: `vite build` — успешно; desktop live QA — page-title display:block, back-btn display:none. Живая мобильная проверка — за владельцем.
+- **Notes:** `src/pages/CatalogPage.jsx`, `src/components/Icons.jsx` (IconArrowLeft), `src/i18n/translations.js`, `src/styles/index.css`. Прежнего B-ID не было.
+
+## LAV-BUG-025 — После долгого отсутствия мобильный браузер восстанавливает устаревший внутренний экран вместо главной
+- **Module:** App shell / навигация (inactivity timeout)
+- **Platform:** both (в первую очередь mobile Safari/Chrome)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner
+- **Found Date:** 2026-08-06
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification
+- **Description:** После закрытия браузера/блокировки телефона мобильный браузер восстанавливал сайт на старом внутреннем экране (подтверждение заказа, корзина, каталог, товар). Нужно: при возврате после ≥30 минут отсутствия открывать главную; при отсутствии <30 минут — оставлять на текущей странице; активную сессию не прерывать.
+- **Expected Result:** Отсутствие <30 мин → та же страница; ≥30 мин → при возврате главная; активное использование >30 мин без ухода в background → без редиректа. Корзина, избранное, авторизация, язык, Supabase-сессия сохраняются; во время активного оформления/отправки формы редиректа нет (проверка только при реальном возврате из background).
+- **Root Cause:** Не было механизма учёта последней активности и проверки при возврате во вкладку — браузер просто восстанавливал последний URL.
+- **Fix Summary:** Новый хук `src/hooks/useInactivityRedirect.js`, подключён в `App`. Хранит `lv_last_activity` в localStorage (throttle — не чаще 1 записи/30с); обновляет метку на смене маршрута и по событиям `pointerdown/keydown/touchstart/click/scroll`. Проверка выполняется при: первичной загрузке (значение метки захватывается на этапе render — до перезаписи эффектом смены маршрута), `visibilitychange` (только когда `visibilityState==='visible'`), `pageshow` (в т.ч. bfcache). Если `now - last ≥ 30 мин` и текущий путь ≠ `/` → `navigate('/', {replace:true})` (без reload); перед навигацией метка обновляется → нет циклов; `redirectingRef` + сравнение пути исключают повторную навигацию и редирект на самой главной. Никакие данные (корзина/избранное/авторизация/язык/сессия) не очищаются — меняется только маршрут.
+- **Fix Verification checklist:**
+  - [ ] A. Отсутствие 10 мин → та же страница. (проверено: pageshow, остался /catalog)
+  - [ ] B. Отсутствие 29 мин → та же страница.
+  - [ ] C. Отсутствие ≥30 мин → главная. (проверено: pageshow и полная перезагрузка `/catalog`→`/`)
+  - [ ] D. Активное использование >30 мин (метка свежая) → без редиректа. (проверено: recent → остался)
+  - [ ] E. Заказ завершён, Safari закрыт, возврат через 31 мин → главная, заказ не переотправляется.
+  - [ ] F. Возврат в корзину через 31 мин → главная, товары в корзине сохранены.
+  - [ ] G/H. Авторизация и выбранный язык сохраняются.
+  - [ ] Первый визит без метки → редиректа нет. (проверено: остался на /catalog?cat=donlar)
+  - [ ] Нет цикла редиректов; на `/` редирект не срабатывает; короткое переключение вкладок (visible, метка свежая) не редиректит.
+- **Regression History:** Логика проверена в vite preview: A/C/D + boot-редирект + «первый визит без метки» — как ожидалось. `visibilitychange` при видимой вкладке не удалось проверить в автоматизации (авто-вкладка `visibilityState=hidden`), но код требует `visible` (корректно) и подтверждён через `pageshow`. Живая проверка на реальных Safari/Chrome (блокировка телефона) — за владельцем.
+- **Notes:** `src/hooks/useInactivityRedirect.js` (new), `src/App.jsx`. TIMEOUT=30 мин, throttle записи=30с. Прежнего B-ID не было.

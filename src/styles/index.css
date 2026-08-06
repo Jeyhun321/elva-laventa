@@ -4556,3 +4556,80 @@ a.product-media {
 @media (prefers-reduced-motion: reduce) {
   .settings-switch, .settings-switch-knob { transition: none; }
 }
+
+/* ============================================================
+   LAV-BUG-023 — mobil header (4 sürətli düymə) + kataloq geri düyməsi
+   ============================================================ */
+
+/* Kataloq səhifəsində geri düyməsi — yalnız mobil (desktop dəyişmir) */
+.back-btn {
+  display: none;
+  flex: 0 0 auto;
+  width: 40px; height: 40px;
+  align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.back-btn:active { transform: scale(0.96); }
+
+@media (max-width: 900px) {
+  /* 1. Üst "Kataloq" düyməsi mobildə gizlənir — axtarış bütün eni tutur.
+        Kataloqa keçid: aşağı naviqasiya + dairəvi kateqoriyalar + geri düyməsi. */
+  .cat-wrap { display: none; }
+
+  /* 2. Axtarış — 2-ci sətir tam enli */
+  .search { order: 4; flex: 1 1 100%; min-width: 0; }
+
+  /* 3. 1-ci sətir sağ tərəf: Account → Sevimlilər → Səbət → Dil */
+  .header .brand-logo { order: 1; flex: 0 0 110px; height: 44px; }
+  .brand-logo-image { width: 110px; height: 44px; }
+  .header-actions { order: 2; gap: 6px; margin-left: auto; }
+  .user-menu { order: 1; }
+  .header-actions > .header-icon { display: inline-flex; order: 2; } /* Sevimlilər, Səbət */
+  .lang-select { order: 4; }
+
+  /* 4. Vahid dairəvi outline üslub (Account/Sevimlilər/Səbət eyni ölçü) */
+  .header-actions .header-icon,
+  .user-menu > .header-icon {
+    width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--white);
+    color: var(--plum);
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+  .header-actions .header-icon svg,
+  .user-menu > .header-icon svg { width: 22px; height: 22px; }
+  .header-actions .header-icon em { display: none; }
+  /* Account bir az iri görünsün */
+  .user-avatar { width: 30px; height: 30px; }
+  /* Sayğac ikonun üstünə düşməsin — dairənin sağ-üst küncündə */
+  .header-actions .header-icon .count-badge { top: -3px; right: -3px; }
+
+  /* Dil düyməsi digər dairələrlə eyni hündürlükdə, kompakt */
+  .lang-select-btn { min-height: 44px; min-width: 54px; padding: 0 10px; }
+
+  /* Kataloq başlığı: mobildə dublikat kateqoriya başlığı gizlənir, geri görünür */
+  .catalog-head { align-items: center; gap: 12px; margin-bottom: 14px; }
+  .catalog-head .page-title { display: none; }
+  .back-btn { display: inline-flex; }
+}
+
+/* 320-360px: hər şey bir sətrə yerləşsin, üfüqi scroll olmasın */
+@media (max-width: 360px) {
+  .header .brand-logo { flex: 0 0 92px; }
+  .brand-logo-image { width: 92px; }
+  .header-actions { gap: 4px; }
+  .header-actions .header-icon,
+  .user-menu > .header-icon { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
+  .header-actions .header-icon svg,
+  .user-menu > .header-icon svg { width: 20px; height: 20px; }
+  .lang-select-btn { min-width: 46px; padding: 0 8px; font-size: 0.76rem; }
+}

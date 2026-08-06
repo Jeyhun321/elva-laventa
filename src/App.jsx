@@ -10,6 +10,7 @@ import { useCatalog } from './context/CatalogContext.jsx'
 import { useAuth } from './context/AuthContext.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { lazyWithRetry } from './lib/recovery.js'
+import useInactivityRedirect from './hooks/useInactivityRedirect.js'
 
 // Ana səhifə dərhal lazımdır — ayrıca yüklənmir.
 import HomePage from './pages/HomePage.jsx'
@@ -66,6 +67,9 @@ export default function App() {
   const { loading: catalogLoading } = useCatalog()
   const location = useLocation()
   const showHomeWhileCatalogLoads = location.pathname === '/'
+
+  // 30 dəqiqə+ arxa plandan qayıdanda ana səhifəyə (səbət/sessiya toxunulmur)
+  useInactivityRedirect()
 
   return (
     <>

@@ -254,6 +254,7 @@ export const ui = {
     en: 'Filters and sorting',
   },
   close: { az: 'Bağla', ru: 'Закрыть', en: 'Close' },
+  back: { az: 'Geri', ru: 'Назад', en: 'Back' },
   language: { az: 'Dil', ru: 'Язык', en: 'Language' },
   // Rəng variantları
   out_of_stock: { az: 'Stokda yoxdur', ru: 'Нет в наличии', en: 'Out of stock' },

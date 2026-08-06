@@ -1,15 +1,23 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import ProductCard from '../components/ProductCard.jsx'
-import { IconSliders, IconClose } from '../components/Icons.jsx'
+import { IconSliders, IconClose, IconArrowLeft } from '../components/Icons.jsx'
 
 export default function CatalogPage() {
   const { t } = useI18n()
   const { products, categories, priceBounds, loading } = useCatalog()
   const bounds = useMemo(() => priceBounds(), [products])
   const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Geri: real tarixçə varsa navigate(-1), yoxdursa (birbaşa açılıb) ana səhifə
+  const goBack = () => {
+    if (location.key && location.key !== 'default') navigate(-1)
+    else navigate('/')
+  }
 
   const cat = params.get('cat') || 'all'
   const q = params.get('q') || ''
@@ -139,6 +147,12 @@ export default function CatalogPage() {
   return (
     <div className="container catalog-page">
       <div className="catalog-head">
+        {/* Geri düyməsi — yalnız mobil (CSS). Desktop dəyişmir. */}
+        <button type="button" className="back-btn" onClick={goBack} aria-label={t('back')}>
+          <IconArrowLeft />
+        </button>
+        {/* Başlıq desktopda qalır; mobildə gizlədilir (kateqoriya adı aşağıdakı
+            çip siyahısında onsuz da aktivdir — dublikat başlıq görünməsin). */}
         <h1 className="page-title">{title}</h1>
       </div>
 
