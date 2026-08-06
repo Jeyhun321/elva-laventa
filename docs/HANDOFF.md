@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Мобильная главная переработана в компактный marketplace-стиль (UX-принципы Trendyol, визуал LaVenta): на мобиле большой hero убран, товары и разделы видны почти сразу. Desktop сохраняет компактный boutique-hero без регрессий. Изменения закоммичены и запушены в `main`; деплой на GitHub Pages запущен автоматически (push-триггер). SHA — см. `SESSION CHECKSUM`.
+Мобильная главная переработана в компактный marketplace-стиль (UX-принципы Trendyol, визуал LaVenta): на мобиле большой hero убран, товары и разделы видны почти сразу. Desktop сохраняет компактный boutique-hero без регрессий. Изменения закоммичены (`8ca3a47`) и запушены в `main`; деплой на GitHub Pages запущен автоматически (push-триггер).
 
 ## Current Branch
 
@@ -87,7 +87,7 @@ Expected modified files:
   - src/components/PromoCardGrid.jsx (DELETED)
   - docs/BUGS.md
   - docs/HANDOFF.md
-Git status summary: committed & pushed to main; SHA — см. git log -1
+Git status summary: committed & pushed to main; SHA 8ca3a47 (ba7cdff..8ca3a47)
 Documentation updated: YES
 Last verified build: npm run build — успешно (CSS ≈85.49 kB), 2026-08-06
 Last verified tests: нет test-скриптов; desktop live QA — PASSED; mobile live — NOT VERIFIED
