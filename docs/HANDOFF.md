@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Мобильная главная зачищена до финального компактного вида: убран лишний круг «Hamısı» (остаётся только круглая кнопка-меню), удалена строка текстовых вкладок, поиск больше не дёргается при скролле. Desktop без регрессий. Изменения закоммичены и запушены в `main`; деплой на GitHub Pages запущен автоматически (push-триггер). SHA — см. `SESSION CHECKSUM`.
+Финальная полировка первого экрана мобильной главной: убран гамбургер из ленты категорий, убран eyebrow «KOLLEKSİYA», заголовок секции идеально выровнен с «HAMISINA BAX», placeholder поиска полностью статичен, иконка Settings заменена на outline-шестерёнку. Desktop без регрессий. Изменения закоммичены и запушены в `main`; деплой на GitHub Pages запущен автоматически (push-триггер). SHA — см. `SESSION CHECKSUM`.
 
 ## Current Branch
 
@@ -10,56 +10,55 @@
 
 ## Last Completed Task
 
-### Чистка первого экрана мобильной главной (LAV-BUG-021)
+### Полировка первого экрана мобильной главной (LAV-BUG-022)
 
-- **Убран круг «Hamısı»:** удалён элемент `all` из `quickCategories` (`src/data/homeNav.js`). Рядом с лентой остаётся только круглая кнопка-меню (☰) без подписи; полный список категорий — в drawer по нажатию.
-- **Удалены верхние вкладки:** удалён компонент `HomeCategoryTabs` (файл, использование в `HomePage`, CSS `.home-tabs*`, экспорт `homeTabs`).
-- **Поиск не дёргается:** убрано сжатие логотипа при скролле (`.header.scrolled .brand-logo-image { transform: scale(0.88) }` + transition). Шапка и поиск полностью статичны при прокрутке — без смены ширины/позиции/анимации.
-- **Отступы:** `.cats-row` переведена с `repeat(7,1fr)` на `grid-auto-flow: column; grid-auto-columns: 1fr` (6 элементов ровно, без пустого столбца). После удаления блоков пустот/скачков нет, карточки поднимаются выше.
-
-Порядок первого экрана (mobile): header → поиск → круглая кнопка-меню → круглые категории → популярные товары.
+- **Гамбургер убран:** из `Categories.jsx` удалены кнопка-меню и drawer (+ CSS `.cats-menu-btn`/`.cat-drawer*`). Лента = только круглые категории (6 шт), swipe работает, без пустот.
+- **«KOLLEKSİYA» убран:** `HomePage` больше не передаёт `eyebrow` в товарные секции — eyebrow-надписи над рядами исчезли.
+- **Выравнивание заголовка:** `.hsection-head { align-items: center }` + отсутствие eyebrow → «Populyar məhsullar» и «HAMISINA BAX →» строго на одной линии (центры совпадают, delta=0).
+- **Поиск стабилен:** из `Header.jsx` удалён анимированный `.search-placeholder-marquee` (и state `searchFocused`); в CSS убран прозрачный нативный placeholder и marquee-анимация — теперь статичный нативный placeholder без сдвигов/анимаций.
+- **Иконка Settings:** `IconSettings` заменён на outline-шестерёнку (Lucide gear), 22×22, strokeWidth 1.6 — в стиль остальных иконок нижней навигации. Логика Settings не тронута.
 
 ## Last Verified Checks
 
-- `npm run build` — успешно (`✓ built in 6.51s`).
-- **Desktop live QA** (vite preview, Chrome) — DOM: `.home-tabs` = 0 (вкладок нет); категории [Donlar, Bluzalar, Ətəklər, Endirimlər, Yenilər, Parfüm] — без «Hamısı»; меню-кнопка присутствует; «Hamısı» не встречается на странице; `document.scrollWidth ≤ innerWidth` (нет гориз. скролла). Desktop-рендер: 6 категорий ровно (без пустого столбца), бейджи %/YENİ, заголовок категорий на месте, меню-кнопка/вкладки скрыты.
+- `npm run build` — успешно (`✓ built in 4.75s`).
+- **Desktop live QA** (vite preview, Chrome) — DOM: `.cats-menu-btn`=нет, `.cat-drawer-root`=нет, eyebrow в Populyar=нет, «KOLLEKSİYA» не встречается, категории=6, центр заголовка = центр ссылки (delta=0 px), `document.scrollWidth ≤ innerWidth` (нет гориз. скролла); иконка Settings рендерится как шестерёнка (zoom-проверка на `/settings`).
 - **Mobile live:** узкий viewport снять не удалось (browser-extension не эмулирует мобильную ширину); проверено по DOM/структуре и media-queries. **Живая проверка на телефоне (320/360/375/390) — за владельцем (NOT VERIFIED live).**
 
 ## Current Architecture Notes
 
 - Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), деплой GitHub Pages (`.github/workflows/deploy.yml`, триггер `push:[main]` + `workflow_dispatch`).
-- Главная: `Intro` (desktop-only) → `Categories` (лента + кнопка-меню + drawer) → «Populyar» (`HorizontalProductSection`) → `CompactPromoRail` (3) → «Yeni gələnlər» → «Endirimlər» (скрыт если пусто) → широкий `PromoBanner` → бренд-секции. Нижняя навигация — `TabBar` (5 пунктов, mobile). Settings — `/settings`.
+- Главная: `Intro` (desktop-only) → `Categories` (круглая лента, 6 категорий, без гамбургера) → «Populyar» (`HorizontalProductSection`, без eyebrow) → `CompactPromoRail` (3) → «Yeni gələnlər» → «Endirimlər» (скрыт если пусто) → широкий `PromoBanner` → бренд-секции. Нижняя навигация — `TabBar` (5 пунктов, mobile; Settings — outline-шестерёнка). Settings — `/settings`.
 - Конфиги: `src/data/homeNav.js` (`quickCategories`, 6 шт), `src/data/promos.js`. Хук `src/hooks/useMediaQuery.js`.
 
 ## Known Issues
 
-Нет новых подтверждённых багов. LAV-BUG-018/019/020/021 — FIXED (Fix Verification на телефоне за владельцем).
+Нет новых подтверждённых багов. LAV-BUG-018…022 — FIXED (Fix Verification на телефоне за владельцем).
 
 ## Risks
 
 - Живой мобильный рендер NOT VERIFIED (проверено build + desktop live + DOM/media-queries). Риск низкий.
-- UI-заглушки без backend: drawer категорий, страница Settings (кроме языка), Parfüm-категория.
+- UI-заглушки без backend: страница Settings (кроме языка), Parfüm-категория. (Drawer категорий удалён вместе с гамбургером.)
 
 ## Next Recommended Step
 
-Владельцу — Fix Verification LAV-BUG-021 на реальном телефоне (320/360/375/390) и desktop по чек-листу в `docs/BUGS.md`. Далее — подключение backend к UI-заглушкам отдельными задачами.
+Владельцу — Fix Verification LAV-BUG-022 на реальном телефоне (320/360/375/390) и desktop по чек-листу в `docs/BUGS.md`. Далее — подключение backend к UI-заглушкам отдельными задачами.
 
 ## Context For Next Session
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260806-110010
+Recovery ID: R-20260806-112023
 
 1. **Проект:** Elva LaVenta — React/Vite storefront магазина женской одежды, Supabase (Frankfurt), деплой GitHub Pages.
 2. **Описание:** интернет-магазин с каталогом, избранным, корзиной, checkout через WhatsApp, admin-панелью, тремя языками AZ/RU/EN.
-3. **Текущее состояние:** мобильная главная в компактном marketplace-виде; убраны круг «Hamısı» и текстовые вкладки, поиск статичен при скролле; изменения закоммичены и запушены в `main`, деплой запущен push-триггером. После коммита дерево чистое.
-4. **Что реализовано:** компактная mobile-first главная (круглая лента категорий с кнопкой-меню и drawer, товарные ряды с рейтингом, промо-ряд 3 карты, широкий баннер, skeleton), desktop-only компактный hero, нижняя навигация 5 пунктов, страница Settings (UI + рабочий язык).
-5. **Последняя задача:** LAV-BUG-021 — удалён круг «Hamısı» (элемент `all` из `quickCategories`), удалён `HomeCategoryTabs` (вкладки), убрано сжатие логотипа при скролле (стабильный поиск), сетка категорий переведена на auto-flow (6 элементов ровно).
-6. **Изменённые файлы:** удалён `src/components/HomeCategoryTabs.jsx`; изменены `src/pages/HomePage.jsx`, `src/data/homeNav.js`, `src/styles/index.css`, `docs/BUGS.md`, `docs/HANDOFF.md`.
-7. **Проверки:** `npm run build` — успешно. Desktop live QA в vite preview — вкладок нет, «Hamısı» нет, 6 категорий ровно, без гориз. скролла. Mobile live — NOT VERIFIED (инструмент не эмулирует узкий viewport).
-8. **Ограничения:** не менять бизнес-логику корзины/избранного/checkout/авторизации и структуру БД; сохранять бордово-розовую палитру/логотип/типографику; не хардкодить пользовательские тексты — через i18n/конфиги с AZ/RU/EN; UI-заглушки не удалять/не упрощать; проверять mobile и desktop; hero не возвращать в огромном формате; не коммитить секреты.
+3. **Текущее состояние:** первый экран мобильной главной отполирован (без гамбургера/KOLLEKSİYA, выровненный заголовок, статичный поиск, шестерёнка Settings); изменения закоммичены и запушены в `main`, деплой запущен push-триггером. После коммита дерево чистое.
+4. **Что реализовано:** компактная mobile-first главная (круглая лента категорий 6 шт, товарные ряды с рейтингом, промо-ряд 3 карты, широкий баннер, skeleton), desktop-only компактный hero, нижняя навигация 5 пунктов, страница Settings (UI + рабочий язык).
+5. **Последняя задача:** LAV-BUG-022 — убраны гамбургер+drawer из категорий и eyebrow «KOLLEKSİYA»; заголовок секции выровнен с «HAMISINA BAX»; placeholder поиска статичен (удалён marquee); `IconSettings` → outline-шестерёнка.
+6. **Изменённые файлы:** `src/components/Categories.jsx`, `src/components/Header.jsx`, `src/components/Icons.jsx`, `src/pages/HomePage.jsx`, `src/styles/index.css`, `docs/BUGS.md`, `docs/HANDOFF.md`.
+7. **Проверки:** `npm run build` — успешно. Desktop live QA — гамбургер/KOLLEKSİYA нет, delta заголовка/ссылки=0, 6 категорий, без гориз. скролла, шестерёнка ок. Mobile live — NOT VERIFIED (инструмент не эмулирует узкий viewport).
+8. **Ограничения:** не менять бизнес-логику корзины/избранного/checkout/авторизации и структуру БД; сохранять бордово-розовую палитру/логотип/типографику; не хардкодить пользовательские тексты — через i18n/конфиги с AZ/RU/EN; UI-заглушки не удалять/не упрощать; логику Settings не менять; проверять mobile и desktop; hero не возвращать в огромном формате; не коммитить секреты.
 9. **Обязательные документы:** `docs/HANDOFF.md`, `CLAUDE.md`, `AGENTS.md`, `START.md`, `AI_WORKFLOW.md`, `.claude/PROJECT.md`, `.claude/CODE_STYLE.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `.claude/CODEX.md`, `docs/BUGS.md`.
-10. **Что осталось:** Fix Verification LAV-BUG-021 (владелец); подключение backend к UI-заглушкам (меню категорий, Settings) отдельными задачами.
+10. **Что осталось:** Fix Verification LAV-BUG-022 (владелец); подключение backend к UI-заглушкам (Settings, будущие категории) отдельными задачами.
 11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`, затем взять задачу владельца.
 12. **После работы:** обновить `docs/HANDOFF.md` (полностью переписать), при необходимости остальные `docs/`, commit + push в `main`.
 
@@ -69,12 +68,13 @@ Recovery ID: R-20260806-110010
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: LAV-BUG-021 — чистка первого экрана мобильной главной (завершено, закоммичено, запушено)
+Current task: LAV-BUG-022 — полировка первого экрана мобильной главной (завершено, закоммичено, запушено)
 Expected modified files:
+  - src/components/Categories.jsx
+  - src/components/Header.jsx
+  - src/components/Icons.jsx
   - src/pages/HomePage.jsx
-  - src/data/homeNav.js
   - src/styles/index.css
-  - src/components/HomeCategoryTabs.jsx (DELETED)
   - docs/BUGS.md
   - docs/HANDOFF.md
 Git status summary: committed & pushed to main; SHA — см. git log -1

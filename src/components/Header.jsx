@@ -15,7 +15,6 @@ export default function Header() {
   const location = useLocation()
 
   const [query, setQuery] = useState('')
-  const [searchFocused, setSearchFocused] = useState(false)
   const [catOpen, setCatOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   // Mobildə dil üç düymə yerinə açılan siyahıdır (yer qazanmaq üçün)
@@ -101,18 +100,10 @@ export default function Header() {
         </div>
 
         <form className="search" onSubmit={submitSearch} role="search">
-          <span
-            className={`search-placeholder-marquee${query || searchFocused ? ' is-hidden' : ''}`}
-            aria-hidden="true"
-          >
-            <span>{t('search_placeholder')}</span>
-          </span>
           <input
             type="search"
             value={query}
             onChange={(e) => changeSearch(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
             placeholder={t('search_placeholder')}
             aria-label={t('search_placeholder')}
           />

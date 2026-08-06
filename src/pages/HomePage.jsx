@@ -42,7 +42,6 @@ export default function HomePage() {
       {/* Populyar məhsullar — товары çox erkən görünür */}
       <HorizontalProductSection
         id="catalog-preview"
-        eyebrow="collection"
         title="popular_products"
         products={popular}
         loading={loading}
@@ -54,7 +53,6 @@ export default function HomePage() {
 
       {/* Yeni gələnlər */}
       <HorizontalProductSection
-        eyebrow="new_in_eyebrow"
         title="new_arrivals"
         products={newArrivals}
         loading={loading}
@@ -63,7 +61,6 @@ export default function HomePage() {
 
       {/* Endirimlər — məhsul yoxdursa tamamilə gizlənir */}
       <HorizontalProductSection
-        eyebrow="collection"
         title="discounts_title"
         products={discounts}
         viewAllTo="/catalog?sale=1"

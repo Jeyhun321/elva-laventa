@@ -701,4 +701,30 @@
   - [ ] После удаления блоков нет пустот/лишних отступов; популярные товары выше; горизонтального скролла страницы нет.
   - [ ] Desktop: 6 категорий ровно (без пустого столбца), заголовок категорий на месте, меню-кнопка/вкладки скрыты; регрессий нет.
 - **Regression History:** NOT VERIFIED live на мобиле (инструмент не эмулирует узкий viewport). Проверено: `vite build` — успешно; desktop live QA (vite preview) — DOM: `.home-tabs`=0, категории [Donlar,Bluzalar,Ətəklər,Endirimlər,Yenilər,Parfüm] (без «Hamısı»), меню-кнопка есть, «Hamısı» не встречается, `scrollWidth ≤ innerWidth`; desktop-рендер: 6 категорий ровно, бейджи %/YENİ. Живая мобильная проверка — за владельцем.
-- **Notes:** Удалён `src/components/HomeCategoryTabs.jsx`. Изменены: `src/pages/HomePage.jsx`, `src/data/homeNav.js`, `src/styles/index.css`. Бизнес-логика/структура БД не менялись. Прежнего B-ID не было.
+- **Notes:** Удалён `src/components/HomeCategoryTabs.jsx`. Изменены: `src/pages/HomePage.jsx`, `src/data/homeNav.js`, `src/styles/index.css`. Бизнес-логика/структура БД не менялись. Прежнего B-ID не было. **Продолжение:** финальная полировка первого экрана — см. LAV-BUG-022.
+
+## LAV-BUG-022 — Полировка первого экрана: гамбургер, KOLLEKSİYA, выравнивание, placeholder, иконка Settings
+- **Module:** Home (Categories / section head) + Header (search) + Bottom nav icon
+- **Platform:** mobile (desktop — без регрессий)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P3
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (5 скриншотов)
+- **Found Date:** 2026-08-06
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification
+- **Description:** (1) Первая круглая кнопка в ленте категорий — гамбургер (меню), не нужна. (2) Над «Populyar məhsullar» — лишний eyebrow «KOLLEKSİYA». (3) «Populyar məhsullar» и «HAMISINA BAX →» на разной высоте. (4) Placeholder поиска «Məhsul və ya kod axtar…» двигался (анимация). (5) Иконка Settings в нижней навигации выглядела как «солнце», а не шестерёнка.
+- **Expected Result:** Лента категорий без гамбургера (круги выравниваются, без пустот); без «KOLLEKSİYA»; заголовок секции и «HAMISINA BAX» строго на одной линии; placeholder полностью статичен; Settings — современная outline-шестерёнка в размер/толщину остальных иконок.
+- **Actual Result:** Был гамбургер, eyebrow «KOLLEKSİYA», рассинхрон заголовка/ссылки, анимированный placeholder-marquee, иконка-«солнце».
+- **Root Cause:** (1) кнопка `.cats-menu-btn` + drawer в `Categories.jsx`. (2) eyebrow `collection` в секциях. (3) `.section-head-row { align-items: flex-end }` + eyebrow делал h2 выше → ссылка не по центру. (4) на мобиле нативный placeholder делался прозрачным, а видимый — анимированный оверлей `.search-placeholder-marquee` (`translateX` 7s). (5) `IconSettings` был нарисован как круг с 8 лучами (похож на солнце).
+- **Fix Summary:** (1) Из `Categories.jsx` удалены кнопка-гамбургер и drawer (+ их CSS `.cats-menu-btn`/`.cat-drawer*`); лента = только круглые категории (6 шт), swipe работает. (2) Убран eyebrow из всех товарных секций (`HomePage` больше не передаёт `eyebrow`) — «KOLLEKSİYA»/«Yeni» над рядами исчезли. (3) `.hsection-head { align-items: center }` + отсутствие eyebrow → заголовок и «HAMISINA BAX» ровно на одной линии (проверено: центры совпадают, delta=0). (4) Из `Header.jsx` удалён `.search-placeholder-marquee` (+ state `searchFocused`); в CSS убраны прозрачный нативный placeholder и marquee-анимация — теперь статичный нативный placeholder (без сдвигов/анимаций/смены ширины). (5) `IconSettings` заменён на outline-шестерёнку (Lucide gear), 22×22, strokeWidth 1.6 — как у остальных иконок нижней навигации.
+- **Fix Verification checklist:**
+  - [ ] Mobile: в ленте категорий нет гамбургера; круги выровнены, без пустот; swipe работает; горизонтального скролла страницы нет.
+  - [ ] Над «Populyar məhsullar» нет «KOLLEKSİYA».
+  - [ ] «Populyar məhsullar» и «HAMISINA BAX →» на одной горизонтальной линии.
+  - [ ] Placeholder поиска не двигается: без скачков/смещения/смены ширины/padding/анимаций.
+  - [ ] Иконка Settings — outline-шестерёнка, совпадает по размеру/толщине с остальными иконками нижней навигации; логика Settings не изменена.
+  - [ ] Desktop: 6 категорий ровно, заголовок категорий на месте, регрессий нет.
+- **Regression History:** NOT VERIFIED live на мобиле (инструмент не эмулирует узкий viewport). Проверено: `vite build` — успешно; desktop live QA (vite preview) — DOM: `.cats-menu-btn`=нет, `.cat-drawer-root`=нет, eyebrow в Populyar=нет, «KOLLEKSİYA» не встречается, категории=6, центр заголовка = центр ссылки (delta=0), `scrollWidth ≤ innerWidth`; иконка Settings рендерится как шестерёнка (zoom). Живая мобильная проверка — за владельцем.
+- **Notes:** Изменены: `src/components/Categories.jsx`, `src/components/Header.jsx`, `src/components/Icons.jsx`, `src/pages/HomePage.jsx`, `src/styles/index.css`. Логика Settings/каталога/бизнес-логика не менялись. Прежнего B-ID не было.
