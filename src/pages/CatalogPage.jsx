@@ -93,7 +93,10 @@ export default function CatalogPage() {
     if (id === 'all') next.delete('cat')
     else next.set('cat', id)
     next.delete('q')
-    setParams(next)
+    // Kateqoriya — filtrdir, naviqasiya nöqtəsi deyil. `replace` ilə history-də
+    // yeni giriş yaratmırıq, əks halda yuxarıdakı "←" (navigate(-1)) səhifədən
+    // çıxmaq əvəzinə köhnə filtr vəziyyətlərini (məs. Donlar) bərpa edir.
+    setParams(next, { replace: true })
   }
 
   const visible = useMemo(() => {

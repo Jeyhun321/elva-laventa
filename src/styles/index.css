@@ -4583,13 +4583,16 @@ a.product-media {
   /* 2. Axtarış — 2-ci sətir tam enli */
   .search { order: 4; flex: 1 1 100%; min-width: 0; }
 
-  /* 3. 1-ci sətir sağ tərəf: Account → Sevimlilər → Səbət → Dil */
-  .header .brand-logo { order: 1; flex: 0 0 110px; height: 44px; }
-  .brand-logo-image { width: 110px; height: 44px; }
+  /* 3. 1-ci sətir sağ tərəf: Account → Sevimlilər → Səbət.
+        Loqo iri brend elementi kimi görünür (SVG — vektor, itiliyi itmir). */
+  .header .brand-logo { order: 1; flex: 0 0 166px; height: 44px; }
+  .brand-logo-image { width: 166px; height: 44px; }
   .header-actions { order: 2; gap: 6px; margin-left: auto; }
   .user-menu { order: 1; }
   .header-actions > .header-icon { display: inline-flex; order: 2; } /* Sevimlilər, Səbət */
-  .lang-select { order: 4; }
+  /* Dil seçici mobil başlıqdan çıxarıldı → Parametrlər (Settings) səhifəsinə köçdü.
+     Aşağı naviqasiyadakı dişli ikonu ilə açılır; i18n məntiqi dəyişməyib. */
+  .lang-select { display: none; }
 
   /* 4. Vahid dairəvi outline üslub (Account/Sevimlilər/Səbət eyni ölçü) */
   .header-actions .header-icon,
@@ -4622,14 +4625,15 @@ a.product-media {
   .back-btn { display: inline-flex; }
 }
 
-/* 320-360px: hər şey bir sətrə yerləşsin, üfüqi scroll olmasın */
+/* 320-360px: hər şey bir sətrə yerləşsin, üfüqi scroll olmasın.
+   Dil seçici artıq başlıqda deyil → loqoya daha çox yer var, amma 320px-də
+   3 ikon (Account/Sevimlilər/Səbət) + loqo sığsın deyə ölçüləri bir az azaldırıq. */
 @media (max-width: 360px) {
-  .header .brand-logo { flex: 0 0 92px; }
-  .brand-logo-image { width: 92px; }
+  .header .brand-logo { flex: 0 0 140px; }
+  .brand-logo-image { width: 140px; }
   .header-actions { gap: 4px; }
   .header-actions .header-icon,
   .user-menu > .header-icon { width: 40px; height: 40px; min-width: 40px; min-height: 40px; }
   .header-actions .header-icon svg,
   .user-menu > .header-icon svg { width: 20px; height: 20px; }
-  .lang-select-btn { min-width: 46px; padding: 0 8px; font-size: 0.76rem; }
 }
