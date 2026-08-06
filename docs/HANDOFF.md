@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Мобильная главная доведена до marketplace-UX (референсы Trendyol + целевой макет LaVenta): круглая лента категорий с меню-гамбургером и drawer, вкладки разделов, товарные ряды с рейтингом, компактный промо-ряд; нижняя навигация из 5 пунктов с новым разделом **Settings** (UI + рабочий переключатель языка). Desktop сохраняет компактный boutique-вид без регрессий. Изменения закоммичены и запушены в `main`; деплой на GitHub Pages запущен автоматически (push-триггер). SHA — см. `SESSION CHECKSUM`.
+Мобильная главная доведена до marketplace-UX (референсы Trendyol + целевой макет LaVenta): круглая лента категорий с меню-гамбургером и drawer, вкладки разделов, товарные ряды с рейтингом, компактный промо-ряд; нижняя навигация из 5 пунктов с новым разделом **Settings** (UI + рабочий переключатель языка). Desktop сохраняет компактный boutique-вид без регрессий. Изменения закоммичены (`ae09a83`) и запушены в `main`; деплой на GitHub Pages запущен автоматически (push-триггер).
 
 ## Current Branch
 
@@ -86,7 +86,7 @@ Expected modified files:
   - src/styles/index.css
   - docs/BUGS.md
   - docs/HANDOFF.md
-Git status summary: committed & pushed to main; SHA — см. git log -1
+Git status summary: committed & pushed to main; SHA ae09a83 (1c56c8f..ae09a83)
 Documentation updated: YES
 Last verified build: npm run build — успешно (chunk SettingsPage), 2026-08-06
 Last verified tests: нет test-скриптов; desktop live QA — PASSED; mobile live — NOT VERIFIED
