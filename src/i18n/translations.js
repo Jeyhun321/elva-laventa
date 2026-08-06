@@ -156,9 +156,9 @@ export const ui = {
   },
   hero_title_em: { az: 'yeni', ru: 'Новый', en: 'new' },
   hero_desc: {
-    az: 'Elva LaVenta — hər gününüzə yaraşan qadın geyimləri. Yeni kolleksiya və endirimli məhsullar indi kataloqumuzda.',
-    ru: 'Elva LaVenta — женская одежда на каждый день. Новая коллекция и товары со скидкой уже в каталоге.',
-    en: 'Elva LaVenta — women’s clothing for every day. New collection and discounted items now in our catalog.',
+    az: 'Hər gününüzə yaraşan qadın geyimləri — yeni kolleksiya və endirimlər indi kataloqda.',
+    ru: 'Женская одежда на каждый день — новая коллекция и скидки уже в каталоге.',
+    en: 'Women’s clothing for every day — new collection and deals now in the catalog.',
   },
   hero_cta_primary: { az: 'Kataloqa keç', ru: 'В каталог', en: 'Go to catalog' },
   hero_cta_secondary: {
@@ -215,6 +215,7 @@ export const ui = {
 
   // Catalog
   collection: { az: 'Kolleksiya', ru: 'Коллекция', en: 'Collection' },
+  new_in_eyebrow: { az: 'Yeni', ru: 'Новинки', en: 'New in' },
   all_products: { az: 'Bütün məhsullar', ru: 'Все товары', en: 'All products' },
   sort_by: { az: 'Sıralama', ru: 'Сортировка', en: 'Sort by' },
   sort_popular: { az: 'Populyar', ru: 'Популярные', en: 'Popular' },

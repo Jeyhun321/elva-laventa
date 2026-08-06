@@ -5,7 +5,6 @@ import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconArrow } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
 import useTilt from '../hooks/useTilt.js'
-import flowerLogo from '../assets/elva-laventa-logo.svg'
 
 // Hero fonunda üzən ləçəklər — sırf bəzək, oxunuşa mane olmasın deyə
 // yalnız sağ tərəfdə, şəffaf və pointer-events: none.
@@ -80,13 +79,6 @@ export default function Intro() {
         </div>
 
         <div className="showcase">
-          {/* Mobildə bölmənin üstündə iri brend nişanı (CSS ilə yalnız ≤900px).
-              alt boşdur + aria-hidden: başlıqdakı brend keçidi onsuz da
-              "Elva LaVenta" deyir, ekran oxuyucu iki dəfə təkrar etməsin. */}
-          <div className="hero-brand" aria-hidden="true">
-            <img className="hero-brand-logo" src={flowerLogo} alt="" />
-          </div>
-
           <div className="showcase-tilt" ref={tiltRef}>
             <div className="showcase-stage">
               {SHOW.map((product, i) => (
