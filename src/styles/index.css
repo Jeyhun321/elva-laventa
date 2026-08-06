@@ -733,7 +733,8 @@ ul {
 
 .cats-row {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: 14px;
 }
 
@@ -1400,11 +1401,11 @@ ul {
   background: rgba(255, 246, 250, 0.96);
   box-shadow: 0 1px 0 var(--line), 0 10px 30px rgba(42, 22, 32, 0.07);
 }
+/* Sürüşdürəndə loqo ARTIQ kiçilmir — başlıq və axtarış sabit qalır,
+   heç bir sıçrayış/sürüşmə animasiyası yoxdur. */
 .header .brand-logo-image {
   transform-origin: left center;
-  transition: transform 0.35s var(--ease);
 }
-.header.scrolled .brand-logo-image { transform: scale(0.88); }
 
 /* Başlıq ikonları eyni incəlikdə */
 .header-icon svg,
@@ -4274,39 +4275,6 @@ a.product-media {
   }
   .showcase-stage { height: 248px; }
   .showcase-dots { margin-top: 8px; }
-}
-
-/* --- Üfüqi bölmə vkladkaları (yalnız mobil) --- */
-.home-tabs { display: none; }
-@media (max-width: 900px) {
-  .home-tabs {
-    display: block;
-    border-bottom: 1px solid var(--line);
-    background: var(--bg);
-  }
-  .home-tabs-row {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding: 10px 16px 0;
-    scroll-snap-type: x proximity;
-  }
-  .home-tabs-row::-webkit-scrollbar { display: none; }
-  .home-tab {
-    display: inline-block;
-    white-space: nowrap;
-    padding: 8px 4px 12px;
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: var(--ink-soft);
-    border-bottom: 2px solid transparent;
-    scroll-snap-align: start;
-  }
-  .home-tab.is-active {
-    color: var(--plum);
-    border-bottom-color: var(--plum);
-  }
 }
 
 /* --- Kompakt kateqoriya başlığı (mobil): market görünüşü üçün kiçik --- */

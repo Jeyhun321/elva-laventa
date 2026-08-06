@@ -7,7 +7,6 @@ import Categories from '../components/Categories.jsx'
 import Promo from '../components/Promo.jsx'
 import BrandStatement from '../components/BrandStatement.jsx'
 import BenefitsSection from '../components/BenefitsSection.jsx'
-import HomeCategoryTabs from '../components/HomeCategoryTabs.jsx'
 import CompactPromoRail from '../components/CompactPromoRail.jsx'
 import PromoBanner from '../components/PromoBanner.jsx'
 import HorizontalProductSection from '../components/HorizontalProductSection.jsx'
@@ -37,10 +36,7 @@ export default function HomePage() {
       {/* Desktop: kompakt boutique hero. Mobil: hero yoxdur (market görünüşü) */}
       {isDesktop && <Intro />}
 
-      {/* Mobil: axtarışın altında üfüqi bölmə vkladkaları */}
-      <HomeCategoryTabs />
-
-      {/* Sürətli dairəvi kateqoriyalar */}
+      {/* Sürətli dairəvi kateqoriyalar (menyu düyməsi + lent) */}
       <Categories />
 
       {/* Populyar məhsullar — товары çox erkən görünür */}

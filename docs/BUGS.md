@@ -676,4 +676,29 @@
   - [ ] Desktop: заголовок категорий на месте, сетка не сломана, гамбургер/drawer скрыты, bottom nav скрыт (desktop); регрессий нет.
   - [ ] AZ/RU/EN во всех новых текстах.
 - **Regression History:** NOT VERIFIED live на мобиле (инструмент не эмулирует узкий viewport). Проверено: `vite build` — успешно (chunk `SettingsPage`); **desktop live QA** (vite preview) — home DOM: 7 вкладок, 7 круглых категорий, гамбургер, бейджи %/YENİ, промо-ряд 3 карты + подзаголовки, 10 рейтингов, drawer с 7 пунктами, bottom nav 5 (Ana səhifə/Kataloq/Sevimlilər/Səbət/Ayarlar), `scrollWidth ≤ innerWidth`; `/settings` рендерится корректно. Живая мобильная проверка — за владельцем.
-- **Notes:** Новые файлы: `src/pages/SettingsPage.jsx`. Изменены: `src/components/Categories.jsx`, `src/components/TabBar.jsx`, `src/components/Icons.jsx`, `src/components/HorizontalProductSection.jsx`, `src/components/CompactPromoRail.jsx`, `src/data/homeNav.js`, `src/data/promos.js`, `src/App.jsx`, `src/i18n/translations.js`, `src/styles/index.css`. UI-заглушки (для будущего backend): drawer категорий, страница Settings (кроме языка), Parfüm-категория. Бизнес-логика/структура БД не менялись. Прежнего B-ID не было.
+- **Notes:** Новые файлы: `src/pages/SettingsPage.jsx`. Изменены: `src/components/Categories.jsx`, `src/components/TabBar.jsx`, `src/components/Icons.jsx`, `src/components/HorizontalProductSection.jsx`, `src/components/CompactPromoRail.jsx`, `src/data/homeNav.js`, `src/data/promos.js`, `src/App.jsx`, `src/i18n/translations.js`, `src/styles/index.css`. UI-заглушки (для будущего backend): drawer категорий, страница Settings (кроме языка), Parfüm-категория. Бизнес-логика/структура БД не менялись. Прежнего B-ID не было. **Продолжение:** финальная зачистка первого экрана — см. LAV-BUG-021.
+
+## LAV-BUG-021 — Чистка первого экрана: лишний круг «Hamısı», дублирующие вкладки, дёрганье поиска
+- **Module:** Home (Categories rail / HomePage) + Header
+- **Platform:** mobile (desktop — без регрессий)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P3
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (4 скриншота)
+- **Found Date:** 2026-08-06
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification
+- **Description:** На мобильной главной: (1) рядом с кнопкой-меню стоял отдельный круг «Hamısı» с подписью — визуально дублировал меню; (2) над круглыми категориями оставалась горизонтальная строка текстовых вкладок (Qadın/Donlar/…) — избыточная навигация; (3) при скролле поисковая строка визуально «прыгала» из-за анимации сжатия логотипа в шапке; (4) после удаления двух блоков нельзя оставлять пустоты/скачков — карточки должны подняться выше.
+- **Expected Result:** Круглая лента без «Hamısı» (остаётся только круглая кнопка-меню без подписи); текстовых вкладок нет; поиск неподвижен при скролле (без смены ширины/позиции/анимации); первый экран компактный: header → поиск → кнопка-меню → круглые категории → популярные товары.
+- **Actual Result:** Был круг «Hamısı», строка вкладок, и логотип сжимался при скролле, из-за чего область поиска дёргалась.
+- **Root Cause:** (1) элемент `all` (Hamısı) в `quickCategories`; (2) компонент `HomeCategoryTabs` в `HomePage`; (3) правило `.header.scrolled .brand-logo-image { transform: scale(0.88) }` + transition — сжатие логотипа при скролле.
+- **Fix Summary:** (1) Удалён элемент `all` из `quickCategories` (`src/data/homeNav.js`) — круг «Hamısı» пропал; список всех категорий доступен по кнопке-меню (drawer). (2) Удалён `HomeCategoryTabs` (компонент, использование в `HomePage`, CSS `.home-tabs*`, экспорт `homeTabs`). (3) Убрано сжатие логотипа при скролле и его transition — шапка и поиск полностью статичны при прокрутке. (4) Сетка `.cats-row` переведена с жёстких `repeat(7,1fr)` на `grid-auto-flow: column; grid-auto-columns: 1fr` — 6 элементов ровно, без пустого столбца; после удаления блоков пустот/скачков нет, карточки поднимаются выше (мобильный `padding-top` категорий = 16px).
+- **Fix Verification checklist:**
+  - [ ] Mobile: рядом с меню-кнопкой нет круга/подписи «Hamısı»; «Hamısı» отсутствует на странице.
+  - [ ] Нет строки текстовых вкладок; остаётся только круглая лента категорий.
+  - [ ] При скролле поиск не смещается, не меняет ширину/позицию, без анимаций.
+  - [ ] После удаления блоков нет пустот/лишних отступов; популярные товары выше; горизонтального скролла страницы нет.
+  - [ ] Desktop: 6 категорий ровно (без пустого столбца), заголовок категорий на месте, меню-кнопка/вкладки скрыты; регрессий нет.
+- **Regression History:** NOT VERIFIED live на мобиле (инструмент не эмулирует узкий viewport). Проверено: `vite build` — успешно; desktop live QA (vite preview) — DOM: `.home-tabs`=0, категории [Donlar,Bluzalar,Ətəklər,Endirimlər,Yenilər,Parfüm] (без «Hamısı»), меню-кнопка есть, «Hamısı» не встречается, `scrollWidth ≤ innerWidth`; desktop-рендер: 6 категорий ровно, бейджи %/YENİ. Живая мобильная проверка — за владельцем.
+- **Notes:** Удалён `src/components/HomeCategoryTabs.jsx`. Изменены: `src/pages/HomePage.jsx`, `src/data/homeNav.js`, `src/styles/index.css`. Бизнес-логика/структура БД не менялись. Прежнего B-ID не было.
