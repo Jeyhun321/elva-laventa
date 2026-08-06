@@ -4251,3 +4251,8 @@ a.product-media {
 @media (prefers-reduced-motion: reduce) {
   .product-card, .product-media img, .header, .header-icon, .cat-btn, .lang-btn, .lang-select-btn, .search-btn { transition: none !important; }
 }
+
+/* Kateqoriya zolağı ilə "Populyar" arasında ikiqat boşluğu aradan qaldırırıq.
+   Sonrakı `.section` padding shorthand-ları yuxarıdakı `padding-bottom: 0`-ı əvəz
+   etdiyi üçün onu kaskadın sonunda bərpa edirik (mobil + desktop). */
+.cats-section { padding-bottom: 0; }
