@@ -216,6 +216,9 @@ export const ui = {
   // Catalog
   collection: { az: 'Kolleksiya', ru: 'Коллекция', en: 'Collection' },
   new_in_eyebrow: { az: 'Yeni', ru: 'Новинки', en: 'New in' },
+  popular_products: { az: 'Populyar məhsullar', ru: 'Популярные товары', en: 'Popular products' },
+  discounts_title: { az: 'Endirimlər', ru: 'Скидки', en: 'Sale' },
+  view_all: { az: 'Hamısına bax', ru: 'Смотреть все', en: 'View all' },
   all_products: { az: 'Bütün məhsullar', ru: 'Все товары', en: 'All products' },
   sort_by: { az: 'Sıralama', ru: 'Сортировка', en: 'Sort by' },
   sort_popular: { az: 'Populyar', ru: 'Популярные', en: 'Popular' },

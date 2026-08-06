@@ -1,69 +1,80 @@
 import { useMemo } from 'react'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import useReveal from '../hooks/useReveal.js'
+import useMediaQuery from '../hooks/useMediaQuery.js'
 import Intro from '../components/Intro.jsx'
 import Categories from '../components/Categories.jsx'
 import Promo from '../components/Promo.jsx'
 import BrandStatement from '../components/BrandStatement.jsx'
 import BenefitsSection from '../components/BenefitsSection.jsx'
+import HomeCategoryTabs from '../components/HomeCategoryTabs.jsx'
+import CompactPromoRail from '../components/CompactPromoRail.jsx'
 import PromoBanner from '../components/PromoBanner.jsx'
-import PromoCardGrid from '../components/PromoCardGrid.jsx'
 import HorizontalProductSection from '../components/HorizontalProductSection.jsx'
-import { compactPromos, promoPair, wideBanners } from '../data/promos.js'
+import { railPromos, wideBanners } from '../data/promos.js'
 
 export default function HomePage() {
-  const { products } = useCatalog()
+  const { products, saleProducts, loading } = useCatalog()
+
+  // Hero yalnız desktopda göstərilir — mobildə market-tipli kompakt görünüş.
+  // display:none deyil, şərti render: mobildə hero şəkilləri ümumiyyətlə yüklənmir.
+  const isDesktop = useMediaQuery('(min-width: 901px)')
 
   const popular = useMemo(
-    () => [...products].sort((a, b) => b.rating - a.rating).slice(0, 8),
+    () => [...products].sort((a, b) => b.rating - a.rating).slice(0, 10),
     [products]
   )
-  // Yeni gələnlər: ən böyük id = ən yeni əlavə edilmiş məhsul
   const newArrivals = useMemo(
-    () => [...products].sort((a, b) => b.id - a.id).slice(0, 8),
+    () => [...products].sort((a, b) => b.id - a.id).slice(0, 10),
     [products]
   )
+  const discounts = useMemo(() => saleProducts.slice(0, 10), [saleProducts])
 
-  // Məhsullar bazadan gec gələ bilər — siyahı dəyişəndə reveal yenidən qurulur
-  useReveal([popular.length, newArrivals.length])
+  useReveal([popular.length, newArrivals.length, discounts.length])
 
   return (
     <>
-      <Intro />
+      {/* Desktop: kompakt boutique hero. Mobil: hero yoxdur (market görünüşü) */}
+      {isDesktop && <Intro />}
 
-      {/* Kompakt reklam zolağı — hero-dan dərhal sonra (üstün ekran) */}
-      {compactPromos[0] && (
-        <div className="container promo-strip">
-          <PromoBanner promo={compactPromos[0]} variant="compact" eager />
-        </div>
-      )}
+      {/* Mobil: axtarışın altında üfüqi bölmə vkladkaları */}
+      <HomeCategoryTabs />
 
       {/* Sürətli dairəvi kateqoriyalar */}
       <Categories />
 
-      {/* Populyar məhsullar — mobildə üfüqi sürüşmə */}
+      {/* Populyar məhsullar — товары çox erkən görünür */}
       <HorizontalProductSection
         id="catalog-preview"
         eyebrow="collection"
-        title="sort_popular"
+        title="popular_products"
         products={popular}
+        loading={loading}
         viewAllTo="/catalog"
       />
 
-      {/* İki kiçik reklam kartı */}
-      <div className="container promo-strip">
-        <PromoCardGrid promos={promoPair} />
-      </div>
+      {/* Kompakt promo lenti */}
+      <CompactPromoRail promos={railPromos} />
 
-      {/* Yeni gələnlər — üfüqi sürüşmə */}
+      {/* Yeni gələnlər */}
       <HorizontalProductSection
         eyebrow="new_in_eyebrow"
         title="new_arrivals"
         products={newArrivals}
+        loading={loading}
         viewAllTo="/catalog"
       />
 
-      {/* Geniş sezon banneri */}
+      {/* Endirimlər — məhsul yoxdursa tamamilə gizlənir */}
+      <HorizontalProductSection
+        eyebrow="collection"
+        title="discounts_title"
+        products={discounts}
+        viewAllTo="/catalog?sale=1"
+        viewAllLabel="view_all"
+      />
+
+      {/* Geniş, alçaq sezon banneri */}
       {wideBanners[0] && (
         <div className="container promo-strip">
           <PromoBanner promo={wideBanners[0]} variant="wide" />

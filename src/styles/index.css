@@ -4258,10 +4258,11 @@ a.product-media {
 .cats-section { padding-bottom: 0; }
 
 /* ============================================================
-   LAV-BUG-018 — kompakt hero + yenidən istifadə olunan promo sistemi
+   LAV-BUG-018 / LAV-BUG-019 — kompakt market-tipli ana səhifə
    ============================================================ */
 
-/* Kompakt hero (mobil): brend loqosu artıq göstərilmir, hündürlük azaldılıb */
+/* Kompakt hero — YALNIZ desktopda render olunur (mobildə hero yoxdur).
+   Bu mobil qaydalar hero mobildə göstərilsə belə (fallback) alçaq qalsın deyə. */
 @media (max-width: 900px) {
   .intro-grid { padding: 16px 0 28px; gap: 18px; }
   .intro-desc {
@@ -4274,15 +4275,52 @@ a.product-media {
   .showcase-stage { height: 248px; }
   .showcase-dots { margin-top: 8px; }
 }
-@media (max-width: 480px) {
-  .showcase-stage { height: 228px; }
+
+/* --- Üfüqi bölmə vkladkaları (yalnız mobil) --- */
+.home-tabs { display: none; }
+@media (max-width: 900px) {
+  .home-tabs {
+    display: block;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+  .home-tabs-row {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 10px 16px 0;
+    scroll-snap-type: x proximity;
+  }
+  .home-tabs-row::-webkit-scrollbar { display: none; }
+  .home-tab {
+    display: inline-block;
+    white-space: nowrap;
+    padding: 8px 4px 12px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    border-bottom: 2px solid transparent;
+    scroll-snap-align: start;
+  }
+  .home-tab.is-active {
+    color: var(--plum);
+    border-bottom-color: var(--plum);
+  }
 }
 
-/* Promo zolağının şaquli ritmi (hero və secsiyalar arasında) */
-.promo-strip { margin-top: clamp(22px, 4vw, 34px); }
-.promo-strip:first-of-type { margin-top: clamp(18px, 4vw, 28px); }
+/* --- Kompakt kateqoriya başlığı (mobil): market görünüşü üçün kiçik --- */
+@media (max-width: 640px) {
+  .cats-section { padding-top: 22px; }
+  .cats-section .section-head { margin-bottom: 16px; text-align: left; }
+  .cats-section .section-head .eyebrow { margin-bottom: 6px; }
+  .cats-section .section-title { font-size: 1.5rem; line-height: 1.1; }
+}
 
-/* --- Promo banner (compact + wide) --- */
+/* Promo zolağının şaquli ritmi */
+.promo-strip { margin-top: clamp(20px, 4vw, 30px); }
+
+/* --- Geniş / alçaq promo banner (товарные секции arasında) --- */
 .promo-banner {
   position: relative;
   display: flex;
@@ -4290,45 +4328,66 @@ a.product-media {
   gap: 16px;
   overflow: hidden;
   border-radius: var(--radius-lg);
-  padding: 16px 20px;
+  padding: clamp(18px, 4vw, 36px) clamp(20px, 4vw, 40px);
   color: var(--white);
   box-shadow: var(--shadow-sm);
   text-decoration: none;
   transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
 }
 .promo-banner:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.promo-banner-bg {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover; z-index: 0;
-}
-.promo-banner-body {
-  position: relative; z-index: 1;
-  display: grid; gap: 3px; min-width: 0;
-}
+.promo-banner-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.promo-banner-body { position: relative; z-index: 1; display: grid; gap: 3px; min-width: 0; }
 .promo-banner-badge {
   font-size: 0.66rem; font-weight: 700; letter-spacing: 0.12em;
   text-transform: uppercase; opacity: 0.92;
 }
 .promo-banner-title {
   font-family: var(--serif); font-weight: 600; line-height: 1.12;
-  font-size: clamp(1.15rem, 3.4vw, 1.7rem);
+  font-size: clamp(1.3rem, 3.4vw, 2.2rem);
 }
-.promo-banner-sub { font-size: 0.86rem; opacity: 0.9; }
+.promo-banner-sub { font-size: 0.86rem; opacity: 0.9; max-width: 46ch; }
 .promo-banner-cta {
   position: relative; z-index: 1; margin-left: auto; flex-shrink: 0;
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
 }
 .promo-banner-cta svg { width: 18px; height: 18px; }
 
-.promo-banner--wide { padding: clamp(22px, 4vw, 40px) clamp(22px, 4vw, 44px); }
-.promo-banner--wide .promo-banner-title { font-size: clamp(1.4rem, 3.4vw, 2.4rem); }
-.promo-banner--wide .promo-banner-sub { max-width: 46ch; }
-.promo-banner--compact { padding: 13px 18px; }
-.promo-banner--compact .promo-banner-title { font-size: clamp(1.02rem, 3vw, 1.3rem); }
-.promo-banner--compact .promo-banner-cta { text-transform: none; letter-spacing: 0.02em; }
+/* --- Kompakt promo lenti (CompactPromoRail / CompactPromoCard) --- */
+.promo-rail {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  padding-bottom: 4px;
+}
+.promo-rail::-webkit-scrollbar { display: none; }
+.promo-rail-item { flex: 0 0 auto; scroll-snap-align: start; }
+.promo-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 168px;
+  min-height: 92px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+}
+.promo-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.promo-card-badge {
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em;
+  line-height: 1; margin-bottom: 6px;
+}
+.promo-card-title {
+  font-size: 0.86rem; font-weight: 600; line-height: 1.2;
+}
+.promo-card-cta { position: absolute; top: 12px; right: 12px; display: inline-flex; opacity: 0.85; }
+.promo-card-cta svg { width: 16px; height: 16px; }
 
 /* Tone variantları — brend palitrası (şəkilsiz → sıfır layout shift) */
 .tone-plum { background: linear-gradient(120deg, var(--plum), var(--lavender)); }
@@ -4336,60 +4395,49 @@ a.product-media {
 .tone-soft { background: linear-gradient(120deg, #b3567f, #d98cae); }
 .tone-ivory {
   background: linear-gradient(120deg, var(--bg-alt), var(--lavender-mist));
-  color: var(--ink);
-  border: 1px solid var(--line);
+  color: var(--ink); border: 1px solid var(--line);
 }
 .tone-ivory .promo-banner-badge,
 .tone-ivory .promo-banner-cta,
-.tone-ivory .promo-mini-badge { color: var(--plum); }
-.tone-ivory .promo-banner-sub,
-.tone-ivory .promo-mini-sub { opacity: 1; color: var(--ink-soft); }
+.tone-ivory .promo-card-badge,
+.tone-ivory .promo-card-cta { color: var(--plum); }
+.tone-ivory .promo-banner-sub { opacity: 1; color: var(--ink-soft); }
 
-/* --- İki kiçik reklam kartı (D) --- */
-.promo-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.promo-mini {
-  position: relative; overflow: hidden;
-  display: grid; gap: 4px; align-content: start;
-  border-radius: var(--radius); padding: 16px 16px 42px;
-  min-height: 122px; color: var(--white);
-  box-shadow: var(--shadow-sm); text-decoration: none;
-  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+/* --- Üfüqi товарная секция: mobil = yan sürüşmə, desktop = şəbəkə --- */
+.hsection { padding-block: clamp(40px, 6vw, 96px); }
+.hsection-head { align-items: center; margin-bottom: 18px; }
+.hsection-title {
+  font-family: var(--serif);
+  font-size: clamp(1.45rem, 4.6vw, 2rem);
+  line-height: 1.1;
 }
-.promo-mini:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.promo-mini-badge {
-  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em;
-  text-transform: uppercase; opacity: 0.92;
-}
-.promo-mini-title {
-  font-family: var(--serif); font-weight: 600; line-height: 1.1;
-  font-size: clamp(1.2rem, 4.4vw, 1.7rem);
-}
-.promo-mini-sub { font-size: 0.8rem; opacity: 0.9; }
-.promo-mini-cta { position: absolute; right: 14px; bottom: 12px; display: inline-flex; }
-.promo-mini-cta svg { width: 20px; height: 20px; }
+.hsection-eyebrow { display: block; margin-bottom: 4px; }
+/* товарной секцияda "hamısına bax" mobildə də görünsün (Trendyol UX) */
+.hsection-head .section-link { display: inline-flex; }
 
-/* --- Üfüqi товарная секция (C): mobil = yan sürüşmə, desktop = şəbəkə --- */
-.hsection { padding-block: clamp(46px, 7vw, 104px); }
 .hscroll {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(240px, 72%);
-  gap: 14px;
+  grid-auto-columns: clamp(142px, 44vw, 168px);
+  gap: 12px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
   padding-bottom: 6px;
   scrollbar-width: none;
-  /* Kənara qədər rahat sürüşmə */
-  margin-inline: calc(-1 * 16px);
-  padding-inline: 16px;
 }
 .hscroll::-webkit-scrollbar { display: none; }
 .hscroll-item { min-width: 0; display: flex; scroll-snap-align: start; }
 .hscroll-item > .product-card { width: 100%; }
-.hsection-foot { margin-top: 22px; }
+
+/* Kompakt kart: lentdə kod sətri gizlənir, info sıxlaşdırılır */
+@media (max-width: 900px) {
+  .hscroll .product-info { padding: 12px 12px 14px; }
+  .hscroll .card-code { display: none; }
+  .hscroll .product-name { font-size: 0.98rem; }
+}
 
 @media (max-width: 640px) {
-  .hsection { padding-block: 42px; }
+  .hsection { padding-block: 34px; }
 }
 
 @media (min-width: 901px) {
@@ -4399,11 +4447,37 @@ a.product-media {
     grid-auto-columns: auto;
     gap: 30px;
     overflow: visible;
-    margin-inline: 0;
-    padding-inline: 0;
     scroll-snap-type: none;
   }
-  .hsection-foot { display: none; } /* desktop: başlıqdakı "hamısı" keçidi bəsdir */
-  .promo-card-grid { gap: 20px; }
-  .promo-mini { min-height: 150px; padding: 22px 22px 48px; }
+  .promo-card { width: 220px; min-height: 108px; }
+}
+
+/* --- Skeleton (yüklənərkən boş ağ ekran yerinə) --- */
+@keyframes lvShimmer { 0% { opacity: 0.55; } 50% { opacity: 1; } 100% { opacity: 0.55; } }
+.product-skeleton {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--white);
+}
+.product-skeleton-media {
+  aspect-ratio: 3 / 4;
+  background: var(--bg-alt);
+  animation: lvShimmer 1.3s ease-in-out infinite;
+}
+.product-skeleton-line {
+  height: 12px; margin: 12px 12px 0;
+  border-radius: 6px; background: var(--bg-alt);
+  animation: lvShimmer 1.3s ease-in-out infinite;
+}
+.product-skeleton-line.short { width: 55%; margin-bottom: 16px; }
+.cat-skeleton { background: var(--bg-alt); border-color: var(--line); animation: lvShimmer 1.3s ease-in-out infinite; }
+.cat-skeleton-label {
+  display: block; width: 52px; height: 10px; margin: 10px auto 0;
+  border-radius: 5px; background: var(--bg-alt);
+  animation: lvShimmer 1.3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-skeleton-media, .product-skeleton-line, .cat-skeleton, .cat-skeleton-label { animation: none; }
 }

@@ -614,4 +614,35 @@
   - [ ] AZ / RU / EN во всех новых промо-текстах и заголовках.
   - [ ] Проверить mobile и desktop.
 - **Regression History:** NOT VERIFIED (правка в рабочем дереве; `vite build` — см. HANDOFF). Живая проверка на устройствах за владельцем. Полная регрессия не выполняется (политика Fix Verification).
-- **Notes:** Затронуты `src/components/Intro.jsx`, `src/pages/HomePage.jsx`, `src/components/PromoBanner.jsx` (new), `src/components/PromoCardGrid.jsx` (new), `src/components/HorizontalProductSection.jsx` (new), `src/data/promos.js` (new), `src/i18n/translations.js`, `src/styles/index.css`. Бизнес-логика корзины/избранного/checkout/авторизации и структура БД не менялись (требование 9). Заодно консолидировано мёртвое дублирующее правило `.section` в `index.css`. Прежнего B-ID не было.
+- **Notes:** Затронуты `src/components/Intro.jsx`, `src/pages/HomePage.jsx`, `src/components/PromoBanner.jsx` (new), `src/components/PromoCardGrid.jsx` (new), `src/components/HorizontalProductSection.jsx` (new), `src/data/promos.js` (new), `src/i18n/translations.js`, `src/styles/index.css`. Бизнес-логика корзины/избранного/checkout/авторизации и структура БД не менялись (требование 9). Заодно консолидировано мёртвое дублирующее правило `.section` в `index.css`. Прежнего B-ID не было. **Продолжение:** дальнейшая market-style переработка мобильной главной — см. LAV-BUG-019.
+
+## LAV-BUG-019 — Мобильная главная = рекламный лендинг: hero занимает весь первый экран, товары поздно
+- **Module:** Home (Intro / HomePage / структура главной)
+- **Platform:** mobile (desktop — сохранить без регрессий)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (скриншот mobile + Trendyol UX-референс)
+- **Found Date:** 2026-08-06
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification
+- **Release:** Pre-1.0
+- **Description:** Даже после LAV-BUG-018 мобильная главная всё ещё открывалась как большой рекламный лендинг: первый экран целиком занимал `Intro` (акция «MÖVSÜM SONU SATIŞI · −40%», крупный serif-заголовок «Zərifliyin yeni ünvanı», описание, кнопка «KATALOQA KEÇ», ссылка «ENDİRİMLƏRƏ BAX», листающиеся фото моделей, mini-card). Товары/разделы не видны без длинной прокрутки. Нужен компактный marketplace-подход (UX Trendyol) в стиле LaVenta.
+- **Steps to Reproduce:**
+  1. Открыть сайт на ~360–390px.
+  2. Оценить, сколько прокрутки до первого товара/раздела.
+- **Expected Result:** Первый экран компактный: header + поиск → горизонтальные вкладки разделов → круглые быстрые категории → начало «Populyar məhsullar». Товары видны почти сразу.
+- **Actual Result:** Первый экран — только большой hero; товары появлялись поздно.
+- **Root Cause:** На мобиле рендерился крупный `Intro` (hero) с большим serif-заголовком, длинным описанием, двумя CTA, листающейся галереей и mini-card; товарные секции шли только после него.
+- **Fix Summary:** `Intro` теперь рендерится **только на desktop** (`useMediaQuery('(min-width:901px)')`) — на мобиле hero отсутствует полностью (шкала: нет пустых контейнеров/min-height, hero-изображения на мобиле не загружаются). Новая mobile-first структура главной: header+поиск → `HomeCategoryTabs` (гориз. вкладки разделов, mobile-only, активный пункт с бордовым подчёркиванием) → `Categories` (круглые быстрые категории, первый виден полностью, следующий выглядывает) → «Populyar məhsullar» (`HorizontalProductSection`, гориз. scroll ~2.3 карточки) → `CompactPromoRail` (низкие промо-карточки) → «Yeni gələnlər» → «Endirimlər» (скрыт, если нет товаров со скидкой) → низкий широкий `PromoBanner` → бренд-секции. Desktop: сверху компактный `Intro`, вкладки скрыты, товарные ряды — сеткой 4-в-ряд. Добавлены компактные skeleton-карточки на время загрузки (нет пустого белого экрана и пустых заголовков). Удалён дублирующий `PromoCardGrid` (заменён рэйлом). Serif оставлен только для брендовых заголовков; заголовки товарных секций уменьшены и читаемы.
+- **Fix Verification checklist:**
+  - [ ] 320 / 360–390px: на первом экране — header, поиск, вкладки разделов, круглые категории и начало «Populyar»; большого hero нет.
+  - [ ] Горизонтальные ленты (вкладки, категории, товарные ряды, промо-рэйл) свайпаются; горизонтального скролла всей страницы нет.
+  - [ ] «Populyar məhsullar»: видно ~2.5–3 карточки, следующая выглядывает; название ≤2 строк, цена заметна, старая цена/скидка/бейдж «Yeni» — только при наличии; кнопка избранного работает.
+  - [ ] Пустая секция «Endirimlər» полностью скрыта; при загрузке — компактные skeleton, не пустой белый экран/заголовок.
+  - [ ] Активный пункт вкладок визуально выделен (бордовый акцент); AZ/RU/EN не ломают карточки/вкладки.
+  - [ ] Desktop: hero не вернулся в огромном формате, компактный; ряды сеткой; вкладки скрыты; регрессий нет.
+  - [ ] Touch targets удобны; sticky-хедер и нижняя навигация не перекрывают контент.
+- **Regression History:** NOT VERIFIED live на мобиле (browser-инструмент не эмулирует узкий viewport — `innerWidth` оставался 1536). Проверено: `vite build` — успешно; **desktop live QA** (vite preview) — Intro/вкладки(скрыты)/категории/Populyar(сетка)/промо-рэйл/широкий баннер корректны, `document.scrollWidth ≤ innerWidth` (нет гориз. скролла). Живая мобильная проверка — за владельцем.
+- **Notes:** Новые файлы: `src/components/HomeCategoryTabs.jsx`, `src/components/CompactPromoRail.jsx`, `src/data/homeNav.js`, `src/hooks/useMediaQuery.js`. Изменены: `src/pages/HomePage.jsx`, `src/components/HorizontalProductSection.jsx`, `src/components/Categories.jsx`, `src/data/promos.js`, `src/i18n/translations.js`, `src/styles/index.css`. Удалён: `src/components/PromoCardGrid.jsx`. Палитра/логотип/типографика LaVenta и бизнес-логика корзины/избранного/checkout/авторизации/структура БД не менялись. Прежнего B-ID не было.
