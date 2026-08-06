@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Рабочее дерево **чистое**. Весь набор AI-workflow документации и project scaffolding закоммичен и запушен в `main` (commit `b366f88`). Продуктовый код (`src/`) не менялся. Проект готов к новой задаче.
+Рабочее дерево **чистое**. Исправлен лишний вертикальный отступ на главной странице между блоком категорий и секцией «KOLLEKSİYA / Populyar». Коммит `61b6409` запушен в `main`, деплой на GitHub Pages запущен автоматически (push-триггер).
 
 ## Current Branch
 
@@ -10,30 +10,26 @@
 
 ## Last Completed Task
 
-### Housekeeping: AI workflow docs + scaffolding — committed & pushed
+### Fix: двойной отступ под блоком категорий на главной — committed & pushed
 
-Commit `b366f88` (`chore: add AI workflow docs and project scaffolding`):
+Commit `61b6409` (`fix(home): remove doubled vertical gap under category strip on mobile`):
 
-- Добавлены политики Claude/Codex workflow: `.claude/CODEX.md`, `.claude/CODE_STYLE.md`, `.claude/PROJECT.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `CLAUDE.md`, `AGENTS.md`, `START.md`, `DESKTOP_START.md`, `AI_WORKFLOW.md`, `Website-Laventa.code-workspace`.
-- Добавлен `AI_SETUP/` (backup/restore PowerShell-скрипты, install/setup guides, `.gitkeep` структура).
-- Система документации в `docs/`: `DAILY.md`, `HISTORY.md`, `TODO.md`, `DECISIONS.md`, `FEATURES.md`, `MEDIA_ANALYSIS.md`, `AI_SYSTEM_TESTS.md`.
-- Root-документы `HANDOFF.daily-2026-08-01.md` и `HISTORY.md` перенесены в `docs/` (git распознал как renames).
-- `.codex/hooks.json` переведён с POSIX shell на PowerShell syntax (для Windows-окружения).
-
-Предыдущий продуктовый commit — fashion UI polish (`84a0b36`) — уже в `main` и не трогался.
+- **Причина:** `.cats-section { padding-bottom: 0 }` (строка 732 `src/styles/index.css`) намеренно убирал нижний отступ блока категорий, но более поздние редизайн-правила `.section { padding: clamp(72px,9vw,120px) 0 }` (строка 4093) и мобильное `.section { padding: 64px 0 72px }` (строка 4240) через shorthand `padding` перезаписывали `padding-bottom`. В итоге между категориями и «Populyar» складывались нижний отступ категорий + верхний отступ секции → двойное пустое пространство (заметно на мобиле).
+- **Исправление:** добавлено правило `.cats-section { padding-bottom: 0 }` в конец каскада (после всех `.section`-правил, ~строка 4255), чтобы оно снова выигрывало на mobile и desktop. Расстояние теперь задаётся только верхним отступом секции «Populyar».
+- Дизайн остальных элементов не менялся.
 
 ## Last Verified Checks
 
-- `git status` после push — чистое дерево, `main` синхронизирован с `origin/main`.
-- Просканированы закоммиченные файлы на секреты — чисто. `.claude/settings.local.json` и `.claude/skills/` не отслеживаются git и в коммит не попали.
-- `package.json` не содержит lint/test scripts. Source-код не менялся, поэтому build/тесты в этой сессии не запускались (не требовалось).
-- Визуальная browser QA магазина: NOT VERIFIED в этой сессии (продуктовый UI не менялся).
+- `npm run build` — успешно (`✓ built in 3.57s`), CSS `dist/assets/index-*.css` 79.97 kB.
+- `git push origin main` — `a872b79..61b6409`, дерево чистое.
+- Каскадный анализ CSS подтверждает, что правило теперь выигрывает и на mobile (`max-width:480px`), и на desktop.
+- Визуальная browser QA (реальный рендер mobile/desktop): NOT VERIFIED в этой сессии — проверено сборкой и анализом каскада.
 
 ## Current Architecture Notes
 
-- Elva LaVenta — React/Vite storefront, Supabase backend (Frankfurt), деплой на GitHub Pages.
+- Elva LaVenta — React/Vite storefront, Supabase backend (Frankfurt), деплой на GitHub Pages (`.github/workflows/deploy.yml`, триггер `push: [main]` + `workflow_dispatch`).
 - `package.json` scripts: `dev`, `build`, `preview`, `logs`.
-- HEAD: `a15a2cd` на `main` (product commit `84a0b36`; scaffolding `b366f88`; этот handoff-refresh `a15a2cd`).
+- HEAD: `61b6409` на `main`.
 
 ## Known Issues
 
@@ -41,7 +37,7 @@ Commit `b366f88` (`chore: add AI workflow docs and project scaffolding`):
 
 ## Risks
 
-- Ручная проверка витрины (hero, sticky header, product cards, search, favorites, cart, checkout, AZ/RU/EN на mobile/tablet/desktop) остаётся NOT VERIFIED — но продуктовый код не менялся, риск низкий.
+- Реальный визуальный рендер главной после фикса на устройствах NOT VERIFIED (проверено build + анализом каскада). Риск низкий: изменение только убирает лишний `padding-bottom`.
 
 ## Next Recommended Step
 
@@ -51,7 +47,7 @@ Commit `b366f88` (`chore: add AI workflow docs and project scaffolding`):
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260804-081344
+Recovery ID: R-20260806-000001
 
 1. **Проект:** Elva LaVenta — React/Vite storefront магазина одежды с Supabase (Frankfurt) и деплоем на GitHub Pages.
 2. **Описание:** интернет-магазин LaVenta с каталогом, избранным, корзиной, checkout через WhatsApp, admin-панелью, поддержкой трёх языков AZ/RU/EN.
