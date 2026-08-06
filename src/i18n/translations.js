@@ -17,6 +17,24 @@ export const ui = {
     en: 'Search by name or code...',
   },
   favorites: { az: 'Sevimlilər', ru: 'Избранное', en: 'Favorites' },
+  settings: { az: 'Ayarlar', ru: 'Настройки', en: 'Settings' },
+  all_categories: { az: 'Bütün kateqoriyalar', ru: 'Все категории', en: 'All categories' },
+
+  // Ayarlar (Settings) səhifəsi — hazırda UI
+  settings_subtitle: {
+    az: 'Mağaza tərcihlərinizi idarə edin',
+    ru: 'Управляйте настройками магазина',
+    en: 'Manage your store preferences',
+  },
+  settings_language: { az: 'Dil', ru: 'Язык', en: 'Language' },
+  settings_notifications: { az: 'Bildirişlər', ru: 'Уведомления', en: 'Notifications' },
+  settings_push: { az: 'Push bildirişləri', ru: 'Push-уведомления', en: 'Push notifications' },
+  settings_promo_mail: { az: 'Kampaniya məktubları', ru: 'Письма об акциях', en: 'Promo emails' },
+  settings_soon: { az: 'Tezliklə', ru: 'Скоро', en: 'Soon' },
+  settings_about: { az: 'Haqqında', ru: 'О приложении', en: 'About' },
+  settings_help: { az: 'Kömək və dəstək', ru: 'Помощь и поддержка', en: 'Help & support' },
+  settings_terms: { az: 'İstifadə şərtləri', ru: 'Условия использования', en: 'Terms of use' },
+  settings_privacy: { az: 'Məxfilik siyasəti', ru: 'Политика конфиденциальности', en: 'Privacy policy' },
 
   // Giriş / qeydiyyat
   sign_in: { az: 'Giriş', ru: 'Войти', en: 'Sign in' },

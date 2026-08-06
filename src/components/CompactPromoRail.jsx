@@ -27,6 +27,7 @@ function CompactPromoCard({ promo }) {
     <Link to={promo.link || '/catalog'} className={`promo-card tone-${tone}`}>
       {promo.badge && <span className="promo-card-badge">{t(promo.badge)}</span>}
       <span className="promo-card-title">{t(promo.title)}</span>
+      {promo.subtitle && <span className="promo-card-sub">{t(promo.subtitle)}</span>}
       <span className="promo-card-cta" aria-hidden="true">
         <IconArrow />
       </span>

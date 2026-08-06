@@ -23,6 +23,7 @@ const CheckoutPage = lazyWithRetry(() => import('./pages/CheckoutPage.jsx'))
 const FavoritesPage = lazyWithRetry(() => import('./pages/FavoritesPage.jsx'))
 const AuthPage = lazyWithRetry(() => import('./pages/AuthPage.jsx'))
 const ResetPasswordPage = lazyWithRetry(() => import('./pages/ResetPasswordPage.jsx'))
+const SettingsPage = lazyWithRetry(() => import('./pages/SettingsPage.jsx'))
 const AdminPage = lazyWithRetry(() => import('./pages/AdminPage.jsx'))
 
 function ScrollToTop() {
@@ -85,6 +86,7 @@ export default function App() {
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/reset" element={<ResetPasswordPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               {/* Gizli idarə paneli — menyuda göstərilmir */}
               <Route path="/admin" element={<AdminPage />} />
               <Route path="*" element={<HomePage />} />

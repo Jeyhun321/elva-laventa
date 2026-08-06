@@ -4481,3 +4481,213 @@ a.product-media {
 @media (prefers-reduced-motion: reduce) {
   .product-skeleton-media, .product-skeleton-line, .cat-skeleton, .cat-skeleton-label { animation: none; }
 }
+
+/* ============================================================
+   LAV-BUG-020 — market-tipli dairəvi kateqoriya lenti + menyu,
+   5-ci tab (Settings), promo alt-başlıq
+   ============================================================ */
+
+/* Dairəvi kateqoriya lenti: menyu düyməsi + yan sürüşən dairələr */
+.cats-rail { display: flex; align-items: flex-start; gap: 12px; }
+.cats-rail .cats-row { flex: 1; min-width: 0; }
+.cats-menu-btn {
+  display: none; /* yalnız mobil */
+  flex: 0 0 auto;
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: var(--plum);
+  color: #fff;
+  display: none;
+  place-items: center;
+  box-shadow: var(--shadow-sm);
+  align-self: center;
+}
+.cats-menu-btn:active { transform: scale(0.96); }
+
+/* Dairə üzərində kiçik künc nişanı (Endirimlər → %, Yenilər → YENİ) */
+.cat-circle-icon { position: relative; }
+.cat-circle-badge {
+  position: absolute;
+  top: -2px; right: -2px;
+  min-width: 18px; height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--sale);
+  color: #fff;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg);
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  /* Mobildə başlıq gizlənir — market görünüşü (mockup) */
+  .cats-head { display: none; }
+  .cats-section { padding-top: 16px; }
+  .cats-menu-btn { display: grid; }
+  .cats-row { padding-block: 2px; }
+}
+
+/* Bütün kateqoriyalar — drawer (bottom sheet) */
+.cat-drawer-root { position: fixed; inset: 0; z-index: 200; }
+.cat-drawer-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(42, 22, 32, 0.42);
+  backdrop-filter: blur(2px);
+  animation: lvFade 0.25s ease both;
+}
+.cat-drawer {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  border-radius: 22px 22px 0 0;
+  padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -18px 44px rgba(42, 22, 32, 0.22);
+  max-height: 80vh; overflow-y: auto;
+  animation: lvSheetUp 0.32s var(--ease) both;
+}
+@keyframes lvFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lvSheetUp { from { transform: translateY(100%); } to { transform: none; } }
+.cat-drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0 14px;
+  position: sticky; top: 0; background: var(--bg);
+}
+.cat-drawer-title { font-family: var(--serif); font-size: 1.4rem; font-weight: 600; color: var(--ink); }
+.cat-drawer-close {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--white); border: 1px solid var(--line); color: var(--ink);
+}
+.cat-drawer-list { display: grid; gap: 6px; }
+.cat-drawer-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 12px;
+  border-radius: var(--radius);
+  color: var(--ink); font-weight: 600;
+  border: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.cat-drawer-item:hover, .cat-drawer-item:active { background: var(--lavender-mist); border-color: var(--lavender-light); }
+.cat-drawer-item-icon {
+  width: 42px; height: 42px; flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--white); border: 1px solid var(--line); color: var(--plum);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cat-drawer-backdrop, .cat-drawer { animation: none; }
+}
+
+/* Desktopda drawer heç vaxt açılmır (düymə gizlidir), amma ehtiyat üçün */
+@media (min-width: 901px) {
+  .cat-drawer-root { display: none; }
+}
+
+/* --- Promo kart alt-başlığı --- */
+.promo-card-sub { font-size: 0.74rem; opacity: 0.92; margin-top: 2px; line-height: 1.2; }
+.tone-ivory .promo-card-sub { color: var(--ink-soft); opacity: 1; }
+
+/* --- Reytinq товар lentində kompakt --- */
+.hscroll .rating { margin-top: 2px; }
+
+/* ============================================================
+   Ayarlar (Settings) səhifəsi
+   ============================================================ */
+.settings-page {
+  max-width: 720px;
+  padding-top: clamp(20px, 4vw, 40px);
+  padding-bottom: clamp(40px, 8vw, 80px);
+  display: grid;
+  gap: 20px;
+}
+.settings-hero { display: flex; align-items: center; gap: 14px; }
+.settings-hero-icon {
+  width: 52px; height: 52px; flex: 0 0 auto;
+  border-radius: 16px;
+  display: grid; place-items: center;
+  background: var(--lavender-mist); color: var(--plum);
+  border: 1px solid var(--line);
+}
+.settings-title { font-family: var(--serif); font-size: clamp(1.8rem, 6vw, 2.4rem); font-weight: 600; color: var(--ink); line-height: 1.1; }
+.settings-subtitle { color: var(--ink-soft); font-size: 0.92rem; }
+.settings-group {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 16px 16px 8px;
+  box-shadow: var(--shadow-sm);
+}
+.settings-group-title {
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--lavender-text);
+  margin: 2px 4px 12px;
+}
+.settings-langs { display: flex; gap: 10px; flex-wrap: wrap; padding-bottom: 8px; }
+.settings-lang {
+  flex: 1 1 30%;
+  min-width: 92px;
+  display: grid; gap: 2px; justify-items: start;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  background: var(--bg);
+  color: var(--ink-soft);
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+.settings-lang b { font-size: 0.95rem; color: var(--ink); }
+.settings-lang span { font-size: 0.76rem; }
+.settings-lang.active { border-color: var(--plum); background: var(--lavender-mist); color: var(--plum); }
+.settings-lang.active b { color: var(--plum); }
+
+.settings-list { display: grid; }
+.settings-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%;
+  padding: 13px 4px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  color: var(--ink);
+}
+.settings-list > li:first-child .settings-row,
+.settings-list > .settings-row:first-child { border-top: none; }
+.settings-row-main { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.settings-row-label { font-weight: 600; font-size: 0.95rem; }
+.settings-row-hint { font-size: 0.74rem; color: var(--ink-soft); }
+.settings-row-link { cursor: pointer; }
+.settings-row-link:hover .settings-row-label { color: var(--plum); }
+.settings-row-arrow { margin-left: auto; color: var(--ink-soft); display: inline-flex; }
+.settings-social {
+  width: 36px; height: 36px; flex: 0 0 auto;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--lavender-mist); color: var(--plum);
+}
+.settings-version { margin-left: auto; font-size: 0.8rem; color: var(--ink-soft); }
+
+/* Toggle switch */
+.settings-switch {
+  flex: 0 0 auto;
+  width: 46px; height: 27px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  position: relative;
+  transition: background 0.24s var(--ease);
+}
+.settings-switch.on { background: var(--plum); }
+.settings-switch-knob {
+  position: absolute; top: 3px; left: 3px;
+  width: 21px; height: 21px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.24s var(--ease);
+}
+.settings-switch.on .settings-switch-knob { transform: translateX(19px); }
+.settings-back { justify-self: start; }
+@media (prefers-reduced-motion: reduce) {
+  .settings-switch, .settings-switch-knob { transition: none; }
+}

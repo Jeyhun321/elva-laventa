@@ -17,6 +17,7 @@ export default function HorizontalProductSection({
   viewAllTo = '/catalog',
   viewAllLabel = 'view_all',
   loading = false,
+  showRating = true,
   id,
 }) {
   const { t } = useI18n()
@@ -50,7 +51,7 @@ export default function HorizontalProductSection({
               ))
             : products.map((product) => (
                 <li key={product.id} className="hscroll-item">
-                  <ProductCard product={product} showRating={false} />
+                  <ProductCard product={product} showRating={showRating} />
                 </li>
               ))}
         </ul>

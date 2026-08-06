@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
-import { IconHome, IconGrid, IconHeart, IconBag } from './Icons.jsx'
+import { IconHome, IconGrid, IconHeart, IconBag, IconSettings } from './Icons.jsx'
 
 // Aşağıdakı tab paneli — yalnız mobil ekranda (CSS ilə ≤900px).
 // Səbət sayğacı başlıqdakı ilə EYNİ dəyəri göstərir (cartCount = sayların cəmi).
@@ -48,6 +48,7 @@ export default function TabBar() {
     { to: '/catalog', label: t('catalog'), Icon: IconGrid },
     { to: '/favorites', label: t('favorites'), Icon: IconHeart, count: favCount },
     { to: '/cart', label: t('cart'), Icon: IconBag, count: cartCount },
+    { to: '/settings', label: t('settings'), Icon: IconSettings },
   ]
 
   return (

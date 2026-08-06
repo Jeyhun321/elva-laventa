@@ -191,6 +191,45 @@ export const IconGrid = (p) => (
   </svg>
 )
 
+export const IconSettings = (p) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <circle cx="12" cy="12" r="3.2" />
+    <path d="M12 2.6v2.2M12 19.2v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.6 12h2.2M19.2 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" />
+  </svg>
+)
+
+// --- Sürətli kateqoriya / promo ikonları ---
+export const IconLayers = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M12 3.5 3.5 8 12 12.5 20.5 8 12 3.5Z" />
+    <path d="M4 12l8 4.3L20 12M4 16l8 4.3L20 16" />
+  </svg>
+)
+
+export const IconPercent = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M6 18 18 6" />
+    <circle cx="7.5" cy="7.5" r="2" />
+    <circle cx="16.5" cy="16.5" r="2" />
+  </svg>
+)
+
+export const IconSparkle = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M12 3.5c.6 3.8 1.7 4.9 5.5 5.5-3.8.6-4.9 1.7-5.5 5.5-.6-3.8-1.7-4.9-5.5-5.5 3.8-.6 4.9-1.7 5.5-5.5Z" />
+    <path d="M18 14.5c.3 1.6.8 2.1 2.4 2.4-1.6.3-2.1.8-2.4 2.4-.3-1.6-.8-2.1-2.4-2.4 1.6-.3 2.1-.8 2.4-2.4Z" />
+  </svg>
+)
+
+export const IconPerfume = (p) => (
+  <svg {...catProps} {...p}>
+    <path d="M9 3.5h6v2H9zM10 5.5h4v2.2h-4z" />
+    <path d="M7.6 10.4A3 3 0 0 1 10 8.7h4a3 3 0 0 1 2.4 1.7L17 12v7.4a1.2 1.2 0 0 1-1.2 1.1H8.2A1.2 1.2 0 0 1 7 19.4V12l.6-1.6Z" />
+    <path d="M16.5 5.5 19 4M16.5 7.5 19 8" />
+  </svg>
+)
+
 export const IconSliders = (p) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>

@@ -645,4 +645,35 @@
   - [ ] Desktop: hero не вернулся в огромном формате, компактный; ряды сеткой; вкладки скрыты; регрессий нет.
   - [ ] Touch targets удобны; sticky-хедер и нижняя навигация не перекрывают контент.
 - **Regression History:** NOT VERIFIED live на мобиле (browser-инструмент не эмулирует узкий viewport — `innerWidth` оставался 1536). Проверено: `vite build` — успешно; **desktop live QA** (vite preview) — Intro/вкладки(скрыты)/категории/Populyar(сетка)/промо-рэйл/широкий баннер корректны, `document.scrollWidth ≤ innerWidth` (нет гориз. скролла). Живая мобильная проверка — за владельцем.
-- **Notes:** Новые файлы: `src/components/HomeCategoryTabs.jsx`, `src/components/CompactPromoRail.jsx`, `src/data/homeNav.js`, `src/hooks/useMediaQuery.js`. Изменены: `src/pages/HomePage.jsx`, `src/components/HorizontalProductSection.jsx`, `src/components/Categories.jsx`, `src/data/promos.js`, `src/i18n/translations.js`, `src/styles/index.css`. Удалён: `src/components/PromoCardGrid.jsx`. Палитра/логотип/типографика LaVenta и бизнес-логика корзины/избранного/checkout/авторизации/структура БД не менялись. Прежнего B-ID не было.
+- **Notes:** Новые файлы: `src/components/HomeCategoryTabs.jsx`, `src/components/CompactPromoRail.jsx`, `src/data/homeNav.js`, `src/hooks/useMediaQuery.js`. Изменены: `src/pages/HomePage.jsx`, `src/components/HorizontalProductSection.jsx`, `src/components/Categories.jsx`, `src/data/promos.js`, `src/i18n/translations.js`, `src/styles/index.css`. Удалён: `src/components/PromoCardGrid.jsx`. Палитра/логотип/типографика LaVenta и бизнес-логика корзины/избранного/checkout/авторизации/структура БД не менялись. Прежнего B-ID не было. **Продолжение:** финальная marketplace-полировка (круглая лента с меню, 5-й таб Settings) — см. LAV-BUG-020.
+
+## LAV-BUG-020 — Финальная marketplace-полировка мобильной главной (лента категорий + меню, Settings-таб)
+- **Module:** Home (Categories rail) / Bottom navigation (TabBar) / Settings (new)
+- **Platform:** mobile (desktop — проверить без регрессий)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P3
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (4 скриншота: текущая LaVenta, Trendyol-референс, целевой макет LaVenta)
+- **Found Date:** 2026-08-06
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification
+- **Release:** Pre-1.0
+- **Description:** По целевому макету (#13) мобильная главная должна ещё ближе повторять UX Trendyol в стиле LaVenta: круглые категории идут сразу под вкладками **без** крупного serif-заголовка «Üslubunuza görə seçin», слева от ленты — кнопка-гамбургер, открывающая список всех категорий; круглые ярлыки Hamısı/Donlar/Bluzalar/Ətəklər/Endirimlər/Yenilər/Parfüm с бейджами (%/YENİ); карточки товара с рейтингом; компактный промо-ряд из 3 карточек с подзаголовками; нижняя навигация из **5** пунктов с новым разделом Settings (шестерёнка).
+- **Steps to Reproduce:**
+  1. Открыть главную на мобиле; сравнить с макетом #13.
+- **Expected Result:** Круглая лента категорий с меню-гамбургером сразу под вкладками (без большого заголовка); бейджи на Endirimlər/Yenilər; рейтинг на карточках; промо-ряд из 3 карт; bottom nav из 5 равных пунктов + Settings.
+- **Actual Result:** Над круглыми категориями был крупный serif-заголовок (лишняя высота); не было меню-гамбургера/drawer; bottom nav из 4 пунктов без Settings; карточки без рейтинга.
+- **Root Cause:** Предыдущая версия (LAV-BUG-019) не включала меню категорий, Settings-таб и рейтинг в рядах; крупный заголовок категорий занимал место на мобиле.
+- **Fix Summary:** (1) `Categories.jsx` переписан в market-ленту: на мобиле заголовок скрыт, слева кнопка-гамбургер открывает **drawer** (bottom sheet) со списком всех категорий (UI; ссылки ведут на реальные фильтры каталога), круглые ярлыки из конфига `quickCategories` (`src/data/homeNav.js`) с иконками и угловыми бейджами (Endirimlər → «%», Yenilər → «YENİ»); на desktop сохранён заголовок + сетка. (2) Нижняя навигация (`TabBar.jsx`) — **5 равных пунктов**: Ana səhifə, Kataloq, Sevimlilər, Səbət, **Ayarlar** (outline-шестерёнка `IconSettings`). (3) Новая страница `SettingsPage.jsx` (`/settings`, lazy) — полный UI: переключатель языка (**рабочий**, i18n), тумблеры уведомлений и пункты «Haqqında/Kömək/Şərtlər/Məxfilik» как UI-заглушки (TODO/stub), ярлыки аккаунта. (4) В товарных рядах включён рейтинг (`showRating`). (5) Промо-ряд — 3 карточки с подзаголовками (`railPromos`, `CompactPromoRail`+subtitle). Новые иконки: `IconSettings/IconLayers/IconPercent/IconSparkle/IconPerfume`.
+- **Fix Verification checklist:**
+  - [ ] Mobile: под вкладками — круглая лента с гамбургером слева, без большого заголовка; лента свайпается, первый элемент виден, следующий выглядывает.
+  - [ ] Тап по гамбургеру открывает drawer со всеми категориями; закрытие по фону/Escape/крестику; ссылки ведут в каталог/фильтры.
+  - [ ] Бейджи: Endirimlər → «%», Yenilər → «YENİ».
+  - [ ] Карточки товара показывают рейтинг; название ≤2 строк; скидка/бейдж только при наличии; избранное работает; горизонтального скролла всей страницы нет.
+  - [ ] Промо-ряд: 3 компактные карточки с подзаголовками.
+  - [ ] Bottom nav: 5 равных пунктов, «Ayarlar» с шестерёнкой; активный выделен; `/settings` открывается, язык переключается, остальные пункты — визуально готовые заглушки.
+  - [ ] Desktop: заголовок категорий на месте, сетка не сломана, гамбургер/drawer скрыты, bottom nav скрыт (desktop); регрессий нет.
+  - [ ] AZ/RU/EN во всех новых текстах.
+- **Regression History:** NOT VERIFIED live на мобиле (инструмент не эмулирует узкий viewport). Проверено: `vite build` — успешно (chunk `SettingsPage`); **desktop live QA** (vite preview) — home DOM: 7 вкладок, 7 круглых категорий, гамбургер, бейджи %/YENİ, промо-ряд 3 карты + подзаголовки, 10 рейтингов, drawer с 7 пунктами, bottom nav 5 (Ana səhifə/Kataloq/Sevimlilər/Səbət/Ayarlar), `scrollWidth ≤ innerWidth`; `/settings` рендерится корректно. Живая мобильная проверка — за владельцем.
+- **Notes:** Новые файлы: `src/pages/SettingsPage.jsx`. Изменены: `src/components/Categories.jsx`, `src/components/TabBar.jsx`, `src/components/Icons.jsx`, `src/components/HorizontalProductSection.jsx`, `src/components/CompactPromoRail.jsx`, `src/data/homeNav.js`, `src/data/promos.js`, `src/App.jsx`, `src/i18n/translations.js`, `src/styles/index.css`. UI-заглушки (для будущего backend): drawer категорий, страница Settings (кроме языка), Parfüm-категория. Бизнес-логика/структура БД не менялись. Прежнего B-ID не было.
