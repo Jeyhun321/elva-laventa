@@ -2,7 +2,9 @@
 
 ## Current Status
 
-Переработан мобильный header (убрана верхняя кнопка «Kataloq», поиск на всю ширину, в 1-й строке 4 единые круглые иконки Account/Favorites/Cart/Language, крупнее Account), на странице каталога убран дублирующий заголовок «Hamısı» и добавлена back-кнопка `←`, добавлен inactivity-timeout (возврат на главную после ≥30 мин отсутствия без потери корзины/сессии). Desktop без регрессий. Изменения закоммичены и запушены в `main`; деплой на GitHub Pages запущен автоматически (push-триггер). SHA — см. `SESSION CHECKSUM`.
+Переработан мобильный header (убрана верхняя кнопка «Kataloq», поиск на всю ширину, в 1-й строке 4 единые круглые иконки Account/Favorites/Cart/Language, крупнее Account), на странице каталога убран дублирующий заголовок «Hamısı» и добавлена back-кнопка `←`, добавлен inactivity-timeout (возврат на главную после ≥30 мин отсутствия без потери корзины/сессии). **Исправлен деплой GitHub Pages** (LAV-BUG-026): `cancel-in-progress: false` — деплой больше не отменяется на середине; run #134 (`5aaa009`) прошёл успешно, прод обновлён. Desktop без регрессий.
+
+**Важно про деплой:** практику отдельного «docs: record SHA» коммита сразу после фичи прекратили — второй пуш отменял деплой первого (гонка `cancel-in-progress`) и ронял окружение Pages. Теперь один пуш на задачу.
 
 ## Current Branch
 
@@ -78,7 +80,7 @@ Expected modified files:
   - src/styles/index.css
   - docs/BUGS.md
   - docs/HANDOFF.md
-Git status summary: committed & pushed to main; SHA ec30e77 (1f7734a..ec30e77)
+Git status summary: committed & pushed to main; последний прод-деплой run #134 = 5aaa009 (success); фича = ec30e77
 Documentation updated: YES
 Last verified build: npm run build — успешно, 2026-08-06
 Last verified tests: нет test-скриптов; inactivity + desktop live QA — PASSED; mobile live рендер — NOT VERIFIED

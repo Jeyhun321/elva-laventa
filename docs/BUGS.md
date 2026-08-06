@@ -803,3 +803,24 @@
   - [ ] Нет цикла редиректов; на `/` редирект не срабатывает; короткое переключение вкладок (visible, метка свежая) не редиректит.
 - **Regression History:** Логика проверена в vite preview: A/C/D + boot-редирект + «первый визит без метки» — как ожидалось. `visibilitychange` при видимой вкладке не удалось проверить в автоматизации (авто-вкладка `visibilityState=hidden`), но код требует `visible` (корректно) и подтверждён через `pageshow`. Живая проверка на реальных Safari/Chrome (блокировка телефона) — за владельцем.
 - **Notes:** `src/hooks/useInactivityRedirect.js` (new), `src/App.jsx`. TIMEOUT=30 мин, throttle записи=30с. Прежнего B-ID не было.
+
+## LAV-BUG-026 — GitHub Pages деплой падал по таймауту (зависшее окружение из-за cancel-in-progress)
+- **Module:** CI/CD (`.github/workflows/deploy.yml`)
+- **Platform:** both (deploy)
+- **Environment:** GitHub Actions / Production deploy
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner (скриншот Actions: #131 cancelled, #132 failure)
+- **Found Date:** 2026-08-06
+- **Developer:** Claude Code
+- **QA:** Проверено (run #134 — success)
+- **Description:** После пуша фичи `ec30e77` деплой не доходил до прода: run #131 (фича) — cancelled, #132/#133 — failure (по ~10 мин). Прод оставался на старой сборке #130 (`1f7734a`).
+- **Root Cause:** В workflow `concurrency: cancel-in-progress: true`. Практика «feature-commit + сразу docs-SHA-commit» приводила к тому, что второй пуш отменял run фичи **в середине шага `actions/deploy-pages@v4`**. Прерванный деплой оставлял окружение `github-pages` в «зависшем» состоянии, из-за чего следующие деплои ждали его и падали по 10-минутному таймауту (build/upload при этом успешны — падал только job `deploy`, шаг `actions/deploy-pages@v4`, 11:26→11:36).
+- **Fix Summary:** `cancel-in-progress: false` в `.github/workflows/deploy.yml` (рекомендация GitHub для Pages — не прерывать деплой на середине). После фикса run #134 (`5aaa009`) завершился success — прод обновлён (включает `ec30e77`). Дополнительно: практику отдельного «docs: record SHA» коммита сразу после фичи прекращаем (именно она провоцировала гонку отмены) — SHA фиксируем в HANDOFF в том же коммите или без второго пуша.
+- **Fix Verification checklist:**
+  - [x] `deploy.yml` содержит `cancel-in-progress: false`.
+  - [x] Новый run (#134, `5aaa009`) завершается `success` (подтверждено через GitHub API).
+  - [ ] Впредь один пуш на задачу — деплой не отменяется в середине.
+- **Regression History:** 2026-08-06 — run #134 success (API). #132/#133 — failure (до фикса).
+- **Notes:** Логи шагов через `gh`/токен недоступны в среде; диагностика — публичный GitHub API (`/actions/runs`, `/jobs`). Прежнего B-ID не было.
