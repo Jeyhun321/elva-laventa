@@ -12,7 +12,10 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # GitHub Pages üçün tövsiyə: davam edən deploy-u YARIDA kəsmə.
+  # cancel-in-progress: true olanda növbəti push deploy-u ortada ləğv edir və
+  # github-pages mühiti "ilişib" qalır — sonrakı deploylar 10 dəq timeout-la düşür.
+  cancel-in-progress: false
 
 jobs:
   build:
