@@ -21,8 +21,10 @@ const ICONS = {
   perfume: IconPerfume,
 }
 
-// Kiçik künc nişanı (Endirimlər → %, Yenilər → YENİ)
-const BADGE = { sale: '%', new: 'YENİ' }
+// Kiçik künc nişanı: Endirimlər → % (mətn), Yenilər → brend qığılcımı (mətnsiz).
+// "YENİ" sözü tamamilə çıxarıldı — universal vizual işarə (sparkle).
+const BADGE_TEXT = { sale: '%' }
+const BADGE_SPARK = { new: true }
 
 function CircleIcon({ icon }) {
   const Icon = ICONS[icon] || IconAccessory
@@ -47,7 +49,14 @@ export default function Categories() {
               <Link className="cat-circle" to={cat.link}>
                 <span className="cat-circle-icon" aria-hidden="true">
                   <CircleIcon icon={cat.icon} />
-                  {BADGE[cat.id] && <span className="cat-circle-badge">{BADGE[cat.id]}</span>}
+                  {BADGE_TEXT[cat.id] && (
+                    <span className="cat-circle-badge">{BADGE_TEXT[cat.id]}</span>
+                  )}
+                  {BADGE_SPARK[cat.id] && (
+                    <span className="cat-circle-badge cat-circle-badge-spark">
+                      <IconSparkle />
+                    </span>
+                  )}
                 </span>
                 <span className="cat-circle-label">{t(cat.label)}</span>
               </Link>

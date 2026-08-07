@@ -26,6 +26,7 @@ export const railPromos = norm([
   {
     id: 'free-shipping',
     tone: 'ivory',
+    icon: 'truck',
     link: '/catalog',
     isActive: true,
     sortOrder: 1,
@@ -35,6 +36,7 @@ export const railPromos = norm([
   {
     id: 'discounts',
     tone: 'rose',
+    icon: 'tag',
     link: '/catalog?sale=1',
     isActive: true,
     sortOrder: 2,
@@ -44,6 +46,7 @@ export const railPromos = norm([
   {
     id: 'new-collection',
     tone: 'plum',
+    icon: 'sparkle',
     link: '/catalog',
     isActive: true,
     sortOrder: 3,

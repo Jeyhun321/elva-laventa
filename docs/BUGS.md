@@ -1117,3 +1117,42 @@
   - [ ] G. Desktop — без регрессий (сетка 4 колонки прежняя).
 - **Regression History:** 2026-08-07 — `vite build` — успешно; расчёт видимых карточек по формуле `clamp(112px,34vw,150px)`/gap 10 для 320–414px → 2.44–2.60 (в целевом диапазоне); на desktop-viewport (инструмент) `document.scrollWidth ≤ innerWidth` (нет горизонтального overflow страницы), desktop hero/сетка без регрессий. Живой мобильный viewport/тач — за владельцем (инструмент рендерит desktop).
 - **Notes:** `src/styles/index.css` (`.hscroll` размеры + `≤900`/`≤640` компакт-блоки). Связано с [[LAV-BUG-031]], [[LAV-BUG-033]] (мобильный вертикальный ритм каталога).
+
+---
+
+## LAV-BUG-038 — Mobile HomePage: приведение к утверждённому дизайн-макету (header spacing, категории, бейдж, promo, tabbar)
+- **Module:** HomePage (Header/Categories/ProductCard/CompactPromoRail/TabBar + `src/styles/index.css`)
+- **Platform:** mobile (desktop — только проверка отсутствия регрессий)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (утверждённый мобильный дизайн-макет)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification на устройстве
+- **Description:** Мобильная главная должна максимально совпадать с новым эталонным макетом при сохранении фирменного стиля LaVenta. Точки расхождения: (1) Search выглядел прижатым к верхней панели; (2) лишние вертикальные gap (search→категории, категории→Popular); (3) круглые категории без «дорогого» двойного контура; (4) на карточках и на кружке «Yenilər» был текст «YENİ»; (5) promo-блок был узкой прокручиваемой лентой, а не 2 крупными карточками с иконками; (6) активная вкладка Bottom Nav без выразительного состояния.
+- **Steps to Reproduce:** Открыть главную на телефоне (320–412px) и сравнить с макетом: header/search, категории, карточки, promo, нижняя навигация.
+- **Expected Result:** Соответствие макету + фирменный стиль (бордово-розовая палитра, светлый фон, мягкие тени, аккуратные скругления, дорогой минимализм); нет горизонтального скролла на 320–412px.
+- **Actual Result:** См. Description (расхождения с макетом).
+- **Root Cause:** Мобильные значения spacing/badge/promo/tabbar в CSS + текстовые бейджи «YENİ» в разметке не соответствовали новому эталону.
+- **Fix Summary:**
+  - **Header/Search spacing:** `.header-inner` (≤900px) `padding-block: 8px 12px`, `gap: 12px` (было `6px`/`9px`) — search отделён от верхней панели аккуратным boutique-отступом (не прижат, но и не большой провал).
+  - **Убраны лишние gap:** `.cats-section padding-top` 22/16 → **12px** (≤640/≤900) — категории ближе к search; gap категории→Popular уже уменьшен ранее (LAV-BUG-037).
+  - **Категории — двойной контур:** `.cat-circle-icon` `box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 4px var(--lavender-mist), 0 6px 16px rgba(...)` — белый круг + тонкая светлая граница + мягкая тень + аккуратный двойной контур. Иконки остаются `--plum`, размеры/подписи прежние.
+  - **Бейдж вместо «YENİ»:** в `ProductCard.jsx` текстовый `.product-tag` заменён на `.product-badge` — маленький белый круглый badge с бордово-розовой фирменной искрой (`IconSparkle`), без текста; `aria-label`/`title` = локализованный ярлык (для скринридера). На кружке «Yenilər» текст «YENİ» тоже заменён на искру (`.cat-circle-badge-spark`). Слов NEW/YENİ/HOT/SALE в бейджах больше нет (для скидок остаётся числовой «%»).
+  - **Promo-блок (2-up):** `CompactPromoRail`/`.promo-card` — добавлены иконка-розетка (`truck`/`tag`/`sparkle`), обёртка текста (столбик), слабый декоративный круг (`.promo-card-deco`), стрелка по центру справа. На ≤640px `.promo-rail` → `grid` 2 колонки, карточки крупнее (`min-height:104px`, `radius-lg`), 3-я карточка скрыта (`nth-child(n+3)`), как в макете (Pulsuz çatdırılma + Endirimlər). Desktop — прежняя flex-лента из 3 карточек (без регрессий).
+  - **Bottom Nav active:** активная вкладка получила мягкую «mist»-таблетку за иконкой (`.tabbar-icon::before`, анимированное появление) + label `font-weight:700` + цвет `--plum`.
+  - **Анимации (лёгкие):** tap-обратная связь на `.product-card`/`.product-media img`/`.promo-card` (`:active` scale), плавные переходы; тяжёлых анимаций нет.
+- **Fix Verification checklist:**
+  - [ ] A. Header: логотип/Account/Favorites/Cart + отдельная строка Search с аккуратным верхним отступом (не прижат).
+  - [ ] B. Нет пустых провалов: search→категории и категории→Popular компактны.
+  - [ ] C. Категории — белые круги с двойным контуром и мягкой тенью, бордовые иконки, подписи целы.
+  - [ ] D. На карточках и на «Yenilər» — искра-бейдж, нигде нет текста «YENİ»/NEW/HOT/SALE.
+  - [ ] E. Popular — заголовок + «HAMISINA BAX →», компактные карточки, следующая частично видна.
+  - [ ] F. Promo — 2 карточки (светлая «Pulsuz çatdırılma» + яркая «Endirimlər») с иконками, стрелкой и слабым декором.
+  - [ ] G. Bottom Nav — активная вкладка выразительна (mist-таблетка + жирный label).
+  - [ ] H. 320/360/375/390/412px — нет горизонтального скролла, пустых областей, наложений.
+  - [ ] I. Desktop — без регрессий.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live (Chrome preview): категории с двойным контуром, sparkle-бейджи на карточках (SVG, без текста), promo-карточки с иконками/декором/стрелкой (заголовок+подзаголовок в столбик), `document.scrollWidth ≤ innerWidth` (нет горизонтального overflow), desktop hero/сетка/лента promo без регрессий. Проверено наличие DOM-узлов: `.product-badge`(svg), `.promo-card-icon`×3, `.promo-card-deco`×3, `.cat-circle-badge-spark`(svg); текст бейджей = только «%». Живой мобильный viewport/тач — за владельцем (инструмент рендерит desktop-viewport 1536px, мобильную ширину не эмулирует).
+- **Notes:** `src/components/ProductCard.jsx` (sparkle badge), `src/components/Categories.jsx` (sparkle вместо YENİ), `src/components/Icons.jsx` (`IconTruck`/`IconTag`), `src/components/CompactPromoRail.jsx` (иконка/деко/текст-обёртка), `src/data/promos.js` (поле `icon`), `src/styles/index.css` (header spacing, cats double-contour, product-badge, promo 2-up + иконки/деко, tabbar active, tap-анимации). Связано с [[LAV-BUG-037]] (компактные карточки/ритм), [[LAV-BUG-036]] (scroll/jump), [[LAV-BUG-034]] (sticky hover кругов).

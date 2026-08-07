@@ -237,6 +237,25 @@ export const IconPerfume = (p) => (
   </svg>
 )
 
+// Pulsuz çatdırılma promo kartı üçün — yüngül yük maşını
+export const IconTruck = (p) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M3 6.5h10.5v9H3zM13.5 9.5H18l3 3v3h-7.5z" />
+    <circle cx="7" cy="17.5" r="1.7" />
+    <circle cx="17" cy="17.5" r="1.7" />
+  </svg>
+)
+
+// Endirimlər promo kartı üçün — qiymət etiketi
+export const IconTag = (p) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M4 4h7l9 9-7 7-9-9V4Z" />
+    <circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none" />
+  </svg>
+)
+
 export const IconSliders = (p) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>

@@ -4,7 +4,7 @@ import { discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { tagLabels } from '../i18n/translations.js'
-import { IconHeart, IconBag } from './Icons.jsx'
+import { IconHeart, IconBag, IconSparkle } from './Icons.jsx'
 import ProductImage from './ProductImage.jsx'
 import Rating from './Rating.jsx'
 import useTilt from '../hooks/useTilt.js'
@@ -46,7 +46,14 @@ export default function ProductCard({ product, showRating = true }) {
       <Link to={`/product/${product.id}`} className="product-media">
         <ProductImage product={{ ...product, name: t(product.name) }} />
         {product.tag && (
-          <span className="product-tag">{t(tagLabels[product.tag])}</span>
+          <span
+            className="product-badge"
+            role="img"
+            aria-label={t(tagLabels[product.tag])}
+            title={t(tagLabels[product.tag])}
+          >
+            <IconSparkle />
+          </span>
         )}
         {onSale && (
           <span className="product-discount">-{discountPercent(product)}%</span>

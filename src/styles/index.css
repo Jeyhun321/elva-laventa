@@ -760,6 +760,13 @@ ul {
   background: var(--white);
   border: 1px solid var(--line);
   color: var(--plum);
+  /* Makett üslubu: ağ dairə + incə açıq haşiyə + zərif ikiqat kontur
+     (içəridə ağ üzük, sonra çox açıq çəhrayı mist üzük) + yumşaq kölgə.
+     Ağır border yoxdur — bahalı minimalist görünüş. */
+  box-shadow:
+    inset 0 0 0 3px var(--white),
+    inset 0 0 0 4px var(--lavender-mist),
+    0 6px 16px rgba(42, 22, 32, 0.06);
   transition: transform 0.4s var(--ease), background 0.4s var(--ease),
     border-color 0.4s var(--ease), box-shadow 0.4s var(--ease);
 }
@@ -930,6 +937,24 @@ ul {
   padding: 5px 10px;
   border-radius: 999px;
 }
+
+/* Universal brend nişanı (mətnsiz "YENİ" əvəzi): kiçik ağ dairə + çəhrayı
+   qığılcım. Diqqəti dağıtmır — yeni kolleksiyanın zərif vizual işarəsi. */
+.product-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--lavender);
+  box-shadow: 0 2px 9px rgba(42, 22, 32, 0.16);
+  backdrop-filter: blur(2px);
+}
+.product-badge svg { width: 15px; height: 15px; }
 
 .product-fav {
   position: absolute;
@@ -1319,6 +1344,9 @@ ul {
     opacity: 1;
     transform: none;
   }
+  /* Yüngül tap geribildirişi — interfeys daha canlı, amma ağır animasiya yox */
+  .product-card:active { transform: scale(0.985); transition: transform 0.12s var(--ease); }
+  .product-media:active img { transform: scale(1.02); }
 }
 
 /* Hərəkəti azaltma rejimi: animasiyaları söndür (əlçatanlıq) */
@@ -3196,14 +3224,28 @@ a.product-media {
 .tabbar-item:focus-visible { outline-offset: -3px; border-radius: 10px; }
 
 .tabbar-icon { position: relative; display: inline-flex; line-height: 0; }
-.tabbar-icon svg { transition: transform 0.28s var(--ease); }
+.tabbar-icon svg { position: relative; z-index: 1; transition: transform 0.28s var(--ease); }
 .tabbar-item.active .tabbar-icon svg { transform: translateY(-1px); }
+
+/* Makett: aktiv tabın ikonu altında zərif çəhrayı "mist" həb (pill) */
+.tabbar-icon::before {
+  content: '';
+  position: absolute;
+  inset: -7px -15px;
+  border-radius: 999px;
+  background: var(--lavender-mist);
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.24s var(--ease), transform 0.24s var(--ease);
+}
+.tabbar-item.active .tabbar-icon::before { opacity: 1; transform: scale(1); }
 
 .tabbar-label {
   font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
+.tabbar-item.active .tabbar-label { font-weight: 700; }
 
 .tabbar-badge {
   position: absolute;
@@ -3453,9 +3495,11 @@ a.product-media {
     flex-wrap: wrap;
     height: auto;
     /* YALNIZ şaquli boşluq: `padding: 6px 0` qısa yazılışı .container-in
-       yan boşluqlarını sıfırlayır və başlıq ekranın kənarına yapışırdı. */
-    padding-block: 6px;
-    gap: 9px;
+       yan boşluxlarını sıfırlayır və başlıq ekranın kənarına yapışırdı.
+       Makett üçün: axtarış üst paneldən bir az aralı — boutique spacing
+       (nə yapışıq, nə də çox böyük boşluq). */
+    padding-block: 8px 12px;
+    gap: 12px;
   }
   /* 1-ci sətir: loqo + "Kataloq" */
   .header .brand-logo { flex: 0 0 118px; height: 44px; }
@@ -4294,7 +4338,8 @@ a.product-media {
 
 /* --- Kompakt kateqoriya başlığı (mobil): market görünüşü üçün kiçik --- */
 @media (max-width: 640px) {
-  .cats-section { padding-top: 22px; }
+  /* Makett: axtarışdan sonra kateqoriyalar yaxın, boş ekran yoxdur */
+  .cats-section { padding-top: 12px; }
   .cats-section .section-head { margin-bottom: 16px; text-align: left; }
   .cats-section .section-head .eyebrow { margin-bottom: 6px; }
   .cats-section .section-title { font-size: 1.5rem; line-height: 1.1; }
@@ -4351,7 +4396,8 @@ a.product-media {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: space-between;
+  overflow: hidden;
   width: 168px;
   min-height: 92px;
   padding: 12px 14px;
@@ -4362,15 +4408,57 @@ a.product-media {
   transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
 }
 .promo-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.promo-card:active { transform: scale(0.985); }
+
+/* İkon rozetkası (makett): yüngül şüşəvari kvadrat; ivory kartda ağ + kölgə */
+.promo-card-icon {
+  position: relative;
+  z-index: 1;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+  margin-bottom: 10px;
+}
+.promo-card-icon svg { width: 19px; height: 19px; }
+.tone-ivory .promo-card-icon {
+  background: var(--white);
+  color: var(--plum);
+  box-shadow: var(--shadow-sm);
+}
+
+.promo-card-text { position: relative; z-index: 1; display: flex; flex-direction: column; }
+
+/* Çox zəif dekorativ dairə (brend hissi, layout shift yoxdur) */
+.promo-card-deco {
+  position: absolute;
+  z-index: 0;
+  right: -20px;
+  top: -16px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+.tone-ivory .promo-card-deco { background: rgba(163, 16, 79, 0.05); }
+
 .promo-card-badge {
   font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em;
   line-height: 1; margin-bottom: 6px;
 }
 .promo-card-title {
-  font-size: 0.86rem; font-weight: 600; line-height: 1.2;
+  font-size: 0.9rem; font-weight: 700; line-height: 1.2;
 }
-.promo-card-cta { position: absolute; top: 12px; right: 12px; display: inline-flex; opacity: 0.85; }
-.promo-card-cta svg { width: 16px; height: 16px; }
+.promo-card-cta {
+  position: absolute; z-index: 1;
+  top: 50%; right: 14px; transform: translateY(-50%);
+  display: inline-flex; opacity: 0.85;
+}
+.promo-card-cta svg { width: 18px; height: 18px; }
 
 /* Tone variantları — brend palitrası (şəkilsiz → sıfır layout shift) */
 .tone-plum { background: linear-gradient(120deg, var(--plum), var(--lavender)); }
@@ -4385,6 +4473,27 @@ a.product-media {
 .tone-ivory .promo-card-badge,
 .tone-ivory .promo-card-cta { color: var(--plum); }
 .tone-ivory .promo-banner-sub { opacity: 1; color: var(--ink-soft); }
+
+/* Makett: mobildə promo — 2 kart yan-yana (sürüşən lent yox), daha iri,
+   ikon + ox + zəif dekor. 3-cü kart mobildə gizlənir (makettdə 2 kart var). */
+@media (max-width: 640px) {
+  .promo-rail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    overflow: visible;
+  }
+  .promo-rail-item { flex: none; }
+  .promo-rail-item:nth-child(n + 3) { display: none; }
+  .promo-card {
+    width: auto;
+    min-height: 104px;
+    padding: 14px 16px;
+    padding-right: 34px; /* ox mətnə dəyməsin */
+    border-radius: var(--radius-lg);
+  }
+  .promo-card-title { font-size: 0.92rem; }
+}
 
 /* --- Üfüqi товарная секция: mobil = yan sürüşmə, desktop = şəbəkə --- */
 .hsection { padding-block: clamp(40px, 6vw, 96px); }
@@ -4498,11 +4607,20 @@ a.product-media {
   border: 2px solid var(--bg);
   line-height: 1;
 }
+/* "Yenilər" dairəsi: "YENİ" mətni əvəzinə ağ dairədə çəhrayı qığılcım */
+.cat-circle-badge-spark {
+  background: var(--white);
+  color: var(--lavender);
+  padding: 0;
+  min-width: 20px;
+  height: 20px;
+}
+.cat-circle-badge-spark svg { width: 12px; height: 12px; }
 
 @media (max-width: 900px) {
   /* Mobildə başlıq gizlənir — market görünüşü (mockup) */
   .cats-head { display: none; }
-  .cats-section { padding-top: 16px; }
+  .cats-section { padding-top: 12px; }
   .cats-row { padding-block: 2px; }
 }
 
