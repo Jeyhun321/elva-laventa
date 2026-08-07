@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Мобильный header почищен и обновлён по ТЗ: (1) исправлено «залипание» выбранной категории после «назад» на каталоге — выбор категории теперь `replace` вместо `push` в history (LAV-BUG-027); (2) увеличен брендовый логотип в mobile-header (LAV-BUG-028); (3) языковой переключатель убран из верхнего ряда иконок и оставлен в существующем рабочем месте — странице Settings, доступной из нижней навигации (LAV-BUG-029). Desktop не тронут (проверено live — без регрессий). Изменения закоммичены и запушены в `main`, деплой GitHub Pages запущен push-триггером (завершение не ждём).
+Мобильный header почищен и обновлён по ТЗ: (1) исправлено «залипание» выбранной категории после «назад» на каталоге — выбор категории теперь `replace` вместо `push` в history (LAV-BUG-027); (2) увеличен брендовый логотип в mobile-header (LAV-BUG-028); (3) языковой переключатель убран из верхнего ряда иконок и оставлен в существующем рабочем месте — странице Settings, доступной из нижней навигации (LAV-BUG-029). Desktop не тронут (проверено live — без регрессий). Изменения закоммичены и запушены в `main`. **Деплой GitHub Pages для `c75f136` УСПЕШНО ЗАВЕРШЁН** (run #139, 2026-08-07, `workflow_dispatch`; предыдущие попытки #136–#138 висли в очереди/обрывались по таймауту из-за сбоя Actions 06.08). Сайт живой — `https://jeyhun321.github.io/elva-laventa/` отвечает HTTP 200.
 
 **Важно про деплой:** один пуш на задачу (второй «docs: SHA» коммит отменял деплой первого из-за гонки `cancel-in-progress` — практику прекратили; см. LAV-BUG-026).
 
@@ -82,7 +82,7 @@ Expected modified files:
   - src/styles/index.css
   - docs/BUGS.md
   - docs/HANDOFF.md
-Git status summary: committed & pushed to main; предыдущий прод-деплой run #134 = 5aaa009 (success)
+Git status summary: committed & pushed to main; прод-деплой run #139 = c75f136 (success, 2026-08-07); сайт HTTP 200
 Documentation updated: YES
 Last verified build: npm run build — успешно, 2026-08-06
 Last verified tests: нет test-скриптов; desktop live QA — PASSED (без регрессий); mobile live рендер + catalog category-reset — NOT VERIFIED (viewport/данные)
