@@ -2,18 +2,17 @@
 
 ## Current Status
 
-**Мобильная главная приведена к утверждённому дизайн-макету (LAV-BUG-038).** Header/Search spacing, компактные вертикальные отступы, категории с двойным контуром, фирменный sparkle-бейдж вместо текста «YENİ», promo-блок в 2 крупные карточки с иконками и декором, выразительная активная вкладка Bottom Nav, лёгкие tap-анимации. Поверх LAV-BUG-036/037 (компактные карточки + фикс scroll/jump). Код в рабочем дереве, `vite build` — успешно, desktop live-проверка без регрессий. Готово к commit → push → deploy.
+**Мобильная Product Page переработана под утверждённый дизайн-макет (LAV-BUG-039).** Компактный header с Back, крупная премиум-галерея (стрелки + swipe + dot-индикатор + thumbnails), Favorite + Share поверх фото, два локализованных badge доставки, sparkle-бейдж новинки, sticky bottom purchase bar, полное удаление турецкого текста и перевод aria-строк в i18n. Блоки без реальных данных скрыты. Поверх LAV-BUG-036/037/038. Код в рабочем дереве, `vite build` — успешно, desktop live — без регрессий. Готово к commit → push → deploy.
 
-**Что нового (LAV-BUG-038):**
-- **Header/Search:** `.header-inner` (≤900) `padding-block:8px 12px`, `gap:12px` — search отделён аккуратным boutique-отступом.
-- **Меньше пустот:** `.cats-section padding-top` → 12px (search→категории).
-- **Категории:** двойной контур `box-shadow: inset 3px #fff, inset 4px mist, soft drop`, бордовые иконки.
-- **Бейдж:** `ProductCard` — `.product-badge` (белый круг + `IconSparkle`), текст «YENİ» удалён везде (в т.ч. кружок «Yenilər» → искра). Для скидок остаётся числовой «%».
-- **Promo:** `CompactPromoRail` — иконка-розетка (truck/tag/sparkle) + декор-круг + стрелка; на ≤640px `.promo-rail` grid 2-кол, 3-я карточка скрыта (макет = 2 карточки). Desktop — прежняя лента из 3 (без регрессий).
-- **Bottom Nav:** активная вкладка — mist-таблетка за иконкой + label 700.
-- **Анимации:** лёгкий `:active` scale на карточках/промо.
+**Что нового (LAV-BUG-039):**
+- **Header (mobile):** на `/product/` логотип → кнопка Back (`navigate(-1)`); поиск + Account/Favorites/Cart сохранены. Desktop не тронут.
+- **Галерея:** aspect-ratio 3/4, стрелки, swipe (`touch-action:pan-y`), dot-индикатор (реальное число фото), thumbnails (`loading=lazy`).
+- **Favorite + Share overlay (mobile):** круглые белые outline-кнопки; Share — новый безопасный handler (`navigator.share` → fallback clipboard + «ссылка скопирована»).
+- **2 badge доставки:** `badge_free_delivery` (тёмный) + `badge_ships_fast` (зелёный), i18n AZ/RU/EN. Турецкие строки макета не перенесены.
+- **Sparkle-бейдж новинки** вместо текста; **sticky purchase bar** (цена + доставка + «Səbətə əlavə et»); `TabBar` скрыт на `/product` (нет наложения).
+- **Скрыто без данных:** просмотры/activity, числовой low-stock, favorite-count, attributes (нет полей в БД). Реальные данные: rating/reviews, price, images, brand/name, sizes, colors/variants, `inStock`.
 
-> ⚠️ **Действие владельца по F-007 остаётся (не связано с этой задачей):** выполнить `supabase/product-featured.sql` (колонка `is_featured`).
+> ⚠️ **Действие владельца по F-007 остаётся (не связано):** выполнить `supabase/product-featured.sql` (колонка `is_featured`).
 
 **Про деплой:** один пуш на задачу (второй «docs: SHA» коммит отменял деплой — LAV-BUG-026, `cancel-in-progress`).
 
@@ -23,34 +22,32 @@
 
 ## Last Completed Task
 
-### LAV-BUG-038 — приведение mobile HomePage к дизайн-макету
+### LAV-BUG-039 — Product Page mobile redesign под макет
 
-- **Компоненты:** `ProductCard.jsx` (sparkle-бейдж вместо текста), `Categories.jsx` (искра вместо «YENİ», разделены BADGE_TEXT/BADGE_SPARK), `Icons.jsx` (`IconTruck`/`IconTag`), `CompactPromoRail.jsx` (иконка + `.promo-card-deco` + `.promo-card-text`-обёртка), `promos.js` (поле `icon`).
-- **CSS (`index.css`):** header spacing (≤900); `.cats-section padding-top:12px` (≤640/≤900); `.cat-circle-icon` двойной контур; `.product-badge` (+ `.cat-circle-badge-spark`); promo — базовые `.promo-card-icon/-text/-deco`, `justify-content:space-between`, `overflow:hidden`, cta по центру справа, и ≤640 grid 2-up + скрытие 3-й карточки; `.tabbar-icon::before` (active pill) + active label 700; `:active` tap-scale (`@media hover:none`).
-- **Не тронуто:** desktop-ветки (`min-width:901`) карточек и promo-ленты — только проверка регрессий.
+- **Файлы/логика:** `ProductPage.jsx` (галерея-carousel + overlay badges/actions + Share + attributes-gated + sticky buybar), `Header.jsx` (`isProduct` → `.header-product` + `.header-back`), `TabBar.jsx` (`return null` на `/product`), `Icons.jsx` (`IconShare`), `i18n/translations.js` (share/back/badge_free_delivery/badge_ships_fast/image_prev/next/product_images/image_word/attr_*), `index.css` (pd-media-badges/pd-fab/gallery-dots/pd-attrs/product-buybar + `@media(max-width:900px)`).
+- **Desktop:** не переделан; overlay/buybar/back — `display:none` вне мобильного, inline `.detail-actions` работают. Проверено live (нет регрессий).
+- **Турецкий:** grep `kargo|bedava|yarın|sepete|sigortaya|ücretsiz|yorum` по `src` = 0; aria-строки переведены в i18n.
 - **Верификация:** см. Last Verified Checks.
 
-### LAV-BUG-036 + LAV-BUG-037 (предыдущая задача, в этом же рабочем дереве)
+### Предыдущие задачи (в этом же рабочем дереве, уже запушены)
 
-- **036:** фикс scroll/jump перед Product Page — `ScrollManager` PUSH+POP → `behavior:'instant'` (перекрывает `html{scroll-behavior:smooth}`).
-- **037:** компактные mobile-карточки `.hscroll` `clamp(112px,34vw,150px)` gap 10 (2.44–2.60 в ряду) + меньше вертикальных отступов секций (≤640).
+- **LAV-BUG-038** — mobile HomePage под макет (header spacing, категории double-contour, sparkle-бейдж, promo 2-up, active tab). Commit `153c3bd` (запушен).
+- **LAV-BUG-036/037** — фикс scroll/jump + компактные mobile-карточки. Commit `3eb42c0` (запушен).
 
 ## Last Verified Checks
 
-- `npm run build` — **успешно** (dist собран, после фикса `.promo-card-text` в столбик — пересобрано).
-- **Desktop live (Chrome preview):** категории с двойным контуром/мягкой тенью; sparkle-бейджи на карточках (SVG, без текста); promo-карточки с иконками (truck/tag/sparkle), декор-кругом, стрелкой, заголовок+подзаголовок в столбик; hero/сетка/promo-лента — без регрессий; `document.scrollWidth ≤ innerWidth` (нет горизонтального overflow).
-- **DOM-проверка:** `.product-badge`(svg) есть; `.promo-card-icon`×3; `.promo-card-deco`×3; `.cat-circle-badge-spark`(svg); текст бейджей = только «%» (нигде нет «YENİ»).
-- **Собранный бандл (из пред. задачи):** `behavior:"instant"` ×2, багового `'instant' in` нет.
-- **Расчёт видимых карточек (037):** 320→2.44 … 414→2.60 (цель 2.4–2.7).
-- **NOT VERIFIED вживую:** мобильный узкий viewport/тач (инструмент рендерит desktop-viewport 1536px, мобильную ширину НЕ эмулирует — за владельцем): 2-up promo grid и скрытие 3-й карточки, header spacing на телефоне, active-pill Bottom Nav, tap-анимации; featured-буст (нужна миграция `is_featured` — за владельцем, из F-007).
+- `npm run build` — **успешно** (dist собран; ProductPage-бандл 10.70 kB).
+- **Desktop live (Chrome preview, `/product/20`):** sparkle-бейдж, dots(3), thumbnails(3), бренд/код/title/rating/цена/цвета/размеры/actions/доставка/related — целы; `.pd-badge-delivery`/`.pd-media-actions`/`.product-buybar`/`.header-back` = `display:none` (mobile-only), `.detail-actions` = flex; `document.scrollWidth ≤ innerWidth` (нет горизонтального overflow).
+- **Турецкий:** grep по всему `src` = 0 совпадений; ProductPage aria — через i18n.
+- **NOT VERIFIED вживую (за владельцем):** мобильный узкий viewport/тач — carousel/swipe, dot/thumbnails tap, Favorite/Share overlay, sticky purchase bar, header Back, отсутствие горизонтального скролла на 320–412px (инструмент рендерит desktop-viewport 1536px, мобильную ширину не эмулирует). Web Share API работает только в реальном мобильном браузере. Featured-буст (F-007) — нужна миграция.
 
 ## Current Architecture Notes
 
-- **HomePage секции:** `HorizontalProductSection` (mobile rail / desktop grid), `Categories` (круговая лента), `CompactPromoRail` (mobile 2-up grid ≤640 / desktop flex-лента). `ProductCard` общая.
-- **Бейджи:** `.product-badge` (sparkle) — универсальный знак «специальный/новый» товар; `.product-discount` (числовой «%») — для `oldPrice`; текстовых бейджей больше нет.
-- **Promo данные:** `src/data/promos.js` — поле `icon` (`truck`/`tag`/`sparkle`) → `PROMO_ICONS` в `CompactPromoRail`. На мобиле показываются первые 2 (CSS `nth-child(n+3)` hide).
-- **Scroll:** `ScrollManager` — `scrollRestoration='manual'`; PUSH→top(instant), POP→позиция(instant), REPLACE→сохранение позиции. Глобальный `html{scroll-behavior:smooth}` не наследуется программными переходами.
-- Поиск (F-007/LAV-BUG-035); inactivity 30 мин; 5 табов; язык в Settings.
+- **Product Page:** одна разметка `.product-detail` для desktop (2-кол) и mobile (1-кол, ≤860). Мобильные элементы (delivery badges, fav/share overlay, sticky buybar, header back) скрыты на desktop через CSS `display:none` и включаются в `@media(max-width:900px)`. Sticky `.product-buybar` = `position:fixed; bottom:0; z-index:115`; `TabBar` на `/product` не рендерится (JS).
+- **Данные товара:** rating, reviews, price/oldPrice, images/gallery (`galleryForImage`), brand, name (i18n), sizes, colors/variants, `inStock` (boolean), code, description (generic). **Нет:** числового остатка, просмотров, favorite-count, структурных атрибутов → эти блоки скрыты (не выдумываются).
+- **Share:** `navigator.share` → fallback `clipboard.writeText`; отмена/`AbortError` — тихо.
+- **Бейджи:** `.product-badge` (sparkle) — универсальный знак; `.pd-badge` (доставка/скидка) на изображении (delivery — mobile-only).
+- Прочее: поиск (F-007/035), ScrollManager (036), HomePage (038), inactivity 30м, язык в Settings.
 
 ## Known Issues
 
@@ -58,31 +55,32 @@
 
 ## Risks
 
-- Мобильные пункты LAV-BUG-038 (2-up promo, header spacing, active-pill, tap-анимации) проверены на desktop-viewport + DOM + build; живой прогон на телефоне (320–412px) — за владельцем (инструмент не эмулирует мобильную ширину).
-- `nth-child(n+3)` скрывает 3-ю promo-карточку на ≤640 — если владелец захочет показывать все 3 на мобиле, снять правило.
+- Мобильная Product Page проверена на desktop-viewport + DOM + build; живой прогон на телефоне (carousel/swipe/sticky/share/thumbnails, 320–412px) — за владельцем (инструмент не эмулирует мобильную ширину).
+- `TabBar` скрыт на `/product` — навигация обеспечена header Back + иконками. Если владелец хочет нижнее меню на товаре, вернуть и разместить sticky bar выше него.
+- Web Share API доступен не во всех браузерах — есть fallback на копирование ссылки.
 - `is_featured`-миграция (F-007) остаётся за владельцем.
 
 ## Next Recommended Step
 
-1. **Владельцу:** Fix Verification на телефоне по чек-листу LAV-BUG-038 (header/search, категории, sparkle-бейдж, 2-up promo, active tab, отсутствие горизонтального скролла на 320–412px) + LAV-BUG-036/037.
-2. (Из F-007) применить `supabase/product-featured.sql`, проставить приоритет.
+1. **Владельцу:** Fix Verification Product Page на телефоне по чек-листу LAV-BUG-039 (header/back, галерея-carousel+swipe, dots/thumbnails, Favorite/Share, 2 badge, sticky CTA, отсутствие турецкого и горизонтального скролла).
+2. (Из F-007) применить `supabase/product-featured.sql`.
 
 ## Context For Next Session
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260807-184701
+Recovery ID: R-20260807-191825
 
 1. **Проект:** Elva LaVenta — React/Vite storefront магазина женской одежды, Supabase (Frankfurt), деплой GitHub Pages.
 2. **Описание:** интернет-магазин: каталог, избранное, корзина, checkout через WhatsApp, admin-панель, три языка AZ/RU/EN.
-3. **Текущее состояние:** мобильная главная приведена к утверждённому дизайн-макету (LAV-BUG-038) поверх компактных карточек и фикса scroll/jump (LAV-BUG-036/037). Код в рабочем дереве, `vite build` успешен, desktop live — без регрессий. Живой мобильный тач — за владельцем.
-4. **Что реализовано в проекте:** умный поиск (`src/lib/search.js`) + живой ввод + matches/similar; ScrollManager (PUSH/POP instant, REPLACE hold); reusable `HorizontalProductSection`; круговые категории с двойным контуром; sparkle-бейдж товара (`.product-badge`) вместо текста «YENİ»; promo 2-up (mobile) с иконками/декором; выразительная активная вкладка Bottom Nav; лёгкие tap-анимации; `is_featured` (graceful degrade); inactivity 30м; 5 табов; язык в Settings.
-5. **Последняя задача:** LAV-BUG-038 — mobile HomePage под макет (header/search spacing, компактные gap, категории double-contour, sparkle-бейдж, promo 2-up с иконками, active tab, анимации).
-6. **Изменённые файлы:** `src/components/ProductCard.jsx`, `src/components/Categories.jsx`, `src/components/Icons.jsx`, `src/components/CompactPromoRail.jsx`, `src/data/promos.js`, `src/styles/index.css`, `docs/BUGS.md`, `docs/HANDOFF.md`. (Пред. задача 036/037: `src/App.jsx`, `src/styles/index.css`.)
-7. **Проверки:** `vite build` — успешно; desktop live (Chrome preview) — категории/бейджи/promo рендерятся, нет горизонтального overflow, регрессий нет; DOM-узлы подтверждены; текст бейджей = только «%». Мобильный live/тач — NOT VERIFIED (инструмент рендерит desktop 1536px, мобильную ширину не эмулирует — за владельцем).
-8. **Ограничения:** desktop НЕ переделывать (только регрессии); не откатывать полезное (поиск, scroll-restoration, «Hamısına bax», категории, компактные карточки); не трогать header-логику/search/account/favorites/cart/language/settings/checkout/auth/inactivity/БД сверх нужного; i18n AZ/RU/EN; один пуш на задачу; не коммитить секреты.
+3. **Текущее состояние:** мобильная Product Page переработана под утверждённый макет (LAV-BUG-039) поверх HomePage-редизайна и фиксов скролла (038/037/036). Код в рабочем дереве, `vite build` успешен, desktop live — без регрессий. Живой мобильный тач — за владельцем. Турецких строк нет (grep=0).
+4. **Что реализовано в проекте:** Product Page mobile (header Back, галерея carousel+swipe+dots+thumbnails, Favorite+Share overlay, 2 локализованных badge доставки, sparkle-бейдж, sticky purchase bar, скрытие блоков без данных); HomePage mobile под макет; умный поиск; ScrollManager; `is_featured` (graceful degrade); inactivity 30м; язык в Settings.
+5. **Последняя задача:** LAV-BUG-039 — Product Page mobile redesign (galley/overlay/share/sticky CTA/localized badges/удаление турецкого/i18n aria).
+6. **Изменённые файлы:** `src/pages/ProductPage.jsx`, `src/components/Header.jsx`, `src/components/TabBar.jsx`, `src/components/Icons.jsx`, `src/i18n/translations.js`, `src/styles/index.css`, `docs/BUGS.md`, `docs/HANDOFF.md`.
+7. **Проверки:** `vite build` — успешно; desktop live (`/product/20`) — целостно, overlay/buybar/back скрыты на desktop, нет горизонтального overflow; grep турецкого = 0. Мобильный live/тач — NOT VERIFIED (инструмент рендерит desktop 1536px). Web Share — только реальный мобильный браузер.
+8. **Ограничения:** desktop НЕ переделывать (только регрессии); не откатывать логику товара/корзины/избранного/поиска/галереи/навигации; не хардкодить турецкие строки — только i18n AZ/RU/EN; не выдумывать данные (просмотры/остаток/фавориты/атрибуты — скрывать при отсутствии); не трогать checkout/auth/inactivity/settings/БД без нужды; один пуш на задачу; не коммитить секреты.
 9. **Обязательные документы:** `docs/HANDOFF.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/PROJECT.md`, `.claude/CODE_STYLE.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `.claude/CODEX.md`, `docs/BUGS.md`, `docs/FEATURES.md`.
-10. **Что осталось:** владельцу — Fix Verification на телефоне (LAV-BUG-038/036/037); из F-007 — применить `supabase/product-featured.sql`.
+10. **Что осталось:** владельцу — Fix Verification Product Page на телефоне (LAV-BUG-039); из F-007 — применить `supabase/product-featured.sql`. Опционально (когда появятся данные): включить блоки просмотров/остатка/favorite-count/атрибутов (код-каркас готов, гейтится реальными полями).
 11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`; затем — подтверждение мобильной Fix Verification.
 12. **После работы:** обновить `docs/HANDOFF.md` (полностью переписать), при необходимости `docs/BUGS.md`, commit + push в `main`, запустить deploy (GitHub Actions не ждать).
 
@@ -92,18 +90,18 @@ Recovery ID: R-20260807-184701
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: LAV-BUG-038 (mobile HomePage под дизайн-макет) поверх LAV-BUG-036/037 — завершено в рабочем дереве; commit/push/deploy — следующий шаг
+Current task: LAV-BUG-039 (Product Page mobile redesign под макет) — завершено в рабочем дереве; commit/push/deploy — следующий шаг
 Expected modified files:
-  - src/components/ProductCard.jsx (sparkle badge)
-  - src/components/Categories.jsx (sparkle вместо YENİ)
-  - src/components/Icons.jsx (IconTruck/IconTag)
-  - src/components/CompactPromoRail.jsx (иконка/деко/текст-обёртка)
-  - src/data/promos.js (поле icon)
-  - src/styles/index.css (header spacing, cats double-contour, product-badge, promo 2-up, tabbar active, tap-анимации)
-  - docs/BUGS.md (LAV-BUG-038), docs/HANDOFF.md
+  - src/pages/ProductPage.jsx (галерея carousel + overlay + share + attrs + sticky buybar)
+  - src/components/Header.jsx (back на /product)
+  - src/components/TabBar.jsx (скрыт на /product)
+  - src/components/Icons.jsx (IconShare)
+  - src/i18n/translations.js (share/back/badges/aria/attr labels)
+  - src/styles/index.css (pd-media-badges/pd-fab/gallery-dots/pd-attrs/product-buybar + mobile media)
+  - docs/BUGS.md (LAV-BUG-039), docs/HANDOFF.md
 Git status summary: изменения в рабочем дереве, не закоммичены на момент записи
 Documentation updated: YES
 Last verified build: vite build — успешно, 2026-08-07
-Last verified tests: нет test-скриптов проекта; проверки — build + desktop live (Chrome preview, регрессий нет, нет гориз. overflow) + DOM-узлы. Мобильный live/тач — NOT VERIFIED (за владельцем)
+Last verified tests: нет test-скриптов проекта; проверки — build + desktop live (Chrome preview /product/20, регрессий нет, overlay/buybar/back скрыты на desktop, нет гориз. overflow) + grep турецкого = 0. Мобильный live/тач — NOT VERIFIED (за владельцем)
 Recovery confidence: MEDIUM
 ```

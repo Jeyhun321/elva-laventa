@@ -1156,3 +1156,47 @@
   - [ ] I. Desktop — без регрессий.
 - **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live (Chrome preview): категории с двойным контуром, sparkle-бейджи на карточках (SVG, без текста), promo-карточки с иконками/декором/стрелкой (заголовок+подзаголовок в столбик), `document.scrollWidth ≤ innerWidth` (нет горизонтального overflow), desktop hero/сетка/лента promo без регрессий. Проверено наличие DOM-узлов: `.product-badge`(svg), `.promo-card-icon`×3, `.promo-card-deco`×3, `.cat-circle-badge-spark`(svg); текст бейджей = только «%». Живой мобильный viewport/тач — за владельцем (инструмент рендерит desktop-viewport 1536px, мобильную ширину не эмулирует).
 - **Notes:** `src/components/ProductCard.jsx` (sparkle badge), `src/components/Categories.jsx` (sparkle вместо YENİ), `src/components/Icons.jsx` (`IconTruck`/`IconTag`), `src/components/CompactPromoRail.jsx` (иконка/деко/текст-обёртка), `src/data/promos.js` (поле `icon`), `src/styles/index.css` (header spacing, cats double-contour, product-badge, promo 2-up + иконки/деко, tabbar active, tap-анимации). Связано с [[LAV-BUG-037]] (компактные карточки/ритм), [[LAV-BUG-036]] (scroll/jump), [[LAV-BUG-034]] (sticky hover кругов).
+
+---
+
+## LAV-BUG-039 — Product Page mobile: переработка под утверждённый дизайн-макет (галерея, sticky CTA, локализованные badge, удаление турецкого)
+- **Module:** ProductPage / Header / TabBar / Icons / i18n (`src/pages/ProductPage.jsx`, `src/components/*`, `src/styles/index.css`)
+- **Platform:** mobile (desktop — только проверка отсутствия регрессий)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (утверждённый мобильный дизайн-макет Product Page)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification на устройстве
+- **Description:** Мобильная страница товара должна быть приближена к утверждённому макету (уровень e-commerce Trendyol) при сохранении фирменного стиля LaVenta и всей текущей логики (корзина, избранное, галерея, навигация). Требования: компактный header с Back + поиск + Account/Favorites/Cart; крупная премиум-фотография; carousel (стрелки + swipe); dot-индикатор; thumbnails; Favorite + Share поверх изображения; **ровно два** локализованных badge доставки (без третьего); полное **отсутствие турецкого текста**; sticky bottom purchase bar; sparkle-бейдж новинки вместо текста; блоки без реальных данных — скрывать.
+- **Steps to Reproduce:** Открыть `/product/:id` на телефоне (320–412px) и сравнить с макетом.
+- **Expected Result:** Соответствие макету + фирменный стиль; вся логика сохранена; нет турецких строк; нет горизонтального скролла; sticky CTA не конфликтует с нижней навигацией.
+- **Actual Result (до правки):** десктопная 2-колоночная раскладка на мобиле; текстовый бейдж `product-tag`; нет dot-индикатора/Share/sticky CTA/локализованных badge доставки; hardcoded AZ aria-строки; нижняя навигация могла конфликтовать с зоной покупки.
+- **Root Cause:** Product Page не имел мобильного дизайна под новый эталон; часть строк (aria) была захардкожена вне i18n; отсутствовали компоненты галереи (dots), Share и sticky purchase bar.
+- **Fix Summary:**
+  - **Header (mobile):** на `/product/` логотип заменяется кнопкой **Back** (`navigate(-1)`), поиск и Account/Favorites/Cart сохранены (`Header.jsx` + `.header-product`/`.header-back`). Desktop не изменён (back-кнопка mobile-only).
+  - **Галерея:** большое изображение (aspect-ratio 3/4, скругления), стрелки ← →, **swipe** (сохранён, `touch-action: pan-y` — вертикальный скролл страницы свободен), **dot-индикатор** (реальное число фото, активный — фирменный розовый), **thumbnails** (tap переключает, активная выделена, `loading="lazy"`).
+  - **Favorite + Share (overlay, mobile):** круглые белые outline-кнопки поверх фото; Favorite — существующая логика; **Share — новый безопасный handler**: `navigator.share` → fallback `clipboard.writeText` + уведомление «ссылка скопирована»; `AbortError`/отмена — тихо.
+  - **Два badge доставки:** только `badge_free_delivery` (тёмный) + `badge_ships_fast` (зелёный), локализованные AZ/RU/EN. Третьего badge нет. Турецкие строки макета (KARGO BEDAVA / YARIN KARGODA / SIĞORTAYA UYĞUN) **не перенесены**.
+  - **Sparkle-бейдж новинки:** текстовый `product-tag` заменён на `.product-badge` (белый круг + `IconSparkle`), без текста.
+  - **Sticky purchase bar (mobile):** fixed внизу — слева цена + «Pulsuz çatdırılma», справа большая кнопка «Səbətə əlavə et» (i18n); desktop использует прежние inline `.detail-actions` (на мобиле скрыты). `TabBar` на `/product` скрыт → нет наложения.
+  - **Убран турецкий / i18n:** hardcoded aria («Əvvəlki/Növbəti şəkil», «Məhsul şəkilləri», «Şəkil N») → i18n (`image_prev/next`, `product_images`, `image_word`). Grep по `kargo|bedava|yarın|sepete|sigortaya|ücretsiz|yorum` — 0 совпадений во всём `src`.
+  - **Блоки без данных — скрыты (не выдумываем):** activity/просмотры, числовой low-stock («Son N ədəd»), favorite-count («N favoriləyib») — данных нет → не рендерятся. Attributes (Parça/Kəsim/Yaxa/Mövsüm) — рендерятся только при реальных значениях (`product.material/fit/neckline/season` отсутствуют → блок скрыт). Реальные данные: rating/reviews, price/oldPrice, images, brand/name, sizes, colors/variants, `inStock` (boolean → «Stokda yoxdur» при false).
+  - **Performance:** main image `eager`+`fetchpriority=high`; thumbnails `loading=lazy`; aspect-ratio → нет layout shift; без повторных запросов.
+- **Fix Verification checklist:**
+  - [ ] A. Header: Back слева, поиск, Account/Favorites/Cart; логика работает.
+  - [ ] B. Крупное фото, скругления, правильный aspect-ratio, без искажения.
+  - [ ] C. Стрелки ← → и swipe переключают фото плавно, без скролла всей страницы.
+  - [ ] D. Favorite и Share (белые круглые кнопки) поверх фото; Share = Web Share/копия ссылки.
+  - [ ] E. Ровно ДВА локализованных badge доставки; турецкого текста нет нигде.
+  - [ ] F. Dot-индикатор = числу фото, активный розовый; thumbnails переключают.
+  - [ ] G. Заголовок + бренд + rating/reviews (реальные).
+  - [ ] H. Sticky «Səbətə əlavə et» внизу: цена + доставка + кнопка; не перекрыт нижней навигацией.
+  - [ ] I. Sparkle-бейдж новинки без текста.
+  - [ ] J. Блоки без данных (просмотры/остаток-число/фавориты-число/атрибуты) скрыты.
+  - [ ] K. 320/360/375/390/412px — нет горизонтального скролла, нет наложений.
+  - [ ] L. Desktop Product Page — без регрессий.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live (Chrome preview, `/product/20`): sparkle-бейдж, dots(3), thumbnails(3), бренд/код/title/rating/цена/цвета/размеры/actions/доставка/related — целы; delivery-badge/`pd-media-actions`/`product-buybar`/`header-back` = `display:none` на desktop (mobile-only), `detail-actions` = flex; нет горизонтального overflow. Grep турецкого = 0. Мобильный live/тач (carousel/swipe/sticky/share/thumbnails) — NOT VERIFIED (инструмент рендерит desktop-viewport 1536px, мобильную ширину не эмулирует — за владельцем).
+- **Notes:** `src/pages/ProductPage.jsx` (галерея+overlay+share+attrs+buybar), `src/components/Header.jsx` (back на product), `src/components/TabBar.jsx` (скрыт на product), `src/components/Icons.jsx` (`IconShare`), `src/i18n/translations.js` (share/back/badges/aria/attr labels), `src/styles/index.css` (pd-media-badges/pd-fab/gallery-dots/pd-attrs/product-buybar + mobile media). Связано с [[LAV-BUG-038]] (sparkle-бейдж), [[LAV-BUG-036]] (scroll/jump при открытии товара).

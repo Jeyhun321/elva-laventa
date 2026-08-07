@@ -256,6 +256,17 @@ export const IconTag = (p) => (
   </svg>
 )
 
+// Paylaş (Share) — outline ikon, mobil Web Share üçün
+export const IconShare = (p) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <circle cx="18" cy="5" r="2.6" />
+    <circle cx="6" cy="12" r="2.6" />
+    <circle cx="18" cy="19" r="2.6" />
+    <path d="M8.3 10.8 15.7 6.4M8.3 13.2l7.4 4.4" />
+  </svg>
+)
+
 export const IconSliders = (p) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>

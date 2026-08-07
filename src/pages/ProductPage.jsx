@@ -3,8 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
-import { tagLabels } from '../i18n/translations.js'
-import { IconHeart, IconBag, IconStar, IconArrow } from '../components/Icons.jsx'
+import { IconHeart, IconBag, IconArrow, IconShare, IconSparkle } from '../components/Icons.jsx'
 import ProductImage from '../components/ProductImage.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Rating from '../components/Rating.jsx'
@@ -23,6 +22,7 @@ export default function ProductPage() {
   const [warn, setWarn] = useState(false)
   const [added, setAdded] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
+  const [shareNote, setShareNote] = useState(false)
   const touch = useRef(null)
 
   if (!product) {
@@ -44,8 +44,8 @@ export default function ProductPage() {
     ? savedImages
     : (folderGallery.length ? folderGallery : savedImages)
   const mainImage = selectedImage || gallery[0] || product.image
+  const currentIndex = Math.max(0, gallery.indexOf(mainImage))
   const switchGalleryImage = (direction) => {
-    const currentIndex = Math.max(0, gallery.indexOf(mainImage))
     const nextIndex = (currentIndex + direction + gallery.length) % gallery.length
     setSelectedImage(gallery[nextIndex])
   }
@@ -53,6 +53,15 @@ export default function ProductPage() {
   const related = products
     .filter((p) => p.category === product.category && p.id !== product.id)
     .slice(0, 9)
+
+  // Xarakteristikalar: YALNIZ məhsulda həqiqi dəyər olduqda göstərilir.
+  // Bu sahələr hazırda bazada yoxdur → blok görünmür (uydurma dəyər yaradılmır).
+  const attributes = [
+    { label: 'attr_material', value: product.material },
+    { label: 'attr_fit', value: product.fit },
+    { label: 'attr_neckline', value: product.neckline },
+    { label: 'attr_season', value: product.season },
+  ].filter((a) => a.value)
 
   // --- Şəkillər üzərində sürüşdürmə (swipe) ---
   // Yalnız ÜFÜQİ jest şəkli dəyişir; şaquli hərəkət səhifənin sürüşməsinə mane olmur.
@@ -116,8 +125,28 @@ export default function ProductPage() {
     toggleFavorite(product.id)
   }
 
+  // Paylaş: mobil Web Share API varsa onu, yoxdursa keçidi panoya kopyalayır.
+  // İstifadəçi ləğv edərsə (AbortError) — səssiz keçir.
+  const handleShare = async () => {
+    const shareData = { title: t(product.name), text: product.brand, url: window.location.href }
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+        return
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(window.location.href)
+        setShareNote(true)
+        setTimeout(() => setShareNote(false), 2000)
+      }
+    } catch {
+      // İstifadəçi paylaşmanı ləğv etdi — heç nə etmirik.
+    }
+  }
+
   return (
     <div className="container product-page">
+      {/* Desktop-da "kataloqa qayıt" düyməsi. Mobildə başlıqdakı "geri" oxu var. */}
       <Link to="/catalog" className="back-link">{t('back_to_catalog')}</Link>
 
       <div className="product-detail">
@@ -129,13 +158,45 @@ export default function ProductPage() {
             onTouchEnd={onTouchEnd}
           >
             <ProductImage product={{ ...product, image: mainImage, name: t(product.name) }} eager />
+
+            {/* Sol üst: universal "yeni" qığılcımı + İKİ lokal çatdırılma nişanı
+                (+ endirim faizi varsa). Türk mətni yoxdur — hamısı i18n. */}
+            <div className="pd-media-badges">
+              {product.tag && (
+                <span className="product-badge" role="img" aria-label={t('new_arrivals')} title={t('new_arrivals')}>
+                  <IconSparkle />
+                </span>
+              )}
+              <span className="pd-badge pd-badge-dark pd-badge-delivery">{t('badge_free_delivery')}</span>
+              <span className="pd-badge pd-badge-ship pd-badge-delivery">{t('badge_ships_fast')}</span>
+              {onSale && (
+                <span className="pd-badge pd-badge-sale">-{discountPercent(product)}%</span>
+              )}
+            </div>
+
+            {/* Sağ üst: Sevimli + Paylaş (ağ dairə, outline ikon) */}
+            <div className="pd-media-actions">
+              <button
+                type="button"
+                className={`pd-fab${fav ? ' active' : ''}`}
+                onClick={handleFavorite}
+                aria-label={t('favorites')}
+                aria-pressed={fav}
+              >
+                <IconHeart />
+              </button>
+              <button type="button" className="pd-fab" onClick={handleShare} aria-label={t('share')}>
+                <IconShare />
+              </button>
+            </div>
+
             {gallery.length > 1 && (
               <>
                 <button
                   type="button"
                   className="gallery-nav gallery-nav-prev"
                   onClick={() => switchGalleryImage(-1)}
-                  aria-label="Əvvəlki şəkil"
+                  aria-label={t('image_prev')}
                 >
                   <IconArrow />
                 </button>
@@ -143,24 +204,35 @@ export default function ProductPage() {
                   type="button"
                   className="gallery-nav gallery-nav-next"
                   onClick={() => switchGalleryImage(1)}
-                  aria-label="Növbəti şəkil"
+                  aria-label={t('image_next')}
                 >
                   <IconArrow />
                 </button>
               </>
             )}
-            {product.tag && (
-              <span className="product-tag">{t(tagLabels[product.tag])}</span>
-            )}
-            {onSale && (
-              <span className="product-discount">-{discountPercent(product)}%</span>
-            )}
           </div>
+
+          {shareNote && <p className="pd-share-note" role="status">{t('link_copied')}</p>}
+
+          {/* Dot indikator — real şəkil sayına görə */}
           {gallery.length > 1 && (
-            <div className="gallery-thumbs" aria-label="Məhsul şəkilləri">
+            <div className="gallery-dots" aria-hidden="true">
               {gallery.map((image, index) => (
-                <button key={image} className={`gallery-thumb${mainImage === image ? ' active' : ''}`} onClick={() => setSelectedImage(image)} aria-label={`Şəkil ${index + 1}`}>
-                  <img src={image} alt="" />
+                <span key={image} className={`gallery-dot${index === currentIndex ? ' active' : ''}`} />
+              ))}
+            </div>
+          )}
+
+          {gallery.length > 1 && (
+            <div className="gallery-thumbs" aria-label={t('product_images')}>
+              {gallery.map((image, index) => (
+                <button
+                  key={image}
+                  className={`gallery-thumb${mainImage === image ? ' active' : ''}`}
+                  onClick={() => setSelectedImage(image)}
+                  aria-label={`${t('image_word')} ${index + 1}`}
+                >
+                  <img src={image} alt="" loading="lazy" />
                 </button>
               ))}
             </div>
@@ -176,6 +248,11 @@ export default function ProductPage() {
 
           <Rating value={product.rating} reviews={product.reviews} reviewsLabel={t('reviews')} />
 
+          {/* Stok statusu: yalnız HƏQİQİ məlumat (in_stock=false). Say uydurulmur. */}
+          {!product.inStock && (
+            <span className="pd-stock-out">{t('out_of_stock')}</span>
+          )}
+
           <div className={`detail-price${onSale ? ' on-sale' : ''}`}>
             <span className="new">{product.price} ₼</span>
             {onSale && <span className="old">{product.oldPrice} ₼</span>}
@@ -186,9 +263,6 @@ export default function ProductPage() {
               öz qiyməti, öz ölçüləri). Seçəndə həmin məhsula keçirik. */}
           {product.variants?.length > 1 ? (
             <div className="detail-field">
-              {/* Yalnız dairələr — mətn imzaları yoxdur.
-                  Rəngin adı aria-label/title-da qalır ki, ekran oxuyucu və
-                  siçan ipucu üçün düymə adsız olmasın. */}
               <div className="color-variants" role="group" aria-label={t('color')}>
                 {product.variants.map((v) => (
                   <button
@@ -211,7 +285,6 @@ export default function ProductPage() {
           ) : product.colors?.length ? (
             <div className="detail-field">
               <span className="field-label">{t('color')}</span>
-              {/* Variant yoxdursa — sadəcə məhsulun çalarları, seçilmir */}
               <div className="color-swatches">
                 {product.colors.map((c, i) => (
                   <span key={i} className="swatch-wrap">
@@ -240,6 +313,19 @@ export default function ProductPage() {
             {warn && <span className="size-warn">{t('choose_size_first')}</span>}
           </div>
 
+          {/* Kompakt xarakteristika kartları — yalnız real dəyər olduqda */}
+          {attributes.length > 0 && (
+            <div className="pd-attrs">
+              {attributes.map((a) => (
+                <div key={a.label} className="pd-attr">
+                  <span className="pd-attr-label">{t(a.label)}</span>
+                  <span className="pd-attr-value">{a.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Masaüstü alış düymələri. Mobildə gizlənir — altdakı sabit panel var. */}
           <div className="detail-actions">
             <button className="btn btn-primary btn-lg" onClick={handleAdd}>
               <IconBag /> {added ? t('in_cart') + ' ✓' : t('add_to_cart')}
@@ -284,7 +370,6 @@ export default function ProductPage() {
         )}
       </div>
 
-
       {related.length > 0 && (
         <section className="related">
           <h2 className="section-title" style={{ fontSize: '1.8rem' }}>{t('related')}</h2>
@@ -297,6 +382,20 @@ export default function ProductPage() {
         </section>
       )}
 
+      {/* Mobil sabit alış paneli: solda qiymət + pulsuz çatdırılma, sağda "Səbətə əlavə et".
+          Masaüstündə gizlidir (yuxarıdakı .detail-actions işləyir). */}
+      <div className="product-buybar">
+        <div className="pd-buybar-price">
+          <span className="pd-buybar-amount">
+            {product.price} ₼
+            {onSale && <s>{product.oldPrice} ₼</s>}
+          </span>
+          <span className="pd-buybar-delivery">{t('badge_free_delivery')}</span>
+        </div>
+        <button className="pd-buybar-cta" onClick={handleAdd}>
+          <IconBag /> {added ? t('in_cart') + ' ✓' : t('add_to_cart')}
+        </button>
+      </div>
     </div>
   )
 }

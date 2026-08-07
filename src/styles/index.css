@@ -2156,6 +2156,8 @@ a.product-media {
   overflow: hidden;
   background: linear-gradient(135deg, var(--lavender-mist), var(--cream));
   box-shadow: var(--shadow-sm);
+  /* Şaquli sürüşmə (səhifə) sərbəst; üfüqi jest şəkli dəyişir (swipe handler) */
+  touch-action: pan-y;
 }
 .gallery-main img { width: 100%; height: 100%; object-fit: contain; }
 @media (min-width: 861px) {
@@ -2297,6 +2299,134 @@ a.product-media {
 .detail-desc { color: var(--ink-soft); line-height: 1.7; }
 .related { margin-top: 30px; }
 .related .section-title { margin-bottom: 26px; }
+
+/* ============================================================
+   Product Page — mobil redizayn (LAV-BUG-039).
+   Bazadakı elementlər üçün əsas stillər; mobil davranış aşağıda media-da.
+   Desktop-a təsir etməmək üçün overlay-lər (çatdırılma nişanları, fab-lar,
+   sabit alış paneli) standartda gizlidir və yalnız ≤900px-də açılır.
+   ============================================================ */
+
+/* Başlıqda "geri" oxu (yalnız mobil məhsul səhifəsində — bax @media) */
+.header-back {
+  display: none;
+  width: 44px; height: 44px;
+  flex: 0 0 auto;
+  align-items: center; justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--plum);
+  box-shadow: var(--shadow-sm);
+}
+.header-back:active { transform: scale(0.95); }
+
+/* Şəkil üstü sol nişanlar: qığılcım + İKİ çatdırılma nişanı + endirim */
+.pd-media-badges {
+  position: absolute; top: 12px; left: 12px; z-index: 3;
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+}
+.pd-media-badges .product-badge { position: static; top: auto; left: auto; }
+.pd-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 8px;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; line-height: 1.1;
+  box-shadow: 0 2px 8px rgba(42, 22, 32, 0.16);
+}
+.pd-badge-dark { background: rgba(42, 22, 32, 0.86); color: #fff; }
+.pd-badge-ship { background: #1f9d55; color: #fff; }
+.pd-badge-sale { background: var(--sale); color: #fff; }
+/* İki çatdırılma nişanı yalnız mobildə (desktop-da şəkil sadə qalır) */
+.pd-badge-delivery { display: none; }
+
+/* Şəkil üstü sağ düymələr: Sevimli + Paylaş (mobil) */
+.pd-media-actions {
+  position: absolute; top: 12px; right: 12px; z-index: 3;
+  display: none; flex-direction: column; gap: 10px;
+}
+.pd-fab {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--plum);
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 14px rgba(42, 22, 32, 0.14);
+  transition: transform 0.18s var(--ease), color 0.18s var(--ease);
+}
+.pd-fab:active { transform: scale(0.94); }
+.pd-fab.active { color: var(--sale); }
+.pd-fab.active svg { fill: currentColor; }
+
+.pd-share-note { margin: 8px 0 0; text-align: center; font-size: 0.82rem; font-weight: 600; color: var(--plum); }
+
+/* Dot indikator */
+.gallery-dots { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+.gallery-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--line-strong); transition: width 0.22s var(--ease), background 0.22s var(--ease); }
+.gallery-dot.active { background: var(--lavender); width: 20px; }
+
+.pd-stock-out { display: inline-block; margin-top: 6px; color: var(--sale); font-weight: 700; font-size: 0.9rem; }
+
+/* Xarakteristika kartları (yalnız real dəyər olduqda render olunur) */
+.pd-attrs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 22px; }
+.pd-attr { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--white); }
+.pd-attr-label { display: block; font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
+.pd-attr-value { display: block; margin-top: 3px; font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+
+/* Sabit alış paneli — standartda gizli (masaüstündə inline .detail-actions işləyir) */
+.product-buybar { display: none; }
+
+@media (max-width: 900px) {
+  /* Başlıq: məhsul səhifəsində loqo əvəzinə "geri" oxu */
+  .header-product .brand-logo { display: none; }
+  .header-product .header-back { display: inline-flex; }
+
+  /* Mobildə "kataloqa qayıt" düyməsi gizli — başlıqda geri oxu var */
+  .product-page > .back-link { display: none; }
+
+  /* Alt naviqasiya məhsul səhifəsində gizlidir → altda alış paneli üçün yer */
+  .product-page { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Şəkil üstü çatdırılma nişanları + Sevimli/Paylaş (mockup) */
+  .pd-badge-delivery { display: inline-flex; }
+  .pd-media-actions { display: flex; }
+
+  /* Böyük premium şəkil birinci ekranı tutur */
+  .gallery-main { aspect-ratio: 3 / 4; border-radius: 18px; }
+
+  /* Masaüstü alış düymələri mobildə gizli — sabit panel əvəz edir */
+  .detail-actions { display: none; }
+
+  /* Sabit alış paneli */
+  .product-buybar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 115;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 246, 250, 0.98);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 22px rgba(42, 22, 32, 0.08);
+  }
+  .pd-buybar-price { display: flex; flex-direction: column; line-height: 1.15; flex: 0 0 auto; }
+  .pd-buybar-amount { font-size: 1.15rem; font-weight: 800; color: var(--plum); font-variant-numeric: tabular-nums; }
+  .pd-buybar-amount s { margin-left: 6px; font-size: 0.78rem; font-weight: 600; color: var(--ink-soft); }
+  .pd-buybar-delivery { font-size: 0.72rem; font-weight: 600; color: #1f9d55; }
+  .pd-buybar-cta {
+    flex: 1; min-height: 52px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border-radius: 14px;
+    background: var(--plum); color: #fff;
+    font-weight: 700; font-size: 0.98rem;
+    box-shadow: 0 6px 18px rgba(163, 16, 79, 0.28);
+    transition: transform 0.16s var(--ease), background 0.2s var(--ease);
+  }
+  .pd-buybar-cta:active { transform: scale(0.98); }
+  .pd-buybar-cta svg { width: 20px; height: 20px; }
+}
+
+@media (max-width: 360px) {
+  .pd-buybar-amount { font-size: 1.05rem; }
+  .pd-buybar-cta { font-size: 0.9rem; min-height: 48px; }
+}
 
 /* Cart */
 .cart-layout {

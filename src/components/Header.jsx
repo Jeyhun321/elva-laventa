@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
-import { IconSearch, IconHeart, IconBag, IconMenu, IconClose } from './Icons.jsx'
+import { IconSearch, IconHeart, IconBag, IconMenu, IconClose, IconArrowLeft } from './Icons.jsx'
 import { SEARCH_MIN } from '../lib/search.js'
 import UserMenu from './UserMenu.jsx'
 import flowerLogo from '../assets/elva-laventa-logo.svg'
@@ -94,9 +94,23 @@ export default function Header() {
     setCatOpen(false)
   }
 
+  // Məhsul səhifəsində mobil başlıq kompaktdır: solda "Geri" düyməsi (loqo əvəzi).
+  // Desktop dəyişmir — loqo görünür, geri düyməsi yalnız mobildə (CSS).
+  const isProduct = location.pathname.startsWith('/product/')
+
   return (
-    <header className={`header${scrolled ? ' scrolled' : ''}`}>
+    <header className={`header${scrolled ? ' scrolled' : ''}${isProduct ? ' header-product' : ''}`}>
       <div className="container header-inner">
+        {isProduct && (
+          <button
+            type="button"
+            className="header-back"
+            onClick={() => navigate(-1)}
+            aria-label={t('back')}
+          >
+            <IconArrowLeft />
+          </button>
+        )}
         <a href={import.meta.env.BASE_URL} className="brand brand-logo" aria-label="Elva LaVenta">
           <img className="brand-logo-image" src={flowerLogo} alt="Elva LaVenta" />
         </a>

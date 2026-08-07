@@ -322,6 +322,22 @@ export const ui = {
   },
   // Ox mətndə DEYİL, CSS-də (.back-link::before) — yoxsa iki ox görünür
   back_to_catalog: { az: 'Kataloqa qayıt', ru: 'Назад в каталог', en: 'Back to catalog' },
+  back: { az: 'Geri', ru: 'Назад', en: 'Back' },
+  share: { az: 'Paylaş', ru: 'Поделиться', en: 'Share' },
+  link_copied: { az: 'Keçid kopyalandı', ru: 'Ссылка скопирована', en: 'Link copied' },
+  // Məhsul şəkli üzərindəki İKİ nişan (lokallaşdırılmış — türk mətni yoxdur)
+  badge_free_delivery: { az: 'Pulsuz çatdırılma', ru: 'Бесплатная доставка', en: 'Free delivery' },
+  badge_ships_fast: { az: 'Sabah göndərilir', ru: 'Отправка завтра', en: 'Ships tomorrow' },
+  // Qalereya aria-etiketləri (əvvəllər kodda sabit AZ mətni idi → i18n-ə köçdü)
+  image_prev: { az: 'Əvvəlki şəkil', ru: 'Предыдущее фото', en: 'Previous image' },
+  image_next: { az: 'Növbəti şəkil', ru: 'Следующее фото', en: 'Next image' },
+  product_images: { az: 'Məhsul şəkilləri', ru: 'Фото товара', en: 'Product images' },
+  image_word: { az: 'Şəkil', ru: 'Фото', en: 'Photo' },
+  // Xarakteristika etiketləri (yalnız məhsulda həqiqi dəyər olduqda göstərilir)
+  attr_material: { az: 'Parça', ru: 'Материал', en: 'Material' },
+  attr_fit: { az: 'Kəsim', ru: 'Крой', en: 'Fit' },
+  attr_neckline: { az: 'Yaxa', ru: 'Вырез', en: 'Neckline' },
+  attr_season: { az: 'Mövsüm', ru: 'Сезон', en: 'Season' },
   related: { az: 'Oxşar məhsullar', ru: 'Похожие товары', en: 'Related products' },
   choose_size_first: {
     az: 'Zəhmət olmasa ölçü seçin',

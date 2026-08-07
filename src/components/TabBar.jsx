@@ -33,6 +33,9 @@ export default function TabBar() {
 
   // İdarə panelində mağaza tabları göstərilmir
   if (pathname.startsWith('/admin')) return null
+  // Məhsul səhifəsində aşağı naviqasiya gizlənir — altdakı sabit "Səbətə əlavə et"
+  // paneli ilə üst-üstə düşməsin (mockup: məhsulda alt-menyu yoxdur, alış paneli var).
+  if (pathname.startsWith('/product')) return null
 
   // Məhsul səhifəsi də "Kataloq" bölməsinə aiddir
   const isActive = (to) => (
