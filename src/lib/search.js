@@ -95,9 +95,11 @@ export function scoreFields(fields, queryTokens, rawQueryNorm, opts = {}) {
   }
   score += namePhrase
 
-  if (rawQueryNorm && fields.code) {
-    if (fields.code === rawQueryNorm) score += 500                          // kod tam
-    else if (fields.code.includes(rawQueryNorm)) score += 250              // kod qismən
+  // TASK 4 — Məhsul KODU yalnız TAM uyğunluqla tapılır (qismən/prefiks yox).
+  // Ad qismən axtarışa təsir etmir (ad üçün partial saxlanılır, aşağıda).
+  // Məs. kod "LV2381": "LV"/"LV23" → tapılmır; yalnız "LV2381" → tapılır.
+  if (rawQueryNorm && fields.code && fields.code === rawQueryNorm) {
+    score += 500                                                            // kod tam
   }
 
   // --- Token səviyyəsi (hər söz) ---

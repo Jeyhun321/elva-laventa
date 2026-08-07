@@ -10,6 +10,8 @@ import ProductImage from '../components/ProductImage.jsx'
 
 const BUYER_KEY = 'elva_buyer'
 const ORDER_REDIRECT_SECONDS = 10
+// Çatdırılma üsulları (TASK 6). Ekspress üçün əlavə haqq.
+const EXPRESS_FEE = 5
 
 const ORDER_ERROR_KEY_BY_CODE = {
   AUTH_REQUIRED: 'order_auth_required',
@@ -63,6 +65,7 @@ export default function CheckoutPage() {
   })
   const [remember, setRemember] = useState(true)
   const [sameNumber, setSameNumber] = useState(true) // zəng nömrəsi = WhatsApp
+  const [delivery, setDelivery] = useState('standard') // 'standard' | 'express' (default: standart)
   const [touched, setTouched] = useState({})
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(null) // {order_no}
@@ -74,6 +77,9 @@ export default function CheckoutPage() {
     .filter((l) => l.product)
 
   const total = lines.reduce((s, l) => s + l.product.price * l.item.qty, 0)
+  // Çatdırılma haqqı və yekun (avtomatik yenilənir)
+  const deliveryFee = delivery === 'express' ? EXPRESS_FEE : 0
+  const grandTotal = total + deliveryFee
 
   useEffect(() => {
     // Səbət boşdursa, həm qonaq, həm girişli alıcı səbətə qaytarılır.
@@ -162,12 +168,20 @@ export default function CheckoutPage() {
 
     setBusy(true)
     try {
+      // Seçilmiş çatdırılma üsulu sifariş qeydinə (note) yazılır — beləliklə həm
+      // bazadakı sifarişdə saxlanılır, həm də Telegram bildirişində görünür
+      // (place_order note-u "Qeyd:" kimi mesaja əlavə edir). DB sxemi dəyişmir.
+      const deliveryNote = delivery === 'express'
+        ? `Çatdırılma: Ekspress (+${EXPRESS_FEE} ₼)`
+        : 'Çatdırılma: Standart'
+      const composedNote = [g('note'), deliveryNote].filter(Boolean).join('\n')
+
       const order = await createOrder({
         buyer: {
           ...buyer,
           name: g('name'),
           address: g('address'),
-          note: g('note'),
+          note: composedNote,
           phone: normalizeWhatsApp(g('phone')),
           // Eynidirsə — WhatsApp nömrəsini zəng nömrəsi kimi yazırıq
           phoneCall: sameNumber
@@ -301,6 +315,43 @@ export default function CheckoutPage() {
             />
           </label>
 
+          {/* TASK 6 — çatdırılma üsulu seçimi (radio kartlar, LaVenta üslubu) */}
+          <div className="delivery-methods" role="radiogroup" aria-label={t('delivery_method')}>
+            <span className="checkout-h3 delivery-methods-title">{t('delivery_method')}</span>
+
+            <label className={`delivery-card${delivery === 'standard' ? ' active' : ''}`}>
+              <input
+                type="radio"
+                name="delivery"
+                value="standard"
+                checked={delivery === 'standard'}
+                onChange={() => setDelivery('standard')}
+              />
+              <span className="delivery-card-radio" aria-hidden="true" />
+              <span className="delivery-card-main">
+                <b>{t('delivery_standard')}</b>
+                <small>{t('delivery_standard_time')}</small>
+              </span>
+              <span className="delivery-card-price">{t('delivery_free')}</span>
+            </label>
+
+            <label className={`delivery-card${delivery === 'express' ? ' active' : ''}`}>
+              <input
+                type="radio"
+                name="delivery"
+                value="express"
+                checked={delivery === 'express'}
+                onChange={() => setDelivery('express')}
+              />
+              <span className="delivery-card-radio" aria-hidden="true" />
+              <span className="delivery-card-main">
+                <b>{t('delivery_express')}</b>
+                <small>{t('delivery_express_time')}</small>
+              </span>
+              <span className="delivery-card-price">+{EXPRESS_FEE} ₼</span>
+            </label>
+          </div>
+
           <label className="checkbox-row">
             <input type="checkbox" checked={remember}
               onChange={(e) => setRemember(e.target.checked)} />
@@ -309,10 +360,11 @@ export default function CheckoutPage() {
 
           {err && <div className="admin-msg err" role="alert">{err}</div>}
 
-          {/* Yekun məbləğ düymənin ÜSTÜNDƏ — alıcı nə ödədiyini görmədən təsdiqləməsin */}
+          {/* Yekun məbləğ düymənin ÜSTÜNDƏ — alıcı nə ödədiyini görmədən təsdiqləməsin.
+              Ekspress seçiləndə əlavə haqq daxildir (avtomatik yenilənir). */}
           <div className="checkout-total-inline">
             <span>{t('total')}</span>
-            <b>{total} ₼</b>
+            <b>{grandTotal} ₼</b>
           </div>
 
           <button type="submit" className="btn btn-primary btn-lg full" disabled={busy}>
@@ -346,9 +398,17 @@ export default function CheckoutPage() {
               </div>
             ))}
           </div>
+          <div className="summary-row">
+            <span>{t('products_subtotal')}</span>
+            <span>{total} {CURRENCY}</span>
+          </div>
+          <div className="summary-row">
+            <span>{delivery === 'express' ? t('delivery_express') : t('delivery_standard')}</span>
+            <span>{deliveryFee ? `${deliveryFee} ${CURRENCY}` : t('delivery_free')}</span>
+          </div>
           <div className="summary-row total">
             <span>{t('total')}</span>
-            <span>{total} {CURRENCY}</span>
+            <span>{grandTotal} {CURRENCY}</span>
           </div>
         </aside>
       </div>

@@ -1200,3 +1200,116 @@
   - [ ] L. Desktop Product Page — без регрессий.
 - **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live (Chrome preview, `/product/20`): sparkle-бейдж, dots(3), thumbnails(3), бренд/код/title/rating/цена/цвета/размеры/actions/доставка/related — целы; delivery-badge/`pd-media-actions`/`product-buybar`/`header-back` = `display:none` на desktop (mobile-only), `detail-actions` = flex; нет горизонтального overflow. Grep турецкого = 0. Мобильный live/тач (carousel/swipe/sticky/share/thumbnails) — NOT VERIFIED (инструмент рендерит desktop-viewport 1536px, мобильную ширину не эмулирует — за владельцем).
 - **Notes:** `src/pages/ProductPage.jsx` (галерея+overlay+share+attrs+buybar), `src/components/Header.jsx` (back на product), `src/components/TabBar.jsx` (скрыт на product), `src/components/Icons.jsx` (`IconShare`), `src/i18n/translations.js` (share/back/badges/aria/attr labels), `src/styles/index.css` (pd-media-badges/pd-fab/gallery-dots/pd-attrs/product-buybar + mobile media). Связано с [[LAV-BUG-038]] (sparkle-бейдж), [[LAV-BUG-036]] (scroll/jump при открытии товара).
+
+---
+
+## LAV-BUG-040 — Mobile: header товара — Profile/Favorites/Cart переносятся на вторую строку
+- **Module:** Header (`src/components/Header.jsx` + `src/styles/index.css`)
+- **Platform:** mobile
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **Description:** На странице товара `[Back][Logo]` в первой строке, а `[Profile][Favorites][Cart]` переносились на вторую строку. Должно быть: `[Back][Logo] ........ [Profile][Favorites][Cart]` в ОДНОЙ строке, Search — отдельной строкой ниже.
+- **Root Cause:** `.header-inner` — `flex-wrap: wrap`. На product-route добавилась кнопка Back (~44px), а логотип на мобиле фиксирован широким (`.header .brand-logo { flex: 0 0 166px }`). Сумма `back + logo(166) + 3 иконки + gap` превышала ширину контента (288px на 320px) → `header-actions` переносились на вторую строку.
+- **Fix Summary:** На `.header-product` (mobile): логотип показывается рядом с Back, но **сжимаемый** (`flex: 0 1 auto; min-width:0; max-width:116px`, изображение `max-width:100%; object-fit:contain`), а Back и `header-actions` — **не сжимаются** (`flex:0 0 auto`). Логотип «поглощает» нехватку места → все три в одной строке на 320–430px; Search — отдельной строкой (`flex:1 1 100%`). Селектор `.header.header-product` (0,3,0) перебивает старое `.header .brand-logo{flex:0 0 166px}`. Desktop не затронут (правила в `@media(max-width:900px)`).
+- **Regression Checklist:**
+  - [ ] 320/360/375/390/412/430px — Back+Logo+Profile/Fav/Cart в одной строке, Search ниже.
+  - [ ] Логотип не обрезан некрасиво, тап-таргеты сохранены.
+  - [ ] Desktop header — без изменений.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live — header без регрессий. Мобильная ширина — за владельцем (инструмент рендерит desktop 1536px).
+- **Notes:** `src/styles/index.css` (`.header.header-product` mobile), `src/components/Header.jsx` (рендерит `.header-back` на `/product/` из [[LAV-BUG-039]]). Связано с [[LAV-BUG-039]].
+
+---
+
+## LAV-BUG-041 — Product gallery: бесконечная прокрутка (1→2→3→1) вместо ограниченной
+- **Module:** ProductPage gallery (`src/pages/ProductPage.jsx`)
+- **Platform:** both
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **Description:** Фото листались по кругу (`1→2→3→1→2→3`). Нужно `1→2→3` без wrap; на последней Next не работает (Prev работает), на первой Prev не работает (Next работает); стрелки и swipe одинаково.
+- **Root Cause:** `switchGalleryImage` использовал modulo-обёртку `(currentIndex + direction + gallery.length) % gallery.length` → циклический переход. Swipe вызывал ту же функцию → тоже зацикливался.
+- **Fix Summary:** Ограниченный индекс: `nextIndex = currentIndex + direction; if (nextIndex < 0 || nextIndex >= gallery.length) return`. Границы `atFirst`/`atLast` из `currentIndex`; стрелки `disabled`. Swipe использует ту же ограниченную функцию.
+- **Regression Checklist:**
+  - [ ] На первой фото Prev не листает (скрыт), Next работает.
+  - [ ] На последней фото Next не листает (скрыт), Prev работает.
+  - [ ] Swipe не перескакивает last↔first.
+  - [ ] Dots/thumbnails синхронны.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live (`/product/20`, 3 фото): 1-я → prev disabled/next active; последняя → next disabled/prev active; повторный Next на последней НЕ меняет индекс (остаётся 2); dots(3) синхронны. PASSED.
+- **Notes:** `src/pages/ProductPage.jsx` (`switchGalleryImage` + `atFirst`/`atLast`). Связано с [[LAV-BUG-042]].
+
+---
+
+## LAV-BUG-042 — Gallery arrows: устаревший стиль, нет disabled-состояний
+- **Module:** ProductPage gallery arrows (`src/components/Icons.jsx`, `src/styles/index.css`)
+- **Platform:** both
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P3
+- **Severity:** S4
+- **Status:** FIXED
+- **Found By:** Owner
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **Description:** Обновить стрелки поверх фото: аккуратный chevron, белый полупрозрачный круг, тонкий border, лёгкая тень, хороший tap-target; при одном фото — не показывать; на границе — disabled/hidden.
+- **Root Cause:** Использовалась полноразмерная стрелка (`IconArrow`) в непрозрачном круге, без состояний границ.
+- **Fix Summary:** Новый `IconChevron` (тонкий chevron). `.gallery-nav` — `44px`, `rgba(255,255,255,0.72)` + `backdrop-filter: blur(6px)`, `border 1px solid rgba(255,255,255,0.7)`, мягкая тень, `--plum` icon; `:disabled { opacity:0; pointer-events:none }`. При одном фото блок не рендерится (`gallery.length > 1`).
+- **Regression Checklist:**
+  - [ ] Одно фото → стрелок нет.
+  - [ ] Первая → левая скрыта; последняя → правая скрыта.
+  - [ ] Стрелки по краям (chevron), не перекрывают центр.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live — chevron-стиль, disabled скрывает стрелку на границе. PASSED.
+- **Notes:** `src/components/Icons.jsx` (`IconChevron`), `src/styles/index.css` (`.gallery-nav`). Связано с [[LAV-BUG-041]].
+
+---
+
+## LAV-BUG-043 — Search: Product Code находился по частичному совпадению
+- **Module:** Search engine (`src/lib/search.js`)
+- **Platform:** both
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **Description:** Название — частичный поиск (`Qı` находит `Qırmızı Don`); Product Code — только ПОЛНОЕ совпадение (код `LV2381`: `LV`/`LV23` — не находит, `LV2381` — находит).
+- **Root Cause:** В `scoreFields` код давал балл за частичное совпадение: `else if (fields.code.includes(rawQueryNorm)) score += 250`.
+- **Fix Summary:** Удалена ветка partial для кода — осталось только точное `if (fields.code === rawQueryNorm) score += 500`. Поиск по названию (частичный/префикс/подстрока/опечатка) не изменён.
+- **Regression Checklist:**
+  - [ ] `Qı` → `Qırmızı Don` найден (name partial).
+  - [ ] `LV`, `LV23`, `LV238` → по коду НЕ найден.
+  - [ ] `LV2381` (и `lv2381`) → найден.
+  - [ ] `2002` → найден, `200` → нет.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; **unit-тест движка (node)**: name-partial `Qı`/`qirm` → PASS; code `LV`/`LV23`/`LV238`/`200` → НЕ находит (нейтральный бренд); `LV2381`/`lv2381`/`2002` → находит. Все PASSED. (Примечание: запрос-подстрока бренда, напр. `LV` ⊂ `Elva`, найдёт товар по БРЕНДУ — отдельный существующий partial-поиск бренда, не по коду.)
+- **Notes:** `src/lib/search.js` (`scoreFields` — code exact-only). Связано с [[LAV-BUG-035]].
+
+---
+
+## LAV-BUG-044 — Add to cart: при невыбранном размере валидация появлялась внизу страницы (плохой UX)
+- **Module:** ProductPage add-to-cart (`src/pages/ProductPage.jsx`, `src/styles/index.css`)
+- **Platform:** mobile (в первую очередь)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **Description:** При нажатии «Səbətə əlavə et» без выбора размера визуально «ничего не происходило» — сообщение появлялось внизу (у селектора размеров), вне видимости у sticky-кнопки. Нужно: сообщение рядом со sticky Add-to-cart + подсветка селектора размеров; без alert/confirm/авто-скролла; после выбора размера сообщение исчезает.
+- **Root Cause:** Варн (`{warn && <span className="size-warn">}`) рендерился только в поле размеров (вверху контента), а действие инициируется со sticky-бара внизу — пользователь его не видел.
+- **Fix Summary:** В sticky `.product-buybar` добавлена строка над кнопкой (`.pd-buybar-warn`, `role="alert"`) при `warn`. Селектор размеров подсвечивается (`.size-options.warn` — красная рамка + короткий shake, отключается при `prefers-reduced-motion`). `warn` сбрасывается при выборе размера → сообщение исчезает. Порядок в `handleAdd` не изменён: сначала проверка входа (гость → auth-модалка), затем размер (для вошедшего) → `setWarn(true)`. Без alert/confirm/scroll.
+- **Regression Checklist:**
+  - [ ] Вошедший, размер обязателен и не выбран → tap sticky «Add» → сообщение над кнопкой + подсветка размеров, без скролла.
+  - [ ] После выбора размера сообщение исчезает.
+  - [ ] Размер не обязателен — сообщения нет, товар добавляется.
+  - [ ] Гость → tap «Add» → auth-модалка (без изменений).
+- **Regression History:** 2026-08-07 — `vite build` — успешно; логика проверена по коду (для гостя live подтверждена auth-модалка). Живой сценарий вошедшего/мобильный — за владельцем.
+- **Notes:** `src/pages/ProductPage.jsx` (buybar warn + size-options warn class), `src/styles/index.css` (`.pd-buybar-warn`, `.size-options.warn`). Связано с [[LAV-BUG-039]].

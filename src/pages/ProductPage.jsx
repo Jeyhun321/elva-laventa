@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
-import { IconHeart, IconBag, IconArrow, IconShare, IconSparkle } from '../components/Icons.jsx'
+import { IconHeart, IconBag, IconShare, IconSparkle, IconChevron } from '../components/Icons.jsx'
 import ProductImage from '../components/ProductImage.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Rating from '../components/Rating.jsx'
@@ -45,8 +45,13 @@ export default function ProductPage() {
     : (folderGallery.length ? folderGallery : savedImages)
   const mainImage = selectedImage || gallery[0] || product.image
   const currentIndex = Math.max(0, gallery.indexOf(mainImage))
+  const atFirst = currentIndex <= 0
+  const atLast = currentIndex >= gallery.length - 1
+  // Sərhədli naviqasiya (TASK 2): sonuncudan → birinciyə KEÇMİR, əksi də.
+  // Modulo/wrap-around çıxarıldı; həddə çatanda dəyişmir. Swipe də bunu çağırır.
   const switchGalleryImage = (direction) => {
-    const nextIndex = (currentIndex + direction + gallery.length) % gallery.length
+    const nextIndex = currentIndex + direction
+    if (nextIndex < 0 || nextIndex >= gallery.length) return
     setSelectedImage(gallery[nextIndex])
   }
   const fav = isFavorite(product.id)
@@ -197,16 +202,18 @@ export default function ProductPage() {
                   className="gallery-nav gallery-nav-prev"
                   onClick={() => switchGalleryImage(-1)}
                   aria-label={t('image_prev')}
+                  disabled={atFirst}
                 >
-                  <IconArrow />
+                  <IconChevron />
                 </button>
                 <button
                   type="button"
                   className="gallery-nav gallery-nav-next"
                   onClick={() => switchGalleryImage(1)}
                   aria-label={t('image_next')}
+                  disabled={atLast}
                 >
-                  <IconArrow />
+                  <IconChevron />
                 </button>
               </>
             )}
@@ -299,7 +306,7 @@ export default function ProductPage() {
             <span className="field-label">
               {t('size')}{needsSize && <em className="req"> *</em>}
             </span>
-            <div className="size-options">
+            <div className={`size-options${warn ? ' warn' : ''}`}>
               {product.sizes.map((s) => (
                 <button
                   key={s}
@@ -383,18 +390,25 @@ export default function ProductPage() {
       )}
 
       {/* Mobil sabit alış paneli: solda qiymət + pulsuz çatdırılma, sağda "Səbətə əlavə et".
-          Masaüstündə gizlidir (yuxarıdakı .detail-actions işləyir). */}
+          Masaüstündə gizlidir (yuxarıdakı .detail-actions işləyir).
+          TASK 5 — ölçü seçilməyibsə, düymənin ÜSTÜNDƏ (elə burada) validasiya mesajı
+          göstərilir; alert/scroll yoxdur; ölçü seçiləndə mesaj itir. */}
       <div className="product-buybar">
-        <div className="pd-buybar-price">
-          <span className="pd-buybar-amount">
-            {product.price} ₼
-            {onSale && <s>{product.oldPrice} ₼</s>}
-          </span>
-          <span className="pd-buybar-delivery">{t('badge_free_delivery')}</span>
+        {warn && (
+          <p className="pd-buybar-warn" role="alert">{t('choose_size_first')}</p>
+        )}
+        <div className="pd-buybar-row">
+          <div className="pd-buybar-price">
+            <span className="pd-buybar-amount">
+              {product.price} ₼
+              {onSale && <s>{product.oldPrice} ₼</s>}
+            </span>
+            <span className="pd-buybar-delivery">{t('badge_free_delivery')}</span>
+          </div>
+          <button className="pd-buybar-cta" onClick={handleAdd}>
+            <IconBag /> {added ? t('in_cart') + ' ✓' : t('add_to_cart')}
+          </button>
         </div>
-        <button className="pd-buybar-cta" onClick={handleAdd}>
-          <IconBag /> {added ? t('in_cart') + ' ✓' : t('add_to_cart')}
-        </button>
       </div>
     </div>
   )

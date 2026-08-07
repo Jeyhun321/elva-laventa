@@ -315,6 +315,14 @@ export const ui = {
     en: 'Made from quality material — comfortable and elegant. Perfect for everyday and special occasions.',
   },
   delivery: { az: 'Çatdırılma', ru: 'Доставка', en: 'Delivery' },
+  // Çatdırılma üsulu (Checkout)
+  delivery_method: { az: 'Çatdırılma üsulu', ru: 'Способ доставки', en: 'Delivery method' },
+  delivery_standard: { az: 'Standart çatdırılma', ru: 'Стандартная доставка', en: 'Standard delivery' },
+  delivery_express: { az: 'Ekspress çatdırılma', ru: 'Экспресс-доставка', en: 'Express delivery' },
+  delivery_standard_time: { az: '1–3 iş günü', ru: '1–3 рабочих дня', en: '1–3 business days' },
+  delivery_express_time: { az: '6 saata qədər', ru: 'до 6 часов', en: 'up to 6 hours' },
+  delivery_free: { az: 'Pulsuz', ru: 'Бесплатно', en: 'Free' },
+  products_subtotal: { az: 'Məhsullar', ru: 'Товары', en: 'Products' },
   delivery_info: {
     az: '1-3 gün · 100 ₼-dən yuxarı pulsuz',
     ru: '1–3 дня · бесплатно от 100 ₼',
