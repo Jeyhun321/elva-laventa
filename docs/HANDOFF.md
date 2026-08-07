@@ -2,7 +2,9 @@
 
 ## Current Status
 
-Мобильный пакет фиксов каталога/навигации (BAG1–BAG6 из ТЗ владельца → LAV-BUG-027 REOPENED + LAV-BUG-030/031/032/033). Изменения в рабочем дереве, `vite build` — успешно; часть проверок сделана вживую в браузере (dev), часть недоступна в инструменте (см. ниже). Desktop не переделывался (проверялся на отсутствие регрессий; тесты шли на desktop-viewport). Готово к commit → push → deploy.
+Мобильный пакет фиксов каталога/навигации (BAG1–BAG6 из ТЗ владельца → LAV-BUG-027 REOPENED + LAV-BUG-030/031/032/033) **+ follow-up LAV-BUG-034** (круг на главной оставался «активным» после Back — залипающий `:hover` на touch). Изменения в рабочем дереве, `vite build` — успешно; часть проверок сделана вживую в браузере (dev), часть недоступна в инструменте (см. ниже). Desktop не переделывался (проверялся на отсутствие регрессий; тесты шли на desktop-viewport). Готово к commit → push → deploy.
+
+**LAV-BUG-034 (root cause):** у домашних круглых категорий НЕТ JS-состояния `activeCategory` (простые `<Link>`). «Активный» вид — это CSS `.cat-circle:hover`, залипающий на сенсорных экранах после тапа/касания при свайпе. Фикс: hover вынесен в `@media (hover: hover) and (pointer: fine)` (на touch hover не возникает → ничего не залипает) + кратковременный `:active` отклик. Это ОТДЕЛЬНАЯ первопричина от LAV-BUG-027 (там чип каталога + история, состояние корректно).
 
 **Важно про деплой:** один пуш на задачу (второй «docs: SHA» коммит отменял деплой первого из-за гонки `cancel-in-progress` — см. LAV-BUG-026). Предыдущий прод-деплой `c75f136` успешно уехал 2026-08-07 (run #139).
 
@@ -59,7 +61,7 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260807-133041
+Recovery ID: R-20260807-134500
 
 1. **Проект:** Elva LaVenta — React/Vite storefront магазина женской одежды, Supabase (Frankfurt), деплой GitHub Pages.
 2. **Описание:** интернет-магазин: каталог, избранное, корзина, checkout через WhatsApp, admin-панель, три языка AZ/RU/EN.
@@ -93,6 +95,6 @@ Expected modified files:
 Git status summary: изменения в рабочем дереве, не закоммичены на момент записи; прод-деплой run #139 = c75f136 (success, 2026-08-07)
 Documentation updated: YES
 Last verified build: vite build — успешно, 2026-08-07
-Last verified tests: нет test-скриптов; live (dev) — LAV-BUG-030/027 PASSED; LAV-BUG-031/032/033 — NOT VERIFIED в инструменте (webview: нет программного скролла/узкого viewport)
+Last verified tests: нет test-скриптов; live (dev) — LAV-BUG-030/027 PASSED; LAV-BUG-031/032/033/034 — NOT VERIFIED в инструменте (webview: нет программного скролла/узкого viewport/touch-hover:none)
 Recovery confidence: MEDIUM
 ```

@@ -950,6 +950,31 @@
 - **Regression History:** 2026-08-07 — `vite build` — успешно; замер (desktop, force-visible) — правило применяется. **Live mobile NOT VERIFIED в инструменте** (нет узкого viewport). Живая проверка на телефоне — за владельцем.
 - **Notes:** `src/styles/index.css` (≤900px блок). Прежнего B-ID не было.
 
+## LAV-BUG-034 — Главная: круглая категория (Donlar) остаётся визуально «активной» после возврата Back
+- **Module:** Categories (круглая лента на главной, mobile/touch)
+- **Platform:** mobile (touch)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S2
+- **Status:** FIXED (live touch — NOT VERIFIED в инструменте)
+- **Found By:** Owner (видео, повторно)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — на реальном устройстве
+- **Description:** Главная → «Hamısına bax» → каталог → Back → главная: круглая категория (напр. `Donlar`) остаётся визуально подсвеченной («активной»), хотя пользователь ничего не выбирал.
+- **Steps to Reproduce:** Mobile: главная → тап по круглой категории/секции (палец касается круга) → каталог → Back → главная.
+- **Expected Result:** После возврата ни один круг не подсвечен без явного выбора; URL/route/список/вид кругов синхронны (у кругов нет состояния выбора вообще).
+- **Actual Result:** Круг остаётся с hover-подсветкой (лавандовый фон, подъём, тень).
+- **Root Cause:** **Это НЕ состояние `activeCategory`** — у домашних кругов его нет (проверено: в `Categories.jsx`/`homeNav.js` нет `activeCategory`/`classList`/`.active`; круги — простые `<Link>`). Настоящая первопричина — CSS `.cat-circle:hover` (сильная подсветка) **залипает на touch**: тап/касание при свайпе включает `:hover`, который на сенсорных экранах держится до тапа по другому элементу. После client-side Back элемент сохраняет застрявший `:hover` → выглядит «активным». (Это отдельная первопричина от LAV-BUG-027, где речь про чип каталога и историю — там состояние корректно.)
+- **Fix Summary:** Hover-визуал круга вынесен в `@media (hover: hover) and (pointer: fine)` — на touch-устройствах `:hover` не возникает вовсе, ничего не залипает. Добавлен кратковременный `:active` отклик (`scale(0.94)`, снимается при отпускании). `:focus-visible` (клавиатура) сохранён. Никакого JS-состояния/подсветки по маршруту не добавлялось — синхронизация полная по построению (нет активного состояния без выбора).
+- **Fix Verification checklist:**
+  - [ ] A. Главная → «Hamısına bax»/круг → каталог → Back → ни один круг не подсвечен.
+  - [ ] B. Тап по `Donlar`/`Bluzalar`/`Ətəklər` → Back → круг не «активен».
+  - [ ] C. Свайп ленты (палец скользит по кругам) → ни один не остаётся подсвеченным.
+  - [ ] D. Desktop (мышь): hover-подсветка по-прежнему работает при наведении.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; проверено в коде: единственный источник «активного» вида — `:hover` (нет JS-состояния). **Live touch NOT VERIFIED в инструменте** (webview рендерит как desktop `hover:hover`, не эмулирует `hover:none`/touch). Живая проверка на телефоне — за владельцем.
+- **Notes:** `src/styles/index.css` (`.cat-circle` hover → `@media (hover:hover)` + `:active`). Связано с [[LAV-BUG-027]] (другая первопричина), [[LAV-BUG-032]]. Прежнего B-ID не было.
+
 ## LAV-BUG-028 — Mobile header: логотип Elva LaVenta слишком мелкий
 - **Module:** Header (mobile) — брендовый логотип
 - **Platform:** mobile (desktop — без изменений)

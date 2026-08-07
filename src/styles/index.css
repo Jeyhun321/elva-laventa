@@ -770,14 +770,25 @@ ul {
   transition: color 0.3s var(--ease);
   line-height: 1.25;
 }
-.cat-circle:hover .cat-circle-icon {
-  background: var(--lavender-mist);
-  border-color: var(--lavender-light);
-  color: var(--lavender);
-  transform: translateY(-5px);
-  box-shadow: var(--shadow-md);
+/* LAV-BUG-034: aktiv görünüşü YALNIZ həqiqi kursor (mouse) üçün.
+   Toxunma cihazlarında `:hover` tıkdan sonra "yapışıb" qalır → geri qayıdanda
+   dairə (məs. Donlar) səhvən "aktiv" görünür. `@media (hover: hover)` ilə
+   sensor ekranlarda hover ümumiyyətlə yaranmır — heç nə yapışmır.
+   Dairələrin JS-də activeCategory state-i yoxdur (sadə <Link>), ona görə
+   geri qayıdışdan sonra istifadəçi seçmədən heç bir aktiv vəziyyət qalmır. */
+@media (hover: hover) and (pointer: fine) {
+  .cat-circle:hover .cat-circle-icon {
+    background: var(--lavender-mist);
+    border-color: var(--lavender-light);
+    color: var(--lavender);
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-md);
+  }
+  .cat-circle:hover .cat-circle-label { color: var(--plum); }
 }
-.cat-circle:hover .cat-circle-label { color: var(--plum); }
+/* Toxunma: yalnız basıldığı AN qısa geribildirim (buraxılanda dərhal keçir,
+   yapışmır) — klaviatura fokusu üçün incə çərçivə saxlanılır. */
+.cat-circle:active .cat-circle-icon { transform: scale(0.94); }
 .cat-circle:focus-visible { border-radius: var(--radius); }
 
 @keyframes marquee {
