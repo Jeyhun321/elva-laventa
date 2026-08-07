@@ -1339,3 +1339,29 @@
   - [ ] Desktop header — без изменений (обёртка display:contents, Back скрыт).
 - **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live (`/product/20`): `.header-search-row` display=`contents`, `.header-back` display=`none`, логотип 210px, поиск inline, нет горизонтального overflow — desktop без регрессий. Мобильная ширина — за владельцем (инструмент рендерит desktop 1536px).
 - **Notes:** `src/components/Header.jsx` (обёртка `.header-search-row` + Back внутри), `src/styles/index.css` (`.header-search-row` contents/flex, product-mobile правила). Пересматривает компоновку [[LAV-BUG-040]] (та запись — историческая).
+
+---
+
+## LAV-BUG-046 — Product Page (mobile): единый badge «Pulsuz çatdırılma» (2 строки + иконка), убран «Sabah göndərilir»; логотип крупнее
+- **Module:** ProductPage badge + Header logo (`src/pages/ProductPage.jsx`, `src/components/Icons.jsx`, `src/styles/index.css`)
+- **Platform:** mobile
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P3
+- **Severity:** S4
+- **Status:** FIXED
+- **Found By:** Owner (референс)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **Description:** На мобильной странице товара поверх фото было две плашки (`Pulsuz çatdırılma` тёмная + `Sabah göndərilir` зелёная). Нужно: удалить зелёную; оставить ОДИН badge доставки — компактный, тёмный, слегка скруглённый, с белой иконкой коробки слева и текстом в ДВЕ строки (`Pulsuz` / `çatdırılma`). Плюс (Task 1, полировка): логотип в header товара заметно крупнее.
+- **Root Cause:** N/A (доработка UI под утверждённый референс).
+- **Fix Summary:**
+  - **Badge:** удалён `pd-badge-ship` (зелёный «Sabah göndərilir») из разметки и CSS. `Pulsuz çatdırılma` переделан в `.pd-badge-free`: тёмный `rgba(42,22,32,0.9)`, `border-radius:12px`, мягкая тень; слева `.pd-badge-icon` (белая коробка — новый `IconBox`, SVG, без библиотек) на полупрозрачном квадрате; текст `.pd-badge-text` — `display:flex; flex-direction:column`, слова из i18n `badge_free_delivery` разбиты по пробелу → 2 строки (работает для AZ/RU/EN, каждое = 2 слова). Остаётся mobile-only (`pd-badge-delivery` → `display:none` на desktop). Позиция — прежний верхний левый угол; галерея/стрелки/избранное/Share/карточка не тронуты.
+  - **Logo (Task 1):** на `@media(max-width:900px) .header.header-product` логотип `width: min(184px, 44vw); height:46px` — крупнее, но помещается с Profile/Fav/Cart на всех ширинах 320–430px (Back уже во 2-й строке из [[LAV-BUG-045]]).
+- **Regression Checklist:**
+  - [ ] Мобильный товар: один badge «Pulsuz / çatdırılma» (2 строки) с иконкой коробки; зелёного «Sabah göndərilir» нет.
+  - [ ] Badge не перекрывает лицо модели, не слишком большой; верхний левый угол.
+  - [ ] Логотип заметно крупнее; header в 2 строки без горизонтального скролла (320–430px).
+  - [ ] Галерея/стрелки/избранное/Share/карточка — без изменений.
+  - [ ] Desktop — без изменений (badge `display:none`, logo-правила только в mobile media).
+- **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live (`/product/20`): `.pd-badge-free` текст = `["Pulsuz","çatdırılma"]`, иконка есть, `.pd-badge-ship` отсутствует в DOM, badge `display:none` на desktop, нет горизонтального overflow, логотип desktop 210px (не тронут). Мобильная ширина — за владельцем (инструмент рендерит desktop 1536px).
+- **Notes:** `src/components/Icons.jsx` (`IconBox`), `src/pages/ProductPage.jsx` (`.pd-badge-free`, убран ship), `src/styles/index.css` (`.pd-badge-free`/`.pd-badge-icon`/`.pd-badge-text`, product-mobile logo `min(184px,44vw)`). Связано с [[LAV-BUG-045]] (header 2 строки), [[LAV-BUG-039]] (badges/overlay). i18n-ключ `badge_ships_fast` больше не используется (оставлен, безвреден).

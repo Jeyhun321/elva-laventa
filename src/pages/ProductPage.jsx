@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
-import { IconHeart, IconBag, IconShare, IconSparkle, IconChevron } from '../components/Icons.jsx'
+import { IconHeart, IconBag, IconShare, IconSparkle, IconChevron, IconBox } from '../components/Icons.jsx'
 import ProductImage from '../components/ProductImage.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import Rating from '../components/Rating.jsx'
@@ -164,16 +164,23 @@ export default function ProductPage() {
           >
             <ProductImage product={{ ...product, image: mainImage, name: t(product.name) }} eager />
 
-            {/* Sol üst: universal "yeni" qığılcımı + İKİ lokal çatdırılma nişanı
-                (+ endirim faizi varsa). Türk mətni yoxdur — hamısı i18n. */}
+            {/* Sol üst: universal "yeni" qığılcımı + BİR "Pulsuz çatdırılma" nişanı
+                (qutu ikonu + 2 sətirli mətn). "Sabah göndərilir" nişanı silindi.
+                Türk mətni yoxdur — hamısı i18n. */}
             <div className="pd-media-badges">
               {product.tag && (
                 <span className="product-badge" role="img" aria-label={t('new_arrivals')} title={t('new_arrivals')}>
                   <IconSparkle />
                 </span>
               )}
-              <span className="pd-badge pd-badge-dark pd-badge-delivery">{t('badge_free_delivery')}</span>
-              <span className="pd-badge pd-badge-ship pd-badge-delivery">{t('badge_ships_fast')}</span>
+              <span className="pd-badge pd-badge-free pd-badge-delivery">
+                <span className="pd-badge-icon" aria-hidden="true"><IconBox /></span>
+                <span className="pd-badge-text">
+                  {t('badge_free_delivery').split(' ').map((word, i) => (
+                    <span key={i}>{word}</span>
+                  ))}
+                </span>
+              </span>
               {onSale && (
                 <span className="pd-badge pd-badge-sale">-{discountPercent(product)}%</span>
               )}

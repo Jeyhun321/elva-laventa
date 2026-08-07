@@ -38,6 +38,16 @@ export const IconArrow = (p) => (
   </svg>
 )
 
+// Çatdırılma qutusu (package/box) — məhsul şəkli üstündəki "Pulsuz çatdırılma" nişanı üçün
+export const IconBox = (p) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M21 8.5 12 13 3 8.5 12 4l9 4.5Z" />
+    <path d="M3 8.5v7L12 20l9-4.5v-7" />
+    <path d="M12 13v7" />
+  </svg>
+)
+
 // Chevron (nazik "ox ucu") — qalereya naviqasiyası üçün (sağa baxır; sol üçün fırlanır)
 export const IconChevron = (p) => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"

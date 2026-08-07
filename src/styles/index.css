@@ -2356,10 +2356,36 @@ a.product-media {
   box-shadow: 0 2px 8px rgba(42, 22, 32, 0.16);
 }
 .pd-badge-dark { background: rgba(42, 22, 32, 0.86); color: #fff; }
-.pd-badge-ship { background: #1f9d55; color: #fff; }
 .pd-badge-sale { background: var(--sale); color: #fff; }
-/* İki çatdırılma nişanı yalnız mobildə (desktop-da şəkil sadə qalır) */
+/* Çatdırılma nişanı yalnız mobildə (desktop-da şəkil sadə qalır) */
 .pd-badge-delivery { display: none; }
+
+/* TASK 2 — vahid "Pulsuz çatdırılma" nişanı: kompakt, tünd, yumşaq künclər,
+   solda ağ qutu ikonu, mətn İKİ sətir (Pulsuz / çatdırılma). LaVenta üslubu. */
+.pd-badge-free {
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 7px;
+  border-radius: 12px;
+  background: rgba(42, 22, 32, 0.9);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(42, 22, 32, 0.22);
+}
+.pd-badge-free .pd-badge-icon {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.pd-badge-free .pd-badge-icon svg { width: 16px; height: 16px; }
+.pd-badge-free .pd-badge-text {
+  display: flex; flex-direction: column;
+  line-height: 1.08;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.01em;
+  text-align: left;
+}
 
 /* Şəkil üstü sağ düymələr: Sevimli + Paylaş (mobil) */
 .pd-media-actions {
@@ -2402,9 +2428,23 @@ a.product-media {
        1-ci sətir: İRİ loqo (solda) ........ Profil / Sevimli / Səbət (sağda)
        2-ci sətir: [←] Geri  +  axtarış (axtarış yalnız SOLDAN qısalır;
                    sağ kənarı və 🔍 düyməsi yerində qalır).
-     Geri artıq 1-ci sətirdə deyil → loqo öz tam (iri) ölçüsünü saxlayır.
-     Loqo ölçüsü üçün ayrıca override YOXDUR — ümumi mobil ölçü (iri) işləyir. */
+     Geri artıq 1-ci sətirdə deyil → loqo daha İRİ ola bilər. */
   .header-product .header-back { display: inline-flex; }
+
+  /* İRİ loqo (mockup): geri düyməsi 2-ci sətrə keçdiyi üçün 1-ci sətirdə yer var.
+     `min(184px, 44vw)` — bütün telefon enlərində (320–430px) Profil/Sevimli/Səbət
+     ilə birlikdə bir sıraya sığır, wrap olmur. Firmayı proporsiya qorunur. */
+  .header.header-product .brand-logo {
+    flex: 0 0 auto;
+    height: 46px;
+    width: min(184px, 44vw);
+  }
+  .header.header-product .brand-logo-image {
+    width: 100%;
+    height: 46px;
+    object-fit: contain;
+    object-position: left center;
+  }
 
   /* 2-ci sətir: geri + axtarış bir konteynerdə, tam eninə (order:4) */
   .header.header-product .header-search-row {
