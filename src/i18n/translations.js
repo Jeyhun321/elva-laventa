@@ -281,6 +281,11 @@ export const ui = {
     en: 'No products in this category.',
   },
   search_results: { az: 'Axtarış nəticələri', ru: 'Результаты поиска', en: 'Search results' },
+  no_exact_matches: {
+    az: 'Dəqiq nəticə tapılmadı. Oxşar məhsullar',
+    ru: 'Точных совпадений не найдено. Похожие товары',
+    en: 'No exact matches found. Similar products',
+  },
   nothing_found: {
     az: 'Heç nə tapılmadı',
     ru: 'Ничего не найдено',

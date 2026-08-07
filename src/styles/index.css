@@ -1535,6 +1535,31 @@ ul {
 .search-btn:hover {
   background: var(--plum);
 }
+/* Öz "X" düyməmiz var — brauzerin öz təmizləmə düyməsini gizlədirik (dublikat olmasın) */
+.search input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.search-clear {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  align-self: stretch;
+  flex: 0 0 auto;
+  background: none;
+  color: var(--ink-soft);
+  transition: color 0.2s ease;
+}
+.search-clear:hover { color: var(--plum); }
+.search-clear svg { width: 16px; height: 16px; }
+
+/* "Dəqiq nəticə yoxdur — oxşar məhsullar" bildirişi (axtarış fallback) */
+.search-similar-note {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--lavender-mist, rgba(229, 57, 154, 0.08));
+  color: var(--plum);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
 
 /* Header actions */
 .header-actions {

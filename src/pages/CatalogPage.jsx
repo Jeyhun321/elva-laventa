@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
-import { searchScores } from '../lib/search.js'
+import { searchScores, similarProducts, SEARCH_MIN } from '../lib/search.js'
 import ProductCard from '../components/ProductCard.jsx'
 import { IconSliders, IconClose, IconArrowLeft } from '../components/Icons.jsx'
 
@@ -127,45 +127,52 @@ export default function CatalogPage() {
     return map
   }, [categories])
 
-  const visible = useMemo(() => {
+  // Nəticə: {items, similar}. similar=true → "dəqiq nəticə yoxdur, oxşarlar".
+  const result = useMemo(() => {
     const query = q.trim()
-    let list = products
-    let scoreOf = null
+    const getCatText = (p) => catTextById.get(p.category) || ''
 
-    if (query) {
-      // Ağıllı axtarış: qismən/prefiks/alt-sətir + yazı səhvi, bütün kataloq üzrə
-      // (axtarışda kateqoriya filtri tətbiq olunmur — nəticələr qlobaldır).
-      const { scores } = searchScores(products, query, (p) => catTextById.get(p.category) || '')
-      scoreOf = (p) => scores.get(p.id) || 0
-      list = list.filter((p) => scoreOf(p) > 0)
-    } else if (cat !== 'all') {
-      list = list.filter((p) => p.category === cat)
+    // --- Axtarış rejimi (sorğu ≥ SEARCH_MIN) ---
+    if (query.length >= SEARCH_MIN) {
+      const { scores } = searchScores(products, query, getCatText)
+      let matches = products.filter((p) => scores.get(p.id) > 0)
+      if (onlySale) matches = matches.filter((p) => p.oldPrice)
+      matches = matches.filter((p) => p.price >= minPrice && p.price <= maxPrice)
+
+      if (matches.length > 0) {
+        // Relevantlıq ƏSAS, priority yalnız eyni relevantlıq daxilində sıralayır.
+        // ТЗ: релевантность > priority — nərelevant featured nəticəyə düşmür.
+        matches = [...matches].sort((a, b) =>
+          ((scores.get(b.id) || 0) - (scores.get(a.id) || 0)) ||
+          (Number(!!b.isFeatured) - Number(!!a.isFeatured)) ||
+          (b.rating - a.rating)
+        )
+        return { items: matches, similar: false }
+      }
+      // Dəqiq uyğunluq yoxdur → oxşar məhsullar (açıq başlıqla)
+      return { items: similarProducts(products, query, getCatText), similar: true }
     }
 
+    // --- Adi kataloq rejimi (axtarış yoxdur) ---
+    let list = products
+    if (cat !== 'all') list = list.filter((p) => p.category === cat)
     if (onlySale) list = list.filter((p) => p.oldPrice)
     list = list.filter((p) => p.price >= minPrice && p.price <= maxPrice)
 
     const sorted = [...list]
-    if (query) {
-      // Prioritet (is_featured) əvvəldə; sonra relevantlıq balı; sonra reytinq.
-      // Bir neçə prioritet varsa — öz aralarında relevantlıq üzrə sıralanır.
-      sorted.sort((a, b) =>
-        (Number(!!b.isFeatured) - Number(!!a.isFeatured)) ||
-        (scoreOf(b) - scoreOf(a)) ||
-        (b.rating - a.rating)
-      )
-    } else {
-      switch (sort) {
-        case 'price_asc': sorted.sort((a, b) => a.price - b.price); break
-        case 'price_desc': sorted.sort((a, b) => b.price - a.price); break
-        case 'rating': sorted.sort((a, b) => b.rating - a.rating); break
-        case 'discount': sorted.sort((a, b) => discountPercent(b) - discountPercent(a)); break
-        case 'new': sorted.sort((a, b) => b.id - a.id); break // Yeni gələnlər — ən yenilər əvvəldə
-        default: break
-      }
+    switch (sort) {
+      case 'price_asc': sorted.sort((a, b) => a.price - b.price); break
+      case 'price_desc': sorted.sort((a, b) => b.price - a.price); break
+      case 'rating': sorted.sort((a, b) => b.rating - a.rating); break
+      case 'discount': sorted.sort((a, b) => discountPercent(b) - discountPercent(a)); break
+      case 'new': sorted.sort((a, b) => b.id - a.id); break // Yeni gələnlər — ən yenilər əvvəldə
+      default: break
     }
-    return sorted
+    return { items: sorted, similar: false }
   }, [products, cat, q, sort, minPrice, maxPrice, onlySale, catTextById])
+
+  const visible = result.items
+  const showSimilarNotice = result.similar
 
   // Pərdə açıqkən: Esc bağlayır, fokus içəri keçir, arxa fon sürüşmür,
   // bağlananda fokus düyməyə qayıdır.
@@ -397,6 +404,11 @@ export default function CatalogPage() {
               </select>
             </label>
           </div>
+
+          {/* Dəqiq uyğunluq yoxdursa — açıq bildiriş: bunlar oxşar məhsullardır */}
+          {showSimilarNotice && visible.length > 0 && (
+            <p className="search-similar-note" role="status">{t('no_exact_matches')}</p>
+          )}
 
           {visible.length > 0 ? (
             <div className="product-grid">

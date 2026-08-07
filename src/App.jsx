@@ -65,8 +65,11 @@ function ScrollManager() {
         return () => cancelAnimationFrame(raf)
       }
     }
-    // Yeni səhifə və ya filtr dəyişikliyi — həmişə yuxarıdan
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' })
+    // REPLACE (yerində yenilənmə: axtarış/filtr/sort) — mövqeyi SAXLA, sıçratma.
+    // Yalnız PUSH (yeni səhifə) yuxarıdan başlayır.
+    if (navType === 'PUSH') {
+      window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' })
+    }
     return undefined
   }, [location.key, navType])
 

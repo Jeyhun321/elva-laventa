@@ -56,26 +56,19 @@ function withinEditDistance(a, b, max) {
   return dp[la] <= max
 }
 
-// Sahə çəkiləri: kod ən güclü, sonra ad, kateqoriya, brend, teq, təsvir.
-const FIELD_WEIGHTS = {
-  code: 100,
-  name: 42,
-  category: 24,
-  brand: 18,
-  tag: 14,
-  description: 6,
-}
-// Fuzzy yalnız "mənalı" sahələrdə (qısa kodlarda səhv nəticə verməsin).
-const FUZZY_FIELDS = new Set(['name', 'category', 'brand'])
+// Axtarış üçün minimum sorğu uzunluğu (qısa sorğuda böyük təsadüfi siyahı olmasın).
+export const SEARCH_MIN = 2
 
 // Məhsulun axtarış üçün normallaşdırılmış mətn sahələri.
+// names — hər dil üçün ayrıca (ada görə "tam / prefiks / qismən" mərtəbələri üçün).
 // getCategoryText(product) → kateqoriyanın adı (bütün dillər birləşmiş).
 export function productSearchFields(product, getCategoryText) {
-  const names = product?.name ? Object.values(product.name).join(' ') : ''
+  const names = product?.name ? Object.values(product.name).map(normalizeText).filter(Boolean) : []
   const descs = product?.description ? Object.values(product.description).join(' ') : ''
   return {
+    names,
+    nameJoined: names.join(' '),
     code: normalizeText(product?.code),
-    name: normalizeText(names),
     category: normalizeText(getCategoryText ? getCategoryText(product) : ''),
     brand: normalizeText(product?.brand),
     tag: normalizeText(product?.tag),
@@ -83,36 +76,53 @@ export function productSearchFields(product, getCategoryText) {
   }
 }
 
-// Bir məhsulun sorğuya görə relevantlıq balı. 0 = uyğun deyil.
-export function scoreFields(fields, queryTokens, rawQueryNorm) {
+// Relevantlıq balı — ТЗ sıralamasına uyğun mərtəbələr:
+//   ad tam > ad başlanğıcı > ad qismən > kod > kateqoriya/teq > brend/təsvir.
+// Böyük fərqlərlə (fraza mərtəbəsi) ad kod/kateqoriyadan həmişə yuxarı qalır;
+// çoxsözlü sorğu üçün token-səviyyəli əlavələr toplanır.
+export function scoreFields(fields, queryTokens, rawQueryNorm, opts = {}) {
+  const lenient = opts.lenient === true
   let score = 0
 
-  // Bütöv sorğu kodla tam üst-üstə düşürsə — çox güclü siqnal (barkod/kod axtarışı)
-  if (rawQueryNorm && fields.code && fields.code === rawQueryNorm) score += 300
-
-  for (const key in FIELD_WEIGHTS) {
-    const text = fields[key]
-    if (!text) continue
-    const w = FIELD_WEIGHTS[key]
-    const words = text.split(/\s+/)
-    const canFuzzy = FUZZY_FIELDS.has(key)
-
-    for (const qt of queryTokens) {
-      if (words.includes(qt)) { score += w; continue }                    // tam söz
-      if (words.some((wd) => wd.startsWith(qt))) { score += w * 0.8; continue } // prefiks
-      if (text.includes(qt)) { score += w * 0.55; continue }              // alt-sətir
-      if (canFuzzy && qt.length >= 4) {                                    // yazı səhvi
-        const max = qt.length >= 7 ? 2 : 1
-        if (words.some((wd) => withinEditDistance(wd, qt, max))) score += w * 0.4
-      }
+  // --- Fraza mərtəbəsi (bütöv sorğu) ---
+  let namePhrase = 0
+  if (rawQueryNorm) {
+    for (const nm of fields.names) {
+      if (nm === rawQueryNorm) namePhrase = Math.max(namePhrase, 1000)      // ad tam
+      else if (nm.startsWith(rawQueryNorm)) namePhrase = Math.max(namePhrase, 800) // ad başlanğıcı
+      else if (nm.includes(rawQueryNorm)) namePhrase = Math.max(namePhrase, 600)   // ad qismən
     }
+  }
+  score += namePhrase
+
+  if (rawQueryNorm && fields.code) {
+    if (fields.code === rawQueryNorm) score += 500                          // kod tam
+    else if (fields.code.includes(rawQueryNorm)) score += 250              // kod qismən
+  }
+
+  // --- Token səviyyəsi (hər söz) ---
+  const nameWords = fields.nameJoined ? fields.nameJoined.split(/\s+/) : []
+  const fuzzyMin = lenient ? 3 : 4
+  for (const qt of queryTokens) {
+    // ad
+    if (nameWords.includes(qt)) score += 120
+    else if (nameWords.some((w) => w.startsWith(qt))) score += 90
+    else if (fields.nameJoined.includes(qt)) score += 60
+    else if (qt.length >= fuzzyMin && nameWords.some((w) => withinEditDistance(w, qt, qt.length >= 7 ? 2 : (lenient ? 2 : 1)))) score += lenient ? 45 : 35
+    // kateqoriya / teq / brend / təsvir
+    if (fields.category && fields.category.includes(qt)) score += 55
+    if (fields.tag && fields.tag.includes(qt)) score += 45
+    if (fields.brand && fields.brand.includes(qt)) score += 35
+    if (!lenient && fields.description && fields.description.includes(qt)) score += 12
   }
   return score
 }
 
-// products → Map<id, score> (yalnız score>0). Boş sorğuda active=false.
+// products → Map<id, score> (yalnız score>0). Boş/qısa sorğuda active=false.
 export function searchScores(products, query, getCategoryText) {
   const scores = new Map()
+  const raw = (query || '').trim()
+  if (raw.length < SEARCH_MIN) return { scores, active: false }
   const tokens = tokenize(query)
   if (!tokens.length) return { scores, active: false }
   const rawQueryNorm = normalizeText(query)
@@ -121,4 +131,33 @@ export function searchScores(products, query, getCategoryText) {
     if (s > 0) scores.set(p.id, s)
   }
   return { scores, active: true }
+}
+
+// Dəqiq nəticə YOXDURSA — "oxşar məhsullar". Daha yumşaq uyğunluq
+// (kateqoriya/teq/brend + genişlənmiş fuzzy). Heç nə tapılmasa — reytinqə görə
+// ən yaxşılar. Nəticə həmişə relevantlıq üzrə, sonra featured, sonra reytinq.
+export function similarProducts(products, query, getCategoryText, limit = 12) {
+  const tokens = tokenize(query)
+  const rawQueryNorm = normalizeText(query)
+  const scored = []
+  for (const p of products) {
+    const s = tokens.length
+      ? scoreFields(productSearchFields(p, getCategoryText), tokens, rawQueryNorm, { lenient: true })
+      : 0
+    if (s > 0) scored.push({ p, s })
+  }
+  scored.sort((a, b) =>
+    (b.s - a.s) ||
+    (Number(!!b.p.isFeatured) - Number(!!a.p.isFeatured)) ||
+    (b.p.rating - a.p.rating)
+  )
+  let list = scored.map((x) => x.p)
+  if (!list.length) {
+    // Heç bir oxşar tapılmadı — ümumi tövsiyə (reytinq + featured), amma UI bunu
+    // "oxşar məhsullar" başlığı ilə açıq göstərir (təsadüfi kataloq deyil).
+    list = [...products].sort((a, b) =>
+      (Number(!!b.isFeatured) - Number(!!a.isFeatured)) || (b.rating - a.rating)
+    )
+  }
+  return list.slice(0, limit)
 }

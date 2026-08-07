@@ -2,7 +2,11 @@
 
 ## Current Status
 
-Реализован **умный поиск товаров + приоритетные товары** (F-007). Код в рабочем дереве, `vite build` — успешно; движок поиска покрыт unit-тестом и проверен вживую end-to-end на реальных данных Supabase. Готово к commit → push → deploy.
+**Поиск v2 (LAV-BUG-035): живой поиск при вводе + разделение matches/similar + релевантность>priority.** Поверх F-007 (умный поиск + приоритетные товары). Код в рабочем дереве, `vite build` — успешно; движок покрыт unit-тестом, поведение проверено вживую end-to-end на реальных данных Supabase. Готово к commit → push → deploy.
+
+**Что нового (LAV-BUG-035):** debounce-поиск в Header (~300ms, обновляет URL `?q=`, клиентский — без Supabase-запросов на символ, race-safe trailing-таймер + guard по фокусу); мин. длина 2 (`SEARCH_MIN`); при наличии совпадений — только они; при отсутствии — блок «похожие» с i18n-заголовком `no_exact_matches` (AZ/RU/EN); сортировка `score → featured → rating` (priority лишь тай-брейкер, нерелевантный featured не всплывает); кнопка ✕ сбрасывает поиск; `ScrollManager` не скроллит на REPLACE (нет прыжка при вводе); фокус инпута сохраняется.
+
+> ⚠️ **Действие владельца по F-007 остаётся:** выполнить `supabase/product-featured.sql` (колонка `is_featured`) — до этого приоритет не действует, но всё работает (read→false, graceful degrade в saveProduct).
 
 > ⚠️ **ТРЕБУЕТСЯ ДЕЙСТВИЕ ВЛАДЕЛЬЦА (БД-миграция):** выполнить `supabase/product-featured.sql` в Supabase → SQL Editor (добавляет колонку `products.is_featured boolean not null default false`). До запуска миграции приоритет просто не сохраняется/не действует — приложение **не ломается** (код читает отсутствующую колонку как `false`, а сохранение товара в админке сделано с graceful-degrade: при ошибке «нет колонки» повторяет запись без `is_featured`). После миграции флаг «⭐ Приоритетный товар» начинает работать.
 
@@ -14,7 +18,15 @@
 
 ## Last Completed Task
 
-### F-007 — Умный поиск + приоритетные товары
+### LAV-BUG-035 — Поиск v2: живой ввод + matches/similar + релевантность>priority
+
+- **Live search:** `Header.jsx` — debounce ~300ms → URL `?q=`; клиентский поиск (товары в памяти CatalogContext, Supabase не дёргается на символ); race-safe (trailing-таймер = latest-wins) + sync URL→input под guard'ом фокуса; `SEARCH_MIN=2`; лупа/Enter — необязательный submit; ✕ — сброс.
+- **matches vs similar:** `CatalogPage.jsx` — при совпадениях показываем только их; иначе `similarProducts` + i18n-заголовок `no_exact_matches`.
+- **Релевантность>priority:** сортировка `score → featured → rating`; тировка score (имя точн.>префикс>частично>код>категория/тег/бренд) в `src/lib/search.js`.
+- **UX:** `App.jsx` `ScrollManager` — вверх только на PUSH, на REPLACE позиция сохраняется (нет прыжка при вводе); Header persist → фокус/клавиатура сохраняются.
+- **Верификация:** unit (node) + live end-to-end на реальных данных — см. Last Verified Checks.
+
+### F-007 — Умный поиск + приоритетные товары (база)
 
 1. **Умный поиск (`src/lib/search.js`, новый):**
    - Нормализация: lowercase + фолдинг AZ-букв (ə→e, ı→i, ş→s, ç→c, ğ→g, ö→o, ü→u) + снятие диакритик; кириллица сохраняется. `tokenize` — по `\p{L}\p{N}` (unicode), чтобы RU-запросы не терялись.
@@ -27,9 +39,9 @@
 ## Last Verified Checks
 
 - `npm run build` — **успешно** (129 модулей).
-- **Unit-тест движка (node, `src/lib/search.js`):** partial (`don`/`dres`), exact code (`2014`→score 400), RU (`платье`), AZ-фолдинг (`etek`→Ətək), опечатка (`maxii`), **featured-буст** (при равном score featured выше), no-match→пусто. Все PASSED. (Изначально выявлен и исправлен баг: RU-запрос давал 0 из-за `[^a-z0-9]`-токенизации → заменено на `\p{L}\p{N}`.)
-- **Live end-to-end (dev, реальные данные Supabase):** `maxi`→11 (частичное), `ketan`→9 (фолдинг Kətan), `cicekli`→2, код `2002`→1, `платье`→14 (RU-мультиязычность), `maxii`→3 (опечатка), мусор→0 (empty-state). Header search → `/catalog?q=` → результаты рендерятся.
-- **NOT VERIFIED вживую:** featured-буст на реальной проде (нужна колонка `is_featured` — миграция за владельцем); тоггл в админке визуально (нужен вход в /admin) — логика тривиальна (как `isActive`), build ок.
+- **Unit-тест движка (node, `src/lib/search.js`):** min-len (1 симв → active=false); тировка (точное имя 1000+, префикс, частично, код 500, категория); **featured тай-брейкер** (при равном score featured выше, но менее релевантный featured НЕ выше более релевантного — релевантность>priority); `similarProducts` (мягкий fuzzy + топ-рейтинг fallback). Все PASSED.
+- **Live end-to-end (dev, реальные данные Supabase):** «Max»→10 релевантных (Maxi в топе, не весь каталог 14); «2002»→1 (код); «cicekli»→2; «qwxzk»(нет совпад.)→12 similar + заголовок «Dəqiq nəticə tapılmadı…»; «M»(1 симв)→не ищет; ✕→14 (полный каталог); быстрый ввод M→Ma→Max→результат для «Max» (latest-wins); фокус инпута сохранён; scroll 398→398 при доп. вводе (REPLACE не скроллит).
+- **NOT VERIFIED вживую:** featured-буст на реальной проде (нужна колонка `is_featured` — миграция за владельцем); мобильный узкий viewport/тач (инструмент рендерит desktop) — за владельцем.
 
 ## Current Architecture Notes
 
@@ -57,14 +69,14 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260807-140500
+Recovery ID: R-20260807-155728
 
 1. **Проект:** Elva LaVenta — React/Vite storefront магазина женской одежды, Supabase (Frankfurt), деплой GitHub Pages.
 2. **Описание:** интернет-магазин: каталог, избранное, корзина, checkout через WhatsApp, admin-панель, три языка AZ/RU/EN.
 3. **Текущее состояние:** реализован умный поиск + приоритетные товары (F-007); код в рабочем дереве, `vite build` успешен, unit + live проверки пройдены. Требуется ручная БД-миграция владельцем (`supabase/product-featured.sql`) — без неё приложение не ломается (read→false, write graceful degrade).
 4. **Что реализовано:** движок поиска `src/lib/search.js` (нормализация с AZ-фолдингом + кириллица; частичное/префикс/подстрока/опечатка; веса полей; `searchScores`); интеграция в `CatalogPage` (глобальный поиск при q, сортировка featured→score→rating); флаг `is_featured` (админ-чекбокс, read/write в admin/db + read в CatalogContext, graceful degrade в saveProduct); миграция `supabase/product-featured.sql`. Плюс прежнее: категория из URL, «Hamısına bax» sort-routes, ScrollManager, hover-фикс кругов, inactivity 30м, 5 табов, язык в Settings.
-5. **Последняя задача:** F-007 (умный поиск + приоритет). Найден и исправлен баг токенизации (RU-запросы) — `\p{L}\p{N}`.
-6. **Изменённые файлы:** `src/lib/search.js` (новый), `src/pages/CatalogPage.jsx`, `src/context/CatalogContext.jsx`, `src/admin/db.js`, `src/pages/AdminPage.jsx`, `supabase/product-featured.sql` (новый), `docs/FEATURES.md`, `docs/HANDOFF.md`.
+5. **Последняя задача:** LAV-BUG-035 — поиск v2: живой ввод (debounce), matches/similar, релевантность>priority, min-len 2, ✕-сброс, no-scroll-jump. Поверх F-007.
+6. **Изменённые файлы:** `src/lib/search.js` (тировка + `similarProducts` + `SEARCH_MIN`), `src/components/Header.jsx` (debounce/X/URL-sync), `src/pages/CatalogPage.jsx` (matches/similar), `src/i18n/translations.js` (`no_exact_matches`), `src/App.jsx` (ScrollManager REPLACE без скролла), `src/styles/index.css` (`.search-clear`, `.search-similar-note`), `docs/BUGS.md`, `docs/HANDOFF.md`. (F-007 ранее: CatalogContext/admin/db/AdminPage/supabase/product-featured.sql.)
 7. **Проверки:** `vite build` — успешно; unit-тест движка (node) — PASSED; live end-to-end на реальных данных — PASSED. Featured-буст на проде и админ-тоггл визуально — за владельцем (нужна миграция/вход в /admin).
 8. **Ограничения:** не менять бизнес-логику корзины/избранного/авторизации/checkout/структуры БД сверх добавленной колонки; service_role в клиент НЕ добавлять (DDL — только через SQL Editor владельцем); не трогать header/логотип/Account/Favorites/Cart/Language location/inactivity/desktop UI без нужды; i18n AZ/RU/EN; один пуш на задачу; не коммитить секреты.
 9. **Обязательные документы:** `docs/HANDOFF.md`, `CLAUDE.md`, `AGENTS.md`, `START.md`, `AI_WORKFLOW.md`, `.claude/PROJECT.md`, `.claude/CODE_STYLE.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `.claude/CODEX.md`, `docs/BUGS.md`, `docs/FEATURES.md`.
@@ -78,16 +90,15 @@ Recovery ID: R-20260807-140500
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: F-007 умный поиск + приоритетные товары (завершено в рабочем дереве; commit/push/deploy — следующий шаг; БД-миграция за владельцем)
+Current task: LAV-BUG-035 поиск v2 (живой ввод + matches/similar + релевантность>priority) поверх F-007 (завершено в рабочем дереве; commit/push/deploy — следующий шаг; БД-миграция is_featured за владельцем)
 Expected modified files:
-  - src/lib/search.js (новый)
-  - src/pages/CatalogPage.jsx
-  - src/context/CatalogContext.jsx
-  - src/admin/db.js
-  - src/pages/AdminPage.jsx
-  - supabase/product-featured.sql (новый)
-  - docs/FEATURES.md
-  - docs/HANDOFF.md
+  - src/lib/search.js (тировка + similarProducts + SEARCH_MIN)
+  - src/components/Header.jsx (debounce/X/sync)
+  - src/pages/CatalogPage.jsx (matches/similar)
+  - src/i18n/translations.js (no_exact_matches)
+  - src/App.jsx (ScrollManager: REPLACE без скролла)
+  - src/styles/index.css (.search-clear, .search-similar-note)
+  - docs/BUGS.md, docs/HANDOFF.md
 Git status summary: изменения в рабочем дереве, не закоммичены на момент записи; прод-деплой run #142 = 5f5365f (success, 2026-08-07)
 Documentation updated: YES
 Last verified build: vite build — успешно, 2026-08-07

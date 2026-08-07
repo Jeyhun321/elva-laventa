@@ -1021,3 +1021,38 @@
   - [ ] Desktop: inline-переключатель AZ/RU/EN на месте, регрессий нет.
 - **Regression History:** NOT VERIFIED live на мобиле. Проверено: `vite build` — успешно; desktop live QA — `.lang-switch` виден и работает, `.lang-select` в DOM отсутствует, гориз. скролла нет. Живая мобильная проверка (Settings-язык + сохранение) — за владельцем.
 - **Notes:** `src/components/Header.jsx` (удалён mobile lang-select + state), `src/styles/index.css` (mobile `.lang-select { display:none }`). Место для языка — существующая `src/pages/SettingsPage.jsx` (не менялась). Прежнего B-ID не было.
+
+## LAV-BUG-035 — Поиск: нет живого поиска, нерелевантные в выдаче, нет блока «похожие»
+- **Module:** Search (Header input + CatalogPage + `src/lib/search.js`)
+- **Platform:** both (в первую очередь mobile)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner (мобильный скриншот + ТЗ)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification на устройстве
+- **Description:** (1) Поиск запускался только по кнопке-лупе/Enter — при вводе «Max» без сабмита каталог оставался полным (выглядело как «нерелевантные товары в выдаче»). (2) Не было явного разделения «точные совпадения» vs «похожие»: при отсутствии совпадений показывался пустой экран, а не блок рекомендаций. (3) Приоритет (featured) в сортировке доминировал над релевантностью.
+- **Steps to Reproduce:** Ввести «Max» и не нажимать лупу; ввести запрос без совпадений; ввести код товара.
+- **Expected Result:** Поиск во время ввода (debounce); если есть совпадения — только они (без случайных рекомендаций); если нет — отдельный блок «похожие» с явной подписью; релевантность > priority; сброс по X; защита от гонки; фокус/скролл не прыгают; мин. длина 2.
+- **Actual Result:** Поиск только по сабмиту; фолбэк-похожих не было (пустой экран); featured мог поднять менее релевантный товар выше более релевантного.
+- **Root Cause:** (1) `Header.changeSearch` не инициировал поиск при вводе — навигация только в `submitSearch` (onSubmit лупы/Enter). (2) `CatalogPage` при отсутствии совпадений показывал `empty-state`, без ветки «похожие». (3) Сортировка результатов была `featured desc → score desc` (priority доминировал).
+- **Fix Summary:**
+  - **Live search (Header.jsx):** debounce ~300ms на `query` → обновляет URL `?q=` (единый источник правды). Поиск полностью клиентский (товары уже в памяти `CatalogContext` — Supabase-запросов на символ нет). Race-safety: trailing-таймер (каждое нажатие отменяет предыдущий → применяется только последнее значение) + sync URL→input под guard'ом фокуса (не перетирает ввод). Лупа/Enter — необязательный ручной submit. Мин. длина `SEARCH_MIN=2`.
+  - **matches vs similar (CatalogPage.jsx + search.js):** при `q≥2` считаем `searchScores`; если есть совпадения (score>0) — показываем ТОЛЬКО их; иначе `similarProducts` (мягкий fuzzy + категория/бренд/тег, при пустоте — топ по рейтингу) с явным i18n-заголовком `no_exact_matches` (AZ/RU/EN).
+  - **Релевантность > priority:** сортировка результатов `score desc → featured desc → rating desc` — featured лишь тай-брейкер внутри одинаковой релевантности; нерелевантный featured в точные результаты не попадает. Тировка score: имя точн.(1000) > имя-префикс(800) > имя-частично(600) > код(500) > категория/тег/бренд(токены).
+  - **X (сброс):** очищает input + `?q=` → возврат к обычному каталогу; старые результаты/похожие не остаются.
+  - **UX без прыжков:** `ScrollManager` теперь скроллит вверх только на PUSH; на REPLACE (живой ввод/фильтр) позиция сохраняется. Header persist → input не теряет фокус, клавиатура не закрывается.
+- **Fix Verification checklist:**
+  - [ ] A. Ввод «Max» без сабмита → только Maxi-товары (не весь каталог).
+  - [ ] B. Точное название → этот товар выше.
+  - [ ] C. Код товара → найден.
+  - [ ] D. Запрос без совпадений → блок «похожие» с подписью «Точных совпадений не найдено…».
+  - [ ] E. Быстрый ввод M→Ma→Max → результат для последнего.
+  - [ ] F. Ничего не нажимать → поиск сам.
+  - [ ] G. X → обычный каталог.
+  - [ ] H. Enter/лупа работают, но необязательны.
+  - [ ] I. AZ/RU/EN подпись; desktop без регрессий.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; **unit-тест движка (node):** min-len, тировка (имя>код>категория), featured тай-брейкер (менее релевантный featured НЕ выше более релевантного), similar fallback — PASSED. **Live end-to-end (dev, реальные данные Supabase):** «Max»→10 релевантных (не 14; Maxi в топе), «2002»→1 (код), «cicekli»→2, «qwxzk»→12 similar+заголовок, «M»(1 симв)→не ищет, X→14 (полный каталог), быстрый ввод→последнее значение, фокус сохранён, scroll 398→398 при доп. вводе (REPLACE не скроллит). Мобильный live (узкий viewport/тач) — за владельцем.
+- **Notes:** `src/lib/search.js` (тировка + `similarProducts` + `SEARCH_MIN`), `src/components/Header.jsx` (debounce/X/sync), `src/pages/CatalogPage.jsx` (matches/similar), `src/i18n/translations.js` (`no_exact_matches`), `src/App.jsx` (ScrollManager: REPLACE без скролла), `src/styles/index.css` (`.search-clear`, `.search-similar-note`). Связано с [[LAV-BUG-031]] (ScrollManager), F-007 (базовый умный поиск).
