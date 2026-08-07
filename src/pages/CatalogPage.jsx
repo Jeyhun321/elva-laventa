@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
+import { searchScores } from '../lib/search.js'
 import ProductCard from '../components/ProductCard.jsx'
 import { IconSliders, IconClose, IconArrowLeft } from '../components/Icons.jsx'
 
@@ -114,31 +115,57 @@ export default function CatalogPage() {
     setParams(next, { replace: true })
   }
 
-  const visible = useMemo(() => {
-    let list = products
-    if (cat !== 'all') list = list.filter((p) => p.category === cat)
-    if (q) {
-      const needle = q.toLowerCase().trim()
-      list = list.filter((p) =>
-        String(p.code || '').toLowerCase().trim() === needle ||
-        Object.values(p.name).some((n) => n.toLowerCase().includes(needle)) ||
-        p.brand.toLowerCase().includes(needle)
-      )
+  // Kateqoriya adı (bütün dillər birləşmiş) — axtarışda kateqoriya üzrə uyğunluq üçün.
+  const catTextById = useMemo(() => {
+    const map = new Map()
+    for (const c of categories) {
+      const label = c.label
+      map.set(c.id, typeof label === 'object' && label
+        ? Object.values(label).join(' ')
+        : String(label ?? ''))
     }
+    return map
+  }, [categories])
+
+  const visible = useMemo(() => {
+    const query = q.trim()
+    let list = products
+    let scoreOf = null
+
+    if (query) {
+      // Ağıllı axtarış: qismən/prefiks/alt-sətir + yazı səhvi, bütün kataloq üzrə
+      // (axtarışda kateqoriya filtri tətbiq olunmur — nəticələr qlobaldır).
+      const { scores } = searchScores(products, query, (p) => catTextById.get(p.category) || '')
+      scoreOf = (p) => scores.get(p.id) || 0
+      list = list.filter((p) => scoreOf(p) > 0)
+    } else if (cat !== 'all') {
+      list = list.filter((p) => p.category === cat)
+    }
+
     if (onlySale) list = list.filter((p) => p.oldPrice)
     list = list.filter((p) => p.price >= minPrice && p.price <= maxPrice)
 
     const sorted = [...list]
-    switch (sort) {
-      case 'price_asc': sorted.sort((a, b) => a.price - b.price); break
-      case 'price_desc': sorted.sort((a, b) => b.price - a.price); break
-      case 'rating': sorted.sort((a, b) => b.rating - a.rating); break
-      case 'discount': sorted.sort((a, b) => discountPercent(b) - discountPercent(a)); break
-      case 'new': sorted.sort((a, b) => b.id - a.id); break // Yeni gələnlər — ən yenilər əvvəldə
-      default: break
+    if (query) {
+      // Prioritet (is_featured) əvvəldə; sonra relevantlıq balı; sonra reytinq.
+      // Bir neçə prioritet varsa — öz aralarında relevantlıq üzrə sıralanır.
+      sorted.sort((a, b) =>
+        (Number(!!b.isFeatured) - Number(!!a.isFeatured)) ||
+        (scoreOf(b) - scoreOf(a)) ||
+        (b.rating - a.rating)
+      )
+    } else {
+      switch (sort) {
+        case 'price_asc': sorted.sort((a, b) => a.price - b.price); break
+        case 'price_desc': sorted.sort((a, b) => b.price - a.price); break
+        case 'rating': sorted.sort((a, b) => b.rating - a.rating); break
+        case 'discount': sorted.sort((a, b) => discountPercent(b) - discountPercent(a)); break
+        case 'new': sorted.sort((a, b) => b.id - a.id); break // Yeni gələnlər — ən yenilər əvvəldə
+        default: break
+      }
     }
     return sorted
-  }, [cat, q, sort, minPrice, maxPrice, onlySale])
+  }, [products, cat, q, sort, minPrice, maxPrice, onlySale, catTextById])
 
   // Pərdə açıqkən: Esc bağlayır, fokus içəri keçir, arxa fon sürüşmür,
   // bağlananda fokus düyməyə qayıdır.

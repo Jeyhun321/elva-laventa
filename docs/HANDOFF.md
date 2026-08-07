@@ -2,11 +2,11 @@
 
 ## Current Status
 
-Мобильный пакет фиксов каталога/навигации (BAG1–BAG6 из ТЗ владельца → LAV-BUG-027 REOPENED + LAV-BUG-030/031/032/033) **+ follow-up LAV-BUG-034** (круг на главной оставался «активным» после Back — залипающий `:hover` на touch). Изменения в рабочем дереве, `vite build` — успешно; часть проверок сделана вживую в браузере (dev), часть недоступна в инструменте (см. ниже). Desktop не переделывался (проверялся на отсутствие регрессий; тесты шли на desktop-viewport). Готово к commit → push → deploy.
+Реализован **умный поиск товаров + приоритетные товары** (F-007). Код в рабочем дереве, `vite build` — успешно; движок поиска покрыт unit-тестом и проверен вживую end-to-end на реальных данных Supabase. Готово к commit → push → deploy.
 
-**LAV-BUG-034 (root cause):** у домашних круглых категорий НЕТ JS-состояния `activeCategory` (простые `<Link>`). «Активный» вид — это CSS `.cat-circle:hover`, залипающий на сенсорных экранах после тапа/касания при свайпе. Фикс: hover вынесен в `@media (hover: hover) and (pointer: fine)` (на touch hover не возникает → ничего не залипает) + кратковременный `:active` отклик. Это ОТДЕЛЬНАЯ первопричина от LAV-BUG-027 (там чип каталога + история, состояние корректно).
+> ⚠️ **ТРЕБУЕТСЯ ДЕЙСТВИЕ ВЛАДЕЛЬЦА (БД-миграция):** выполнить `supabase/product-featured.sql` в Supabase → SQL Editor (добавляет колонку `products.is_featured boolean not null default false`). До запуска миграции приоритет просто не сохраняется/не действует — приложение **не ломается** (код читает отсутствующую колонку как `false`, а сохранение товара в админке сделано с graceful-degrade: при ошибке «нет колонки» повторяет запись без `is_featured`). После миграции флаг «⭐ Приоритетный товар» начинает работать.
 
-**Важно про деплой:** один пуш на задачу (второй «docs: SHA» коммит отменял деплой первого из-за гонки `cancel-in-progress` — см. LAV-BUG-026). Предыдущий прод-деплой `c75f136` успешно уехал 2026-08-07 (run #139).
+**Про деплой:** один пуш на задачу (второй «docs: SHA» коммит отменял деплой — LAV-BUG-026, `cancel-in-progress`).
 
 ## Current Branch
 
@@ -14,67 +14,63 @@
 
 ## Last Completed Task
 
-### Каталог/навигация: категория, tap кругов, scroll-restore, унификация «Hamısına bax», отступ «←»
+### F-007 — Умный поиск + приоритетные товары
 
-- **LAV-BUG-027 (REOPENED → RE-VERIFIED FIXED):** «Donlar остаётся активной после Back». Первопричина категории — только URL (`?cat=`), «Hamısı» есть первым чипом. Живой прогон (dev, реальные категории Supabase) показал: на **текущем** коде баг не воспроизводится — фикс `setCat`→`replace` держится. Видео снято на пред-фиксной проде (`9d68afb`); фикс уехал в прод только 2026-08-07 (run #139, `c75f136`). Доп. hardening — `scrollRestoration='manual'` (см. 031).
-- **LAV-BUG-030 (Hamısına bax несогласованы; Yeni gələnlər неверно):** `Populyar` и `Yeni gələnlər` вели на идентичный `/catalog`. Введён единый route-паттерн: `Populyar→?sort=rating`, `Yeni gələnlər→?sort=new`, `Endirimlər→?sale=1`. `CatalogPage` читает `sort` из URL, добавлен режим `new` (id desc) + опция `sort_new`. Круг `Yenilər`→`?sort=new`.
-- **LAV-BUG-031 (scroll после Back):** `ScrollToTop` заменён на `ScrollManager` (manual restoration: POP→сохранённая позиция с rAF-повторами, PUSH/REPLACE→верх). Убран браузерный `auto`.
-- **LAV-BUG-032 (нестабильный tap кругов):** `touch-action: pan-x` на ленте `.cats-row`, `touch-action: manipulation` + `min-height:44px` + `width:100%` на `.cat-circle`.
-- **LAV-BUG-033 (кнопка «←» прижата к верху):** mobile `.catalog-page{padding-top:24px}` + `.catalog-head{margin:4px 0 14px}`.
+1. **Умный поиск (`src/lib/search.js`, новый):**
+   - Нормализация: lowercase + фолдинг AZ-букв (ə→e, ı→i, ş→s, ç→c, ğ→g, ö→o, ü→u) + снятие диакритик; кириллица сохраняется. `tokenize` — по `\p{L}\p{N}` (unicode), чтобы RU-запросы не терялись.
+   - Матчинг на токен: точное слово → префикс → подстрока → опечатка (Левенштейн ≤1, для длинных ≥7 ≤2; только в «мысловых» полях name/category/brand).
+   - Веса полей: code 100 (+300 за полное совпадение кода), name 42, category 24, brand 18, tag 14, description 6.
+   - `searchScores(products, query, getCategoryText)` → `Map<id, score>` (score>0) + `active`.
+2. **Интеграция (`CatalogPage.jsx`):** при непустом `q` поиск **глобальный** (категория-фильтр не применяется), список = товары со score>0; сортировка: **featured первыми**, затем score, затем rating. Без `q` — прежняя сортировка (sort-dropdown/URL). Категория-текст для матчинга берётся из `categories` (все языки label). Пустой результат → существующий empty-state.
+3. **Приоритет (`is_featured`):** флаг в админке (`AdminPage.jsx` — чекбокс «⭐ Приоритетный товар», + в `emptyProduct`); read/write в `admin/db.js` (`fromRow`/`toRow`) и read в `context/CatalogContext.jsx` (`isFeatured: r.is_featured === true`); `saveProduct` — graceful degrade при отсутствии колонки. Миграция — `supabase/product-featured.sql`.
 
 ## Last Verified Checks
 
-- `npm run build` — **успешно** (`✓ built in ~3s`, 129 модулей).
-- **Live (dev, desktop-viewport, реальные категории Supabase):**
-  - LAV-BUG-030: `Yeni gələnlər view-all` → `/catalog?sort=new`, select=`new`/«Ən yenilər», товары по `id` desc, `Hamısı` активна; `Populyar` → `/catalog?sort=rating`; ручная смена сортировки на `price_asc` не откатывается моим `useEffect`.
-  - LAV-BUG-027: `кружок Donlar → «←» → Home`, `Catalog-таб = Hamısı`, `кружок Yenilər → /catalog?sort=new` — URL/активный чип/список совпадают, старый фильтр не восстанавливается.
-- **NOT VERIFIED в инструменте (за владельцем, на реальном устройстве 320/360/375/390):**
-  - LAV-BUG-031 (scroll): в этом webview **программный `window.scrollTo` игнорируется** (`scrollTo(0,300)` не меняет `scrollY`) — поведение скролла нельзя воспроизвести автоматизацией; проверено сборкой + код-ревью.
-  - LAV-BUG-032 (touch) и LAV-BUG-033 (layout): расширение не эмулирует узкий mobile-viewport/тач-жесты.
+- `npm run build` — **успешно** (129 модулей).
+- **Unit-тест движка (node, `src/lib/search.js`):** partial (`don`/`dres`), exact code (`2014`→score 400), RU (`платье`), AZ-фолдинг (`etek`→Ətək), опечатка (`maxii`), **featured-буст** (при равном score featured выше), no-match→пусто. Все PASSED. (Изначально выявлен и исправлен баг: RU-запрос давал 0 из-за `[^a-z0-9]`-токенизации → заменено на `\p{L}\p{N}`.)
+- **Live end-to-end (dev, реальные данные Supabase):** `maxi`→11 (частичное), `ketan`→9 (фолдинг Kətan), `cicekli`→2, код `2002`→1, `платье`→14 (RU-мультиязычность), `maxii`→3 (опечатка), мусор→0 (empty-state). Header search → `/catalog?q=` → результаты рендерятся.
+- **NOT VERIFIED вживую:** featured-буст на реальной проде (нужна колонка `is_featured` — миграция за владельцем); тоггл в админке визуально (нужен вход в /admin) — логика тривиальна (как `isActive`), build ок.
 
 ## Current Architecture Notes
 
-- Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), деплой GitHub Pages (`.github/workflows/deploy.yml`, `push:[main]` + `workflow_dispatch`, `cancel-in-progress: false`).
-- Категория каталога — источник истины только URL (`?cat=`); выбор чипом `replace`-ит запись истории. Секции главной («Hamısına bax») и коллекции — единый route-паттерн: `?sort=rating|new`, `?sale=1`. `CatalogPage` читает `sort` из URL (initial + `useEffect` на смену `sortParam`); режимы сортировки: popular/price_asc/price_desc/rating/discount/**new**(id desc).
-- Скролл: `App.jsx` → `ScrollManager` (`history.scrollRestoration='manual'`; POP восстанавливает сохранённую позицию по `location.key`, PUSH/REPLACE → верх). Заменил прежний `ScrollToTop`.
-- Круглые категории `Categories.jsx` — каждый `<a class="cat-circle">` целиком кликаем; mobile-лента `.cats-row` = `touch-action: pan-x`, карточки `touch-action: manipulation`.
-- Inactivity: `src/hooks/useInactivityRedirect.js` (30 мин), подключён в `App`.
+- Поиск: `src/lib/search.js` (чистые функции, без React) → используется в `CatalogPage.visible`. Ранжирование featured-first только при активном `q`.
+- `is_featured`: колонка `products` (миграция `supabase/product-featured.sql`); читается `select *` (storefront + admin), пишется из админки (RLS без изменений). Код устойчив к отсутствию колонки (read→false, write→graceful degrade).
+- Категория/навигация (прошлые задачи): категория из URL (`?cat=`), секции «Hamısına bax» → `?sort=rating|new` / `?sale=1`; `ScrollManager` (scrollRestoration manual); круги — hover за `@media(hover:hover)`.
+- Inactivity 30 мин; нижняя навигация 5 пунктов; язык на `/settings` + desktop inline.
 
 ## Known Issues
 
-Нет новых подтверждённых багов. LAV-BUG-018…033 — FIXED/RE-VERIFIED (живая Fix Verification на реальных устройствах/проде для 031/032/033 — за владельцем).
+Нет новых подтверждённых багов. Ограничение: приоритет не действует до применения `supabase/product-featured.sql` (by design, безопасно).
 
 ## Risks
 
-- LAV-BUG-031/032/033 не проверены вживую в инструменте (ограничения webview: нет программного скролла, нет узкого viewport/тач). Риск умеренный: правки локальные и стандартные (manual scroll-restoration, `touch-action`, отступы).
-- `ScrollManager` меняет глобальное поведение скролла на всех маршрутах — при регрессе проверить прежде всего Checkout/Product/Cart (там были свои `scrollTo`).
+- Пока владелец не запустил `product-featured.sql`, флаг приоритета в админке сохранится «вхолостую» (graceful degrade сбрасывает `is_featured` при записи) — после миграции нужно повторно проставить приоритет у нужных товаров.
+- Поиск теперь глобальный при `q` (игнорирует категорию) — это намеренно; если владелец ждал «поиск внутри категории», обсудить.
+- Фолдинг AZ-букв объединяет некоторые символы — крайне редкие ложные совпадения возможны, но повышают полноту (recall) — стандартный компромисс.
 
 ## Next Recommended Step
 
-Владельцу — Fix Verification на реальном телефоне (320/360/375/390, Safari/Chrome):
-- **031:** Главная (проскроллена) → категория → Back → та же позиция; каталог → товар → Back → позиция каталога; PUSH → сверху.
-- **032:** одиночный tap по кругу срабатывает с первого раза; быстрый свайп ленты не открывает категорию; tap по кругу/иконке/подписи — одинаково.
-- **033:** «←» на `/catalog` — аккуратный верхний отступ, не касается border, без пустого блока.
-- **027/030:** Donlar→«←»→Home→Catalog=Hamısı; каждая «Hamısına bax» открывает свой список.
+1. **Владельцу:** выполнить `supabase/product-featured.sql` в Supabase SQL Editor; затем в админке отметить приоритетные товары и проверить, что они выше в поиске.
+2. Fix Verification поиска на телефоне (частичное/опечатка/код/RU/AZ), пустой результат.
 
 ## Context For Next Session
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260807-134500
+Recovery ID: R-20260807-140500
 
 1. **Проект:** Elva LaVenta — React/Vite storefront магазина женской одежды, Supabase (Frankfurt), деплой GitHub Pages.
 2. **Описание:** интернет-магазин: каталог, избранное, корзина, checkout через WhatsApp, admin-панель, три языка AZ/RU/EN.
-3. **Текущее состояние:** мобильный пакет фиксов каталога/навигации в рабочем дереве, `vite build` успешен; часть проверок вживую (dev) пройдена, scroll/touch/layout — за владельцем на устройстве. После коммита дерево будет чистым.
-4. **Что реализовано:** категория каталога строго из URL (`?cat=`, выбор чипом = `replace`); единый route-паттерн для секций главной «Hamısına bax» (`?sort=rating` Populyar, `?sort=new` Yeni gələnlər, `?sale=1` Endirimlər); `CatalogPage` читает `sort` из URL + режим `new` (id desc) + опция «Ən yenilər»; `ScrollManager` с `scrollRestoration='manual'` (POP восстанавливает позицию, PUSH → верх); круглые категории — единая touch-area (`touch-action` pan-x/manipulation, min 44px); аккуратный верхний отступ кнопки «←» на mobile; авто-возврат на главную после ≥30 мин; нижняя навигация 5 пунктов; язык на `/settings` + desktop inline.
-5. **Последняя задача:** LAV-BUG-027 REOPENED→RE-VERIFIED (категория не залипает — фикс держится, видео было на пред-фиксной проде), LAV-BUG-030 (унификация «Hamısına bax» + Yeni gələnlər→`?sort=new`), LAV-BUG-031 (ScrollManager manual restoration), LAV-BUG-032 (touch-action кругов), LAV-BUG-033 (отступ «←»).
-6. **Изменённые файлы:** `src/App.jsx` (ScrollManager + scrollRestoration manual), `src/pages/HomePage.jsx` (viewAllTo sort=rating/new), `src/pages/CatalogPage.jsx` (sort из URL + режим new + опция + sync effect), `src/data/homeNav.js` (Yenilər → ?sort=new), `src/i18n/translations.js` (`sort_new`), `src/styles/index.css` (`.cat-circle`/`.cats-row` touch-action, mobile `.catalog-page`/`.catalog-head` отступы), `docs/BUGS.md`, `docs/HANDOFF.md`.
-7. **Проверки:** `vite build` — успешно. Live (dev): LAV-BUG-030 и LAV-BUG-027 подтверждены. LAV-BUG-031/032/033 — NOT VERIFIED в инструменте (webview: нет программного скролла, нет узкого viewport/тач); проверка на устройстве — за владельцем.
-8. **Ограничения:** не менять бизнес-логику поиска/фильтров/карточек/корзины/избранного/авторизации/checkout/БД/нижней навигации/Settings; не трогать header/увеличенный логотип/Account/Favorites/Cart/Language location/Search/inactivity 30 мин/остальные секции главной/desktop UI; не откатывать рабочую функциональность; сохранять палитру/логотип/типографику; i18n AZ/RU/EN (не хардкодить); один пуш на задачу; не коммитить секреты.
-9. **Обязательные документы:** `docs/HANDOFF.md`, `CLAUDE.md`, `AGENTS.md`, `START.md`, `AI_WORKFLOW.md`, `.claude/PROJECT.md`, `.claude/CODE_STYLE.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `.claude/CODEX.md`, `docs/BUGS.md`.
-10. **Что осталось:** Fix Verification LAV-BUG-027/030/031/032/033 (владелец, реальные устройства + прод); опционально — вычистить мёртвую CSS `.lang-select*`; backend к UI-заглушкам (Settings).
-11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`, затем взять задачу владельца.
-12. **После работы:** обновить `docs/HANDOFF.md` (полностью переписать), при необходимости остальные `docs/`, commit + push в `main`, запустить deploy (GitHub Actions не ждать).
+3. **Текущее состояние:** реализован умный поиск + приоритетные товары (F-007); код в рабочем дереве, `vite build` успешен, unit + live проверки пройдены. Требуется ручная БД-миграция владельцем (`supabase/product-featured.sql`) — без неё приложение не ломается (read→false, write graceful degrade).
+4. **Что реализовано:** движок поиска `src/lib/search.js` (нормализация с AZ-фолдингом + кириллица; частичное/префикс/подстрока/опечатка; веса полей; `searchScores`); интеграция в `CatalogPage` (глобальный поиск при q, сортировка featured→score→rating); флаг `is_featured` (админ-чекбокс, read/write в admin/db + read в CatalogContext, graceful degrade в saveProduct); миграция `supabase/product-featured.sql`. Плюс прежнее: категория из URL, «Hamısına bax» sort-routes, ScrollManager, hover-фикс кругов, inactivity 30м, 5 табов, язык в Settings.
+5. **Последняя задача:** F-007 (умный поиск + приоритет). Найден и исправлен баг токенизации (RU-запросы) — `\p{L}\p{N}`.
+6. **Изменённые файлы:** `src/lib/search.js` (новый), `src/pages/CatalogPage.jsx`, `src/context/CatalogContext.jsx`, `src/admin/db.js`, `src/pages/AdminPage.jsx`, `supabase/product-featured.sql` (новый), `docs/FEATURES.md`, `docs/HANDOFF.md`.
+7. **Проверки:** `vite build` — успешно; unit-тест движка (node) — PASSED; live end-to-end на реальных данных — PASSED. Featured-буст на проде и админ-тоггл визуально — за владельцем (нужна миграция/вход в /admin).
+8. **Ограничения:** не менять бизнес-логику корзины/избранного/авторизации/checkout/структуры БД сверх добавленной колонки; service_role в клиент НЕ добавлять (DDL — только через SQL Editor владельцем); не трогать header/логотип/Account/Favorites/Cart/Language location/inactivity/desktop UI без нужды; i18n AZ/RU/EN; один пуш на задачу; не коммитить секреты.
+9. **Обязательные документы:** `docs/HANDOFF.md`, `CLAUDE.md`, `AGENTS.md`, `START.md`, `AI_WORKFLOW.md`, `.claude/PROJECT.md`, `.claude/CODE_STYLE.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `.claude/CODEX.md`, `docs/BUGS.md`, `docs/FEATURES.md`.
+10. **Что осталось:** владельцу — применить `supabase/product-featured.sql`, проставить приоритет, проверить поиск на устройстве. Опционально — выделенное поле «keywords» в БД (сейчас ключевые слова покрыты тегом + всеми текстовыми полями).
+11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`; затем — подтверждение миграции/Fix Verification.
+12. **После работы:** обновить `docs/HANDOFF.md` (полностью переписать), при необходимости `docs/FEATURES.md`/`BUGS.md`, commit + push в `main`, запустить deploy (GitHub Actions не ждать).
 
 ### SESSION CHECKSUM
 
@@ -82,19 +78,19 @@ Recovery ID: R-20260807-134500
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: LAV-BUG-027(REOPENED→re-verified)/030/031/032/033 — каталог/навигация mobile (завершено в рабочем дереве; commit/push/deploy — следующий шаг)
+Current task: F-007 умный поиск + приоритетные товары (завершено в рабочем дереве; commit/push/deploy — следующий шаг; БД-миграция за владельцем)
 Expected modified files:
-  - src/App.jsx
-  - src/pages/HomePage.jsx
+  - src/lib/search.js (новый)
   - src/pages/CatalogPage.jsx
-  - src/data/homeNav.js
-  - src/i18n/translations.js
-  - src/styles/index.css
-  - docs/BUGS.md
+  - src/context/CatalogContext.jsx
+  - src/admin/db.js
+  - src/pages/AdminPage.jsx
+  - supabase/product-featured.sql (новый)
+  - docs/FEATURES.md
   - docs/HANDOFF.md
-Git status summary: изменения в рабочем дереве, не закоммичены на момент записи; прод-деплой run #139 = c75f136 (success, 2026-08-07)
+Git status summary: изменения в рабочем дереве, не закоммичены на момент записи; прод-деплой run #142 = 5f5365f (success, 2026-08-07)
 Documentation updated: YES
 Last verified build: vite build — успешно, 2026-08-07
-Last verified tests: нет test-скриптов; live (dev) — LAV-BUG-030/027 PASSED; LAV-BUG-031/032/033/034 — NOT VERIFIED в инструменте (webview: нет программного скролла/узкого viewport/touch-hover:none)
+Last verified tests: нет test-скриптов проекта; движок поиска — unit-тест (node) PASSED; live end-to-end (реальные данные) PASSED; featured-буст на проде — NOT VERIFIED (нужна миграция is_featured)
 Recovery confidence: MEDIUM
 ```

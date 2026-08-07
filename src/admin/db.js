@@ -34,6 +34,8 @@ export const fromRow = (r) => ({
   reviews: r.reviews ?? 0,
   tag: r.tag || '',
   isActive: r.is_active !== false,
+  // Prioritet məhsul (axtarışda yuxarı). Sütun yoxdursa → false.
+  isFeatured: r.is_featured === true,
   // Rəng variantları: eyni kodlu məhsullar bir qrupdur
   colorName: r.color_name || '',
   colorHex: r.color_hex || '',
@@ -70,6 +72,7 @@ const toRow = (p) => {
     reviews: Number(p.reviews) || 0,
     tag: p.tag || null,
     is_active: p.isActive !== false,
+    is_featured: p.isFeatured === true,
     // Rəng variantı. Boş color_name = adi məhsul (variant yoxdur).
     // Əsas rəngi baza özü tənzimləyir (products_zdefault_color triggeri).
     color_name: (p.colorName || '').trim(),
@@ -93,18 +96,34 @@ export const loadAll = async () => {
   }
 }
 
-export const saveProduct = async (p) => {
-  const sb = need()
-  const row = toRow(p)
-
+const runSave = async (sb, id, row) => {
   // id yoxdursa — yeni məhsul (id-ni baza özü verir)
-  const query = p.id
-    ? sb.from('products').update(row).eq('id', p.id).select().single()
+  const query = id
+    ? sb.from('products').update(row).eq('id', id).select().single()
     : sb.from('products').insert(row).select().single()
-
   const { data, error } = await query
   if (error) throw error
   return fromRow(data)
+}
+
+// PostgREST: sütun sxemdə yoxdursa "Could not find the 'x' column" qaytarır.
+const isMissingColumn = (error, col) =>
+  error?.code === 'PGRST204' || new RegExp(`'${col}'.*column|column.*'${col}'`, 'i').test(error?.message || '')
+
+export const saveProduct = async (p) => {
+  const sb = need()
+  const row = toRow(p)
+  try {
+    return await runSave(sb, p.id, row)
+  } catch (error) {
+    // `is_featured` miqrasiyası hələ işə salınmayıbsa, saxlama pozulmasın —
+    // həmin sahə olmadan təkrar cəhd (graceful degrade; product-featured.sql).
+    if (isMissingColumn(error, 'is_featured')) {
+      const { is_featured, ...rest } = row
+      return await runSave(sb, p.id, rest)
+    }
+    throw error
+  }
 }
 
 export const deleteProduct = async (id) => {

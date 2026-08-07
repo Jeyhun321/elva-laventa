@@ -30,6 +30,8 @@ const fromRow = (r) => ({
   rating: Number(r.rating),
   reviews: r.reviews,
   tag: r.tag,
+  // Prioritet məhsul (axtarışda yuxarı qalxır). Sütun yoxdursa → false.
+  isFeatured: r.is_featured === true,
   // Rəng variantı (yeni sahələr; köhnə yerli faylda yoxdur — boş qalır)
   colorName: r.color_name || '',
   colorHex: r.color_hex || '',

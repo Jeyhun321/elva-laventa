@@ -59,6 +59,7 @@ const emptyProduct = (catId) => ({
   reviews: 0,
   tag: '',
   isActive: true,
+  isFeatured: false,
   // Rəng variantı: boş ad = adi məhsul, variant deyil
   colorName: '',
   colorHex: '',
@@ -1054,6 +1055,12 @@ function ProductForm({ value, categories, allProducts = [], saving, onCancel, on
             <input type="checkbox" checked={p.isActive}
               onChange={(e) => set({ isActive: e.target.checked })} />
             <span>Показывать на сайте</span>
+          </label>
+
+          <label className="checkbox-row">
+            <input type="checkbox" checked={!!p.isFeatured}
+              onChange={(e) => set({ isFeatured: e.target.checked })} />
+            <span>⭐ Приоритетный товар (выше в поиске)</span>
           </label>
         </div>
 
