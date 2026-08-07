@@ -94,23 +94,13 @@ export default function Header() {
     setCatOpen(false)
   }
 
-  // Məhsul səhifəsində mobil başlıq kompaktdır: solda "Geri" düyməsi (loqo əvəzi).
-  // Desktop dəyişmir — loqo görünür, geri düyməsi yalnız mobildə (CSS).
+  // Məhsul səhifəsi (mobil): 1-ci sətir iri LOQO + Profil/Sevimli/Səbət;
+  // 2-ci sətirdə solda "Geri" oxu, sonra axtarış. Desktop dəyişmir.
   const isProduct = location.pathname.startsWith('/product/')
 
   return (
     <header className={`header${scrolled ? ' scrolled' : ''}${isProduct ? ' header-product' : ''}`}>
       <div className="container header-inner">
-        {isProduct && (
-          <button
-            type="button"
-            className="header-back"
-            onClick={() => navigate(-1)}
-            aria-label={t('back')}
-          >
-            <IconArrowLeft />
-          </button>
-        )}
         <a href={import.meta.env.BASE_URL} className="brand brand-logo" aria-label="Elva LaVenta">
           <img className="brand-logo-image" src={flowerLogo} alt="Elva LaVenta" />
         </a>
@@ -141,29 +131,44 @@ export default function Header() {
           )}
         </div>
 
-        <form className="search" onSubmit={submitSearch} role="search">
-          <input
-            ref={inputRef}
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('search_placeholder')}
-            aria-label={t('search_placeholder')}
-          />
-          {query && (
+        {/* Axtarış sətri. Məhsul səhifəsində solunda "Geri" oxu yerləşir
+            (yalnız mobil — CSS ilə). Sarğı desktopda `display:contents`-dir,
+            ona görə masaüstü düzülüşü heç dəyişmir. */}
+        <div className="header-search-row">
+          {isProduct && (
             <button
               type="button"
-              className="search-clear"
-              onClick={clearSearch}
-              aria-label={t('close')}
+              className="header-back"
+              onClick={() => navigate(-1)}
+              aria-label={t('back')}
             >
-              <IconClose />
+              <IconArrowLeft />
             </button>
           )}
-          <button type="submit" className="search-btn" aria-label={t('search_placeholder')}>
-            <IconSearch />
-          </button>
-        </form>
+          <form className="search" onSubmit={submitSearch} role="search">
+            <input
+              ref={inputRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('search_placeholder')}
+              aria-label={t('search_placeholder')}
+            />
+            {query && (
+              <button
+                type="button"
+                className="search-clear"
+                onClick={clearSearch}
+                aria-label={t('close')}
+              >
+                <IconClose />
+              </button>
+            )}
+            <button type="submit" className="search-btn" aria-label={t('search_placeholder')}>
+              <IconSearch />
+            </button>
+          </form>
+        </div>
 
         <div className="header-actions">
           {/* Masaüstü: üç düymə yan-yana (CSS ilə yalnız burada görünür).

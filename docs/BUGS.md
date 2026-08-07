@@ -1313,3 +1313,29 @@
   - [ ] Гость → tap «Add» → auth-модалка (без изменений).
 - **Regression History:** 2026-08-07 — `vite build` — успешно; логика проверена по коду (для гостя live подтверждена auth-модалка). Живой сценарий вошедшего/мобильный — за владельцем.
 - **Notes:** `src/pages/ProductPage.jsx` (buybar warn + size-options warn class), `src/styles/index.css` (`.pd-buybar-warn`, `.size-options.warn`). Связано с [[LAV-BUG-039]].
+
+---
+
+## LAV-BUG-045 — Header товара (mobile): перекомпоновка по утверждённому макету — крупный логотип, Back на строке поиска
+- **Module:** Header (`src/components/Header.jsx` + `src/styles/index.css`)
+- **Platform:** mobile
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (утверждённый макет)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **Description:** Пересмотр компоновки после [[LAV-BUG-040]]: раньше Back стоял в 1-й строке рядом с логотипом, из-за чего логотип пришлось делать маленьким. Требуемая компоновка (2 строки): **1-я строка** — КРУПНЫЙ логотип слева + Profile/Favorites/Cart справа; **2-я строка** — `[←] Back` слева, сразу за ним строка поиска. Поиск укорачивается ТОЛЬКО слева (на ширину Back), правый край и кнопка 🔍 остаются на месте. Не менять: положение Profile/Fav/Cart, кнопку поиска, высоту/дизайн поиска, desktop.
+- **Root Cause:** Прошлая компоновка (LAV-BUG-040) держала Back в 1-й строке → логотип сжат до ~116px.
+- **Fix Summary:**
+  - **Header.jsx:** Back-кнопка убрана из 1-й строки; поиск обёрнут в `.header-search-row`, и Back рендерится ВНУТРИ этой обёртки перед формой поиска (только на product-route). Обёртка на desktop/не-product — `display: contents` (прозрачна) → layout не меняется.
+  - **CSS:** `.header-search-row { display: contents }` (база). На `@media(max-width:900px) .header.header-product`: обёртка → `display:flex; order:4; flex:1 1 100%` (собственная 2-я строка); внутри `.search { flex:1 1 auto; min-width:0 }` (укорачивается слева, правый край/🔍 на месте), `.header-back { flex:0 0 auto; display:inline-flex }`. Убраны прежние override-ы сжатия логотипа → логотип использует полный мобильный размер (166px / 140px на ≤360) — крупный, как в макете (+~40% к прежним 116px). 1-я строка = логотип + actions (Back там больше нет).
+- **Regression Checklist:**
+  - [ ] 320/360/375/390/412/430px — 1-я строка: крупный логотип + Profile/Fav/Cart; 2-я строка: [←] + поиск.
+  - [ ] Правый край поиска и кнопка 🔍 не сдвинулись; поиск короче только слева.
+  - [ ] Profile/Favorites/Cart на прежних местах; высота/дизайн поиска не изменены.
+  - [ ] Back работает (navigate -1).
+  - [ ] Desktop header — без изменений (обёртка display:contents, Back скрыт).
+- **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live (`/product/20`): `.header-search-row` display=`contents`, `.header-back` display=`none`, логотип 210px, поиск inline, нет горизонтального overflow — desktop без регрессий. Мобильная ширина — за владельцем (инструмент рендерит desktop 1536px).
+- **Notes:** `src/components/Header.jsx` (обёртка `.header-search-row` + Back внутри), `src/styles/index.css` (`.header-search-row` contents/flex, product-mobile правила). Пересматривает компоновку [[LAV-BUG-040]] (та запись — историческая).

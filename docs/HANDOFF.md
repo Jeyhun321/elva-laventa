@@ -2,10 +2,13 @@
 
 ## Current Status
 
-**Пакет из 6 задач: header товара, галерея (без цикла + новые стрелки), поиск по коду (exact), UX-валидация размера, выбор доставки на Checkout.** Всё в одном проходе. Код в рабочем дереве, `vite build` — успешно; поиск покрыт unit-тестом, галерея проверена live на desktop. Готово к commit → push → deploy.
+**Header товара перекомпонован по макету (LAV-BUG-045): 1-я строка — крупный логотип + Profile/Fav/Cart, 2-я строка — `[←]` Back + поиск.** Поверх пакета из 6 задач (галерея, поиск, валидация размера, доставка). Код в рабочем дереве, `vite build` — успешно; desktop проверен live (header без регрессий). Готово к commit → push → deploy.
 
-**Что сделано:**
-- **TASK 1 (LAV-BUG-040):** на мобильном header товара `[Back][Logo] … [Profile][Fav][Cart]` в ОДНОЙ строке, Search — ниже. Root cause: широкий фикс-логотип (166px) + Back не влезали → перенос. Фикс: логотип сжимаемый (`flex:0 1 auto`), Back/actions не сжимаются.
+**Что сделано (последнее — TASK 7):**
+- **TASK 7 (LAV-BUG-045):** мобильный header товара — 2 строки. 1-я: КРУПНЫЙ логотип (полный мобильный размер 166/140px) + Profile/Fav/Cart. 2-я: `[←]` Back слева + поиск (укорочен только слева на ширину Back; правый край и 🔍 не двигались). Back теперь ВНУТРИ `.header-search-row` (на desktop/не-product обёртка `display:contents` → layout не меняется). Пересматривает компоновку LAV-BUG-040 (одна строка со сжатым логотипом).
+
+**Пакет из 6 задач (предыдущий, уже включён):**
+- **TASK 1 (LAV-BUG-040):** (заменён TASK 7) — было `[Back][Logo] … actions` в одну строку со сжатым логотипом.
 - **TASK 2 (LAV-BUG-041):** галерея больше не зациклена. Убран modulo-wrap → ограниченный индекс; на границах стрелка не листает. Swipe — та же логика.
 - **TASK 3 (LAV-BUG-042):** новые стрелки — `IconChevron`, белый полупрозрачный круг + blur + тонкий border + тень; `:disabled` (opacity:0) на границе; при одном фото стрелок нет.
 - **TASK 4 (LAV-BUG-043):** Product Code — только точное совпадение (убран `code.includes`); имя — по-прежнему partial.
@@ -66,14 +69,14 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260807-202435
+Recovery ID: R-20260807-210756
 
 1. **Проект:** Elva LaVenta — React/Vite storefront магазина женской одежды, Supabase (Frankfurt), деплой GitHub Pages.
 2. **Описание:** интернет-магазин: каталог, избранное, корзина, checkout (заказ через серверную RPC `place_order` + Telegram-уведомление), admin-панель, три языка AZ/RU/EN.
 3. **Текущее состояние:** выполнен пакет из 6 задач (header товара, галерея без цикла + новые стрелки, поиск по коду exact, UX-валидация размера, выбор доставки на Checkout). Код в рабочем дереве, `vite build` успешен, search unit-тест PASSED, галерея live-проверена (desktop). Живой мобильный/checkout end-to-end — за владельцем.
 4. **Что реализовано (этот пакет):** сжимаемый логотип в header товара (одна строка); ограниченная галерея + chevron-стрелки с disabled; код — только точное совпадение; sticky-валидация размера; radio-cards доставки Standard/Express с пересчётом Order Summary и записью способа в note (заказ + Telegram). Плюс прежнее: Product Page mobile (039), HomePage mobile (038), умный поиск, ScrollManager, is_featured (graceful degrade), inactivity 30м, язык в Settings.
-5. **Последняя задача:** LAV-BUG-040..044 + F-008 (delivery) в один проход.
-6. **Изменённые файлы:** `src/components/Icons.jsx`, `src/lib/search.js`, `src/pages/ProductPage.jsx`, `src/pages/CheckoutPage.jsx`, `src/i18n/translations.js`, `src/styles/index.css`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/HANDOFF.md`.
+5. **Последняя задача:** LAV-BUG-045 (перекомпоновка header товара: крупный логотип в 1-й строке, Back+поиск во 2-й) поверх пакета LAV-BUG-040..044 + F-008.
+6. **Изменённые файлы (последняя задача):** `src/components/Header.jsx` (обёртка `.header-search-row` + Back внутри), `src/styles/index.css` (`.header-search-row` contents/flex). Ранее в этой сессии: `src/components/Icons.jsx`, `src/lib/search.js`, `src/pages/ProductPage.jsx`, `src/pages/CheckoutPage.jsx`, `src/i18n/translations.js`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/HANDOFF.md`.
 7. **Проверки:** `vite build` — успешно; search unit-тест (node) — PASSED; gallery live (desktop `/product/20`) — границы/disabled/no-wrap PASSED; нет горизонтального overflow. Мобильный/Checkout end-to-end/Telegram — NOT VERIFIED (за владельцем).
 8. **Ограничения:** desktop НЕ переделывать (только регрессии); не удалять функциональность; не менять схему БД/RPC `place_order` (DDL — владелец); способ доставки — через note (без DDL); i18n AZ/RU/EN; не хардкодить турецкие строки; один пуш на задачу; не коммитить секреты.
 9. **Обязательные документы:** `docs/HANDOFF.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/PROJECT.md`, `.claude/CODE_STYLE.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `.claude/CODEX.md`, `docs/BUGS.md`, `docs/FEATURES.md`.
@@ -87,7 +90,7 @@ Recovery ID: R-20260807-202435
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: пакет LAV-BUG-040..044 + F-008 (delivery) — завершено в рабочем дереве; commit/push/deploy — следующий шаг
+Current task: LAV-BUG-045 (перекомпоновка header товара) поверх LAV-BUG-040..044 + F-008 — завершено в рабочем дереве; commit/push/deploy — следующий шаг
 Expected modified files:
   - src/components/Icons.jsx (IconChevron)
   - src/lib/search.js (code exact-only)
