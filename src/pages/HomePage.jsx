@@ -45,7 +45,7 @@ export default function HomePage() {
         title="popular_products"
         products={popular}
         loading={loading}
-        viewAllTo="/catalog"
+        viewAllTo="/catalog?sort=rating"
       />
 
       {/* Kompakt promo lenti */}
@@ -56,7 +56,7 @@ export default function HomePage() {
         title="new_arrivals"
         products={newArrivals}
         loading={loading}
-        viewAllTo="/catalog"
+        viewAllTo="/catalog?sort=new"
       />
 
       {/* Endirimlər — məhsul yoxdursa tamamilə gizlənir */}

@@ -8,6 +8,6 @@ export const quickCategories = [
   { id: 'bluzalar', icon: 'blouse', label: { az: 'Bluzalar', ru: 'Блузы', en: 'Blouses' }, link: '/catalog?cat=bluzalar' },
   { id: 'etekler', icon: 'skirt', label: { az: 'Ətəklər', ru: 'Юбки', en: 'Skirts' }, link: '/catalog?cat=etekler' },
   { id: 'sale', icon: 'percent', label: { az: 'Endirimlər', ru: 'Скидки', en: 'Sale' }, link: '/catalog?sale=1' },
-  { id: 'new', icon: 'sparkle', label: { az: 'Yenilər', ru: 'Новинки', en: 'New' }, link: '/catalog' },
+  { id: 'new', icon: 'sparkle', label: { az: 'Yenilər', ru: 'Новинки', en: 'New' }, link: '/catalog?sort=new' },
   { id: 'parfum', icon: 'perfume', label: { az: 'Parfüm', ru: 'Парфюм', en: 'Perfume' }, link: '/catalog' },
 ]

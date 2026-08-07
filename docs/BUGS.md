@@ -831,7 +831,7 @@
 - **Environment:** Production → Working tree (правка)
 - **Priority:** P2
 - **Severity:** S3
-- **Status:** FIXED
+- **Status:** REOPENED (2026-08-07) → RE-VERIFIED FIXED (см. Regression History 2026-08-07)
 - **Found By:** Owner (скриншоты mobile + текстовое ТЗ)
 - **Found Date:** 2026-08-06
 - **Developer:** Claude Code
@@ -846,8 +846,109 @@
   - [ ] C. Прямая ссылка на категорию (`/catalog?cat=<id>`) → активный фильтр соответствует URL.
   - [ ] D. Refresh страницы → UI и список товаров совпадают.
   - [ ] E. Повторно открыть каталог → случайный старый фильтр не восстанавливается.
-- **Regression History:** NOT VERIFIED live с реальными категориями (в локальном `vite preview` категории Supabase не подгрузились — 0 чипов; фильтрацию по категории проверить не удалось). Проверено: `vite build` — успешно; правка — стандартная одно-строчная семантика react-router (`replace`), логика фильтра не тронута. Живая проверка на проде (где категории загружаются) — за владельцем.
-- **Notes:** `src/pages/CatalogPage.jsx` (только `setCat`). Прежнего B-ID не было.
+- **Regression History:**
+  - 2026-08-06 — NOT VERIFIED live с реальными категориями (в локальном `vite preview` категории Supabase не подгрузились — 0 чипов); `vite build` — успешно.
+  - 2026-08-07 — **REOPENED** владельцем по видео (баг снова виден). Расследование: фикс `replace` уехал в прод только 2026-08-07 (run #139, коммит `c75f136`); видео снято на пред-фиксной проде (`9d68afb`), где правки ещё не было. На текущем коде баг **не воспроизводится**: живой прогон в браузере (dev, реальные категории Supabase: Hamısı/Donlar/Bluzalar/Ətəklər/Şalvarlar/Üst geyim/Trikotaj/Aksesuarlar) — сценарии `кружок Donlar → «←» → Home`, `→ Catalog-таб = Hamısı`, `кружок Yenilər = Hamısı`, переключение чипами с `replace` (history не растёт) — во всех случаях URL/активный чип/список совпадают, старый фильтр не восстанавливается. Дополнительно **hardening**: убран браузерный `history.scrollRestoration='auto'` → `manual` (LAV-BUG-031), чтобы восстановленный скролл не «оживлял» визуально чужую секцию. Вывод: RE-VERIFIED FIXED; недостаточность прошлого фикса не подтвердилась — он просто не был в проде на момент записи видео. `vite build` — успешно.
+- **Notes:** `src/pages/CatalogPage.jsx` (`setCat` → `replace`). Связано с [[LAV-BUG-031]] (scroll hardening). Прежнего B-ID не было.
+
+## LAV-BUG-030 — Главная: кнопки «Hamısına bax» несогласованы; «Yeni gələnlər» не открывает свой список
+- **Module:** HomePage (товарные секции) + CatalogPage (collection/sort из URL)
+- **Platform:** both (в первую очередь mobile)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner (видео)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification на устройстве/проде
+- **Description:** У секций главной есть кнопка `Hamısına bax`. `Populyar məhsullar` открывала список, а `Yeni gələnlər` вела себя иначе (визуально «прыжок вверх» по главной вместо открытия списка новых товаров). Разные кнопки имели несогласованную цель.
+- **Steps to Reproduce:** Главная → `Yeni gələnlər` → `Hamısına bax`.
+- **Expected Result:** Открывается отдельное состояние каталога — список «Yeni gələnlər» (новые товары), единый предсказуемый route-механизм для всех `Hamısına bax`.
+- **Actual Result:** `Populyar` и `Yeni gələnlər` вели на **идентичный** `/catalog` (подтверждено в DOM: обе `.section-link` = `/catalog`) — отдельного collection-состояния не было; «прыжок вверх» — проявление LAV-BUG-031 (навигация на тот же URL + сброс скролла).
+- **Root Cause:** В `HomePage.jsx` обе секции имели `viewAllTo="/catalog"` — одинаковый URL, каталог не различал коллекции. `CatalogPage` не читал сорт/коллекцию из URL.
+- **Fix Summary:** Единый route-паттерн через query-параметр: `Populyar → /catalog?sort=rating`, `Yeni gələnlər → /catalog?sort=new`, `Endirimlər → /catalog?sale=1` (уже было). `CatalogPage` читает `sort` из URL ( initial + `useEffect` на смену `sortParam` без remount), добавлен режим сортировки `new` (по `id` desc = «новые первыми») и опция `sort_new` («Ən yenilər») в оба `<select>`. Круглая категория `Yenilər` синхронно → `/catalog?sort=new`. Категория при этом = `all` (Hamısı), список — все товары в нужном порядке. Ручной выбор сортировки не сбивается (URL `sort` статичен на навигацию).
+- **Fix Verification checklist:**
+  - [ ] A. `Populyar → Hamısına bax` → `/catalog?sort=rating`, сортировка «Reytinqə görə».
+  - [ ] B. `Yeni gələnlər → Hamısına bax` → `/catalog?sort=new`, «Ən yenilər», новые товары первыми, главная не прыгает.
+  - [ ] C. `Endirimlər → Hamısına bax` → `/catalog?sale=1`, только со скидкой.
+  - [ ] D. Все `Hamısına bax` — реальная route-навигация (не scroll/anchor).
+- **Regression History:** 2026-08-07 — live (dev, реальные данные): `Yeni gələnlər view-all` → `/catalog?sort=new`, select=`new`/«Ən yenilər», товары по `id` desc, Hamısı активна; `sort=rating` → select=`rating`; ручная смена сортировки на `price_asc` не откатывается. `vite build` — успешно.
+- **Notes:** `src/pages/HomePage.jsx`, `src/pages/CatalogPage.jsx`, `src/data/homeNav.js`, `src/i18n/translations.js`. Прежнего B-ID не было.
+
+## LAV-BUG-031 — Неверная позиция скролла после «назад» (конфликт scroll-restoration)
+- **Module:** App (маршрутизация / восстановление скролла)
+- **Platform:** both (в первую очередь mobile)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S2
+- **Status:** FIXED (live scroll — NOT VERIFIED в инструменте)
+- **Found By:** Owner (видео)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — на реальном устройстве
+- **Description:** Уход с позиции главной (напр. `Populyar məhsullar`) → каталог → «назад»: главная открывается значительно ниже (около `Yeni gələnlər`) — скролл восстанавливается неправильно.
+- **Steps to Reproduce:** Главная в районе Populyar → открыть категорию/секцию → Back.
+- **Expected Result:** Возврат примерно в ту же позицию главной; PUSH (новая страница/фильтр) — сверху; POP (назад/вперёд) — сохранённая позиция.
+- **Actual Result:** Свой `ScrollToTop` жёстко скроллил в 0 на каждой смене `pathname/search`, а браузерный `history.scrollRestoration='auto'` асинхронно восстанавливал старый offset; на фоне ленивой загрузки товаров и сдвига высоты попадал не в ту секцию.
+- **Root Cause:** Двойное неконтролируемое управление скроллом (браузер `auto` + собственный always-to-top), без сохранения позиции по типу навигации.
+- **Fix Summary:** В `App.jsx` `ScrollToTop` заменён на `ScrollManager`: `history.scrollRestoration='manual'`; позиция каждого `location.key` сохраняется (throttle через scroll-listener + сохранение в cleanup перед сменой маршрута); на `POP` восстанавливается сохранённая позиция с несколькими `requestAnimationFrame`-повторами (устойчиво к асинхронному росту высоты), на `PUSH/REPLACE` — скролл в 0.
+- **Fix Verification checklist:**
+  - [ ] A. Главная (проскроллена) → категория → Back → та же позиция главной.
+  - [ ] B. Каталог (проскроллен) → товар → Back → позиция каталога.
+  - [ ] C. Новая страница/смена фильтра (PUSH) → сверху.
+  - [ ] D. Нет «прыжков» вверх/вниз/к другой секции; нет двойного скролла.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; логика — стандартный manual scroll-restoration (POP restore / PUSH top). **Live scroll NOT VERIFIED в браузерном инструменте**: в этом webview программный `window.scrollTo` полностью игнорируется (проверено: `scrollTo(0,300)` не меняет `scrollY`), поэтому поведение скролла нельзя воспроизвести автоматизацией. Живая проверка на реальном устройстве (320/360/375/390) — за владельцем.
+- **Notes:** `src/App.jsx` (`ScrollManager` + `scrollRestoration='manual'`). Устраняет и визуальный аспект [[LAV-BUG-027]]. Прежнего B-ID не было.
+
+## LAV-BUG-032 — Нестабильный tap по круглым категориям на главной
+- **Module:** Categories (круглая лента, mobile)
+- **Platform:** mobile
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S2
+- **Status:** FIXED (live mobile — NOT VERIFIED в инструменте)
+- **Found By:** Owner (видео)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — на реальном устройстве
+- **Description:** Тап по круглым категориям (Donlar/Bluzalar/…) иногда не срабатывает с первого раза — приходится жать повторно.
+- **Steps to Reproduce:** Mobile → тап по кругу категории; быстрый свайп ленты.
+- **Expected Result:** Один tap → одно действие; вся карточка (круг+иконка+подпись) — одна touch-area ≥44px; горизонтальный swipe не конфликтует с tap; свайп не открывает категорию случайно.
+- **Actual Result:** На горизонтальном scroll-контейнере `.cats-row` без `touch-action` браузер путал tap с началом pan-свайпа и глотал клик; отсутствие `touch-action: manipulation` давало задержку/двойное срабатывание. (Сама карточка — уже один `<a>`, кликается целиком; «только иконка» — не код-причина.)
+- **Root Cause:** Не заданы `touch-action`-подсказки для scroll-ленты и ссылок → неоднозначность tap/pan.
+- **Fix Summary:** CSS: `.cats-row { touch-action: pan-x }` (лента только горизонтально пан-ит; вертикаль/tap проходят свободно), `.cat-circle { touch-action: manipulation; -webkit-tap-highlight-color: transparent; width:100%; min-height:44px }` (гарантированный размер touch-area, без 300ms/двойного клика).
+- **Fix Verification checklist:**
+  - [ ] A. Одиночный tap по кругу открывает категорию с первого раза.
+  - [ ] B. Tap по кругу/иконке/подписи — одинаковое действие.
+  - [ ] C. Быстрый горизонтальный свайп ленты не открывает категорию.
+  - [ ] D. Нет задержки/двойного срабатывания.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; DOM: карточка `.cat-circle` — единый `<a>` (клик по любой части = навигация, подтверждено). **Live touch NOT VERIFIED в инструменте** (расширение не эмулирует узкий viewport и реальные touch-жесты). Живая проверка на телефоне — за владельцем.
+- **Notes:** `src/styles/index.css` (`.cat-circle`, mobile `.cats-row`). Прежнего B-ID не было.
+
+## LAV-BUG-033 — Каталог: кнопка «←» прижата к верхней границе (mobile)
+- **Module:** CatalogPage (mobile layout)
+- **Platform:** mobile (desktop не меняется)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P3
+- **Severity:** S3
+- **Status:** FIXED (live mobile — NOT VERIFIED в инструменте)
+- **Found By:** Owner (видео)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — на реальном устройстве
+- **Description:** Круглая кнопка «←» на `/catalog` визуально упирается в потолок/divider шапки; нужен аккуратный верхний gap.
+- **Steps to Reproduce:** Mobile → открыть `/catalog`.
+- **Expected Result:** Header ↓ небольшой gap ↓ ← ↓ небольшой gap ↓ Filters; кнопка не касается border, аккуратный отступ слева; без большого пустого блока.
+- **Actual Result:** Ритм не задан явно для mobile; на фоне высокой двухрядной мобильной шапки (лого + полноширинный поиск) зазор ощущался тесным. (Замер desktop: gap header→back = 34px.)
+- **Root Cause:** Вертикальный ритм мобильного каталога не был выражен явными правилами; `.catalog-mobile-bar` (чипы) — `sticky top:0`, как и `.header`.
+- **Fix Summary:** CSS (≤900px): `.catalog-page { padding-top: 24px }` (аккуратный gap под шапкой) + `.catalog-head { margin: 4px 0 14px }` — кнопка «←» в своём ряду, небольшой gap до фильтров, без большого пустого блока. Desktop не тронут.
+- **Fix Verification checklist:**
+  - [ ] A. `/catalog` на 320/360/375/390 — «←» с нормальным верхним отступом, не касается border.
+  - [ ] B. Аккуратный отступ слева; sticky-шапка не перекрывает кнопку.
+  - [ ] C. Нет большого пустого блока между шапкой и фильтрами.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; замер (desktop, force-visible) — правило применяется. **Live mobile NOT VERIFIED в инструменте** (нет узкого viewport). Живая проверка на телефоне — за владельцем.
+- **Notes:** `src/styles/index.css` (≤900px блок). Прежнего B-ID не было.
 
 ## LAV-BUG-028 — Mobile header: логотип Elva LaVenta слишком мелкий
 - **Module:** Header (mobile) — брендовый логотип

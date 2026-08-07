@@ -240,6 +240,7 @@ export const ui = {
   all_products: { az: 'Bütün məhsullar', ru: 'Все товары', en: 'All products' },
   sort_by: { az: 'Sıralama', ru: 'Сортировка', en: 'Sort by' },
   sort_popular: { az: 'Populyar', ru: 'Популярные', en: 'Popular' },
+  sort_new: { az: 'Ən yenilər', ru: 'Сначала новые', en: 'Newest first' },
   sort_price_asc: { az: 'Ucuzdan bahaya', ru: 'Сначала дешёвые', en: 'Price: low to high' },
   sort_price_desc: { az: 'Bahadan ucuza', ru: 'Сначала дорогие', en: 'Price: high to low' },
   sort_rating: { az: 'Reytinqə görə', ru: 'По рейтингу', en: 'By rating' },

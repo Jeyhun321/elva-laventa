@@ -22,8 +22,15 @@ export default function CatalogPage() {
   const cat = params.get('cat') || 'all'
   const q = params.get('q') || ''
   const saleParam = params.get('sale')
+  const sortParam = params.get('sort')
 
-  const [sort, setSort] = useState('price_asc') // default: ucuzdan bahaya
+  // Ana səhifədəki bölmələr ("Hamısına bax") vahid mexanizmlə açılır:
+  // Populyar → ?sort=rating, Yeni gələnlər → ?sort=new, Endirimlər → ?sale=1.
+  // URL-dəki sort ilkin dəyər kimi qəbul olunur (aşağıda useEffect ilə sinxron).
+  const SORTS = ['popular', 'price_asc', 'price_desc', 'rating', 'discount', 'new']
+  const [sort, setSort] = useState(() =>
+    SORTS.includes(sortParam) ? sortParam : 'price_asc'
+  ) // default: ucuzdan bahaya
   const [minPrice, setMinPrice] = useState(bounds.min)
   const [maxPrice, setMaxPrice] = useState(bounds.max)
   // Yazı üçün ayrıca mətn state-i — istifadəçi sərbəst yaza bilsin
@@ -44,6 +51,14 @@ export default function CatalogPage() {
     setMaxPrice(bounds.max); setMaxText(String(bounds.max))
     setOnlySale(saleParam === '1')
   }, [cat, q, saleParam, bounds.min, bounds.max])
+
+  // URL-də sort dəyişəndə (məs. Populyar → Yeni gələnlər eyni /catalog daxilində,
+  // remount olmadan) aktiv sıralamanı sinxronlaşdır. İstifadəçi əl ilə sort seçəndə
+  // URL dəyişmir → bu effekt yenidən işə düşmür, seçim itmir.
+  useEffect(() => {
+    if (SORTS.includes(sortParam)) setSort(sortParam)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortParam])
 
   // Yazarkən: mətni sərbəst qəbul et, amma filtri YALNIZ interval düzgün
   // olduqda tətbiq et (min ≤ maks). Yanlış interval qəbul edilmir.
@@ -119,6 +134,7 @@ export default function CatalogPage() {
       case 'price_desc': sorted.sort((a, b) => b.price - a.price); break
       case 'rating': sorted.sort((a, b) => b.rating - a.rating); break
       case 'discount': sorted.sort((a, b) => discountPercent(b) - discountPercent(a)); break
+      case 'new': sorted.sort((a, b) => b.id - a.id); break // Yeni gələnlər — ən yenilər əvvəldə
       default: break
     }
     return sorted
@@ -215,6 +231,7 @@ export default function CatalogPage() {
             <label className="sort-select full">
               <select value={sort} onChange={(e) => setSort(e.target.value)}>
                 <option value="popular">{t('sort_popular')}</option>
+                <option value="new">{t('sort_new')}</option>
                 <option value="price_asc">{t('sort_price_asc')}</option>
                 <option value="price_desc">{t('sort_price_desc')}</option>
                 <option value="rating">{t('sort_rating')}</option>
@@ -345,6 +362,7 @@ export default function CatalogPage() {
               <span>{t('sort_by')}:</span>
               <select value={sort} onChange={(e) => setSort(e.target.value)}>
                 <option value="popular">{t('sort_popular')}</option>
+                <option value="new">{t('sort_new')}</option>
                 <option value="price_asc">{t('sort_price_asc')}</option>
                 <option value="price_desc">{t('sort_price_desc')}</option>
                 <option value="rating">{t('sort_rating')}</option>

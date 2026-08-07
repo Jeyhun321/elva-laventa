@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useRef } from 'react'
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -27,11 +27,49 @@ const ResetPasswordPage = lazyWithRetry(() => import('./pages/ResetPasswordPage.
 const SettingsPage = lazyWithRetry(() => import('./pages/SettingsPage.jsx'))
 const AdminPage = lazyWithRetry(() => import('./pages/AdminPage.jsx'))
 
-function ScrollToTop() {
-  const { pathname, search } = useLocation()
+// Sürüşmə mövqeyinin idarəsi (LAV-BUG-031).
+// Brauzerin öz "auto" bərpası ilə bizim scroll-to-top-un yarışını dayandırırıq:
+// history.scrollRestoration = 'manual' → mövqeyi YALNIZ özümüz idarə edirik.
+// PUSH/REPLACE (yeni səhifə/filtr) → yuxarı; POP (geri/irəli) → əvvəlki mövqe bərpa
+// olunur. Товары асинхрон yükləndiyi üçün bərpanı bir neçə kadr təkrar edirik ki,
+// məzmun hündürlüyü dəyişəndə düzgün yerə düşsün (yanlış bölməyə tullanma olmasın).
+function ScrollManager() {
+  const location = useLocation()
+  const navType = useNavigationType()
+  const positions = useRef(new Map())
+
+  // Cari maршрутун sürüşmə mövqeyini yadda saxla (kadr-kadr, ucuz).
   useEffect(() => {
+    const key = location.key
+    const save = () => { positions.current.set(key, window.scrollY) }
+    window.addEventListener('scroll', save, { passive: true })
+    return () => {
+      save() // maршрут dəyişməzdən əvvəl son mövqeyi qeyd et
+      window.removeEventListener('scroll', save)
+    }
+  }, [location.key])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+
+    if (navType === 'POP') {
+      const saved = positions.current.get(location.key)
+      if (saved != null) {
+        let raf = 0
+        let tries = 0
+        const restore = () => {
+          window.scrollTo(0, saved)
+          if (++tries < 8) raf = requestAnimationFrame(restore)
+        }
+        raf = requestAnimationFrame(restore)
+        return () => cancelAnimationFrame(raf)
+      }
+    }
+    // Yeni səhifə və ya filtr dəyişikliyi — həmişə yuxarıdan
     window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' })
-  }, [pathname, search])
+    return undefined
+  }, [location.key, navType])
+
   return null
 }
 
@@ -71,9 +109,17 @@ export default function App() {
   // 30 dəqiqə+ arxa plandan qayıdanda ana səhifəyə (səbət/sessiya toxunulmur)
   useInactivityRedirect()
 
+  // Brauzerin öz sürüşmə bərpası bizim idarəmizlə yarışmasın (LAV-BUG-031)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('scrollRestoration' in window.history)) return
+    const prev = window.history.scrollRestoration
+    window.history.scrollRestoration = 'manual'
+    return () => { window.history.scrollRestoration = prev }
+  }, [])
+
   return (
     <>
-      <ScrollToTop />
+      <ScrollManager />
       <AccountHomeRedirect />
       <SystemLogReporter />
       <Header />

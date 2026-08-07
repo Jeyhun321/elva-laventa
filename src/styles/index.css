@@ -744,6 +744,12 @@ ul {
   gap: 12px;
   padding: 10px 6px;
   text-align: center;
+  /* LAV-BUG-032: bütün kart (dairə + ikon + yazı) vahid toxunma sahəsidir;
+     `manipulation` — 300ms gecikmə/ikiqat tıklama olmasın; tap-highlight söndürülüb */
+  width: 100%;
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .cat-circle-icon {
   width: 78px;
@@ -1250,6 +1256,9 @@ ul {
     gap: 18px;
     padding-bottom: 10px;
     scrollbar-width: none;
+    /* LAV-BUG-032: yalnız üfüqi pan — brauzer tap-ı swipe ilə qarışdırıb udmasın,
+       tap dərhal işləsin; şaquli səhifə sürüşməsi və tıklama sərbəst keçir */
+    touch-action: pan-x;
   }
   .cats-row::-webkit-scrollbar { display: none; }
   .cats-row > li { flex: 0 0 96px; scroll-snap-align: start; }
@@ -4619,8 +4628,11 @@ a.product-media {
   /* Dil düyməsi digər dairələrlə eyni hündürlükdə, kompakt */
   .lang-select-btn { min-height: 44px; min-width: 54px; padding: 0 10px; }
 
-  /* Kataloq başlığı: mobildə dublikat kateqoriya başlığı gizlənir, geri görünür */
-  .catalog-head { align-items: center; gap: 12px; margin-bottom: 14px; }
+  /* Kataloq başlığı: mobildə dublikat kateqoriya başlığı gizlənir, geri görünür.
+     LAV-BUG-033: sabit şaquli ritm — Header ↓ kiçik gap ↓ ← ↓ kiçik gap ↓ Filtrlər.
+     Geri düyməsi öz sətrindədir, potolka dirənmir, böyük boş blok da yaranmır. */
+  .catalog-page { padding-top: 24px; }
+  .catalog-head { align-items: center; gap: 12px; margin: 4px 0 14px; }
   .catalog-head .page-title { display: none; }
   .back-btn { display: inline-flex; }
 }
