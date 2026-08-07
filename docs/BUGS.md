@@ -1056,3 +1056,64 @@
   - [ ] I. AZ/RU/EN подпись; desktop без регрессий.
 - **Regression History:** 2026-08-07 — `vite build` — успешно; **unit-тест движка (node):** min-len, тировка (имя>код>категория), featured тай-брейкер (менее релевантный featured НЕ выше более релевантного), similar fallback — PASSED. **Live end-to-end (dev, реальные данные Supabase):** «Max»→10 релевантных (не 14; Maxi в топе), «2002»→1 (код), «cicekli»→2, «qwxzk»→12 similar+заголовок, «M»(1 симв)→не ищет, X→14 (полный каталог), быстрый ввод→последнее значение, фокус сохранён, scroll 398→398 при доп. вводе (REPLACE не скроллит). Мобильный live (узкий viewport/тач) — за владельцем.
 - **Notes:** `src/lib/search.js` (тировка + `similarProducts` + `SEARCH_MIN`), `src/components/Header.jsx` (debounce/X/sync), `src/pages/CatalogPage.jsx` (matches/similar), `src/i18n/translations.js` (`no_exact_matches`), `src/App.jsx` (ScrollManager: REPLACE без скролла), `src/styles/index.css` (`.search-clear`, `.search-similar-note`). Связано с [[LAV-BUG-031]] (ScrollManager), F-007 (базовый умный поиск).
+
+---
+
+## LAV-BUG-036 — При tap на товар главная плавно скроллится вверх перед открытием Product Page
+- **Module:** Navigation / ScrollManager (`src/App.jsx`) + глобальный `scroll-behavior`
+- **Platform:** both (заметнее на mobile)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner (видео поведения главной)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification на устройстве
+- **Description:** При нажатии на карточку товара страница сначала визуально прокручивается вверх (плавная анимация), и только затем открывается Product Page — переход выглядит как «скролл/прыжок перед открытием».
+- **Steps to Reproduce:** Прокрутить главную вниз (напр. до «Yeni gələnlər») → tap на карточку товара.
+- **Expected Result:** tap → Product Page открывается сразу, без промежуточного видимого скролла/анимации.
+- **Actual Result:** Перед открытием товара главная плавно (smooth) уезжает вверх.
+- **Root Cause:** Двойная причина. (1) `html { scroll-behavior: smooth }` (глобально в `index.css`). (2) В `ScrollManager` при PUSH использовался `window.scrollTo({ top:0, behavior: 'instant' in window ? 'instant' : 'auto' })`. Проверка `'instant' in window` всегда `false` (нет свойства `window.instant`) → фактически подставлялось `behavior:'auto'`, а `'auto'` подчиняется CSS `scroll-behavior: smooth`. Итог: каждый переход на новую страницу (в т.ч. открытие товара) запускал видимую плавную прокрутку главной вверх.
+- **Fix Summary:** В `ScrollManager` scroll-to-top на PUSH переведён на явный `behavior:'instant'` (`window.scrollTo({ top:0, left:0, behavior:'instant' })`) — по спецификации явный `behavior` в опциях перекрывает CSS `scroll-behavior`, поэтому переход мгновенный независимо от `html{scroll-behavior:smooth}`. Глобальный smooth оставлен (для внутренних якорей) — программные переходы теперь его не наследуют.
+- **Fix Verification checklist:**
+  - [ ] A. Прокрутить главную вниз → tap на товар → Product Page открывается без видимого скролла главной.
+  - [ ] B. Открытие товара из «Populyar», «Yeni gələnlər», «Endirimlər» — одинаково без прыжка.
+  - [ ] C. Открытие товара из каталога/избранного — без прыжка.
+  - [ ] D. Desktop — без регрессий.
+- **Regression History:** 2026-08-07 — `vite build` — успешно; в собранном бандле `dist/assets/index-*.js` присутствует `behavior:"instant"` (×2), баговый `'instant' in` отсутствует; исходный `scroll-behavior:smooth` подтверждён. Живой tap-тест на мобильном устройстве — за владельцем (инструмент рендерит desktop-viewport).
+- **Notes:** `src/App.jsx` (ScrollManager PUSH + POP-restore → `behavior:'instant'`). Связано с [[LAV-BUG-031]] (scrollRestoration=manual), [[LAV-BUG-035]] (REPLACE без скролла).
+
+---
+
+## LAV-BUG-037 — Mobile: слишком крупные карточки и избыточные вертикальные отступы на главной
+- **Module:** HomePage / HorizontalProductSection / ProductCard (`src/styles/index.css`)
+- **Platform:** mobile
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (мобильные скриншоты + ТЗ)
+- **Found Date:** 2026-08-07
+- **Developer:** Claude Code
+- **QA:** Pending (владелец) — Fix Verification на устройстве
+- **Description:** На мобильной главной карточки товаров слишком крупные (в горизонтальный ряд помещается ~1.9 карточки, не видно, что ряд свайпается), а между секциями (особенно круглые категории → «Populyar məhsullar») слишком большой вертикальный gap — страница ощущается тяжёлой и длинной.
+- **Steps to Reproduce:** Открыть главную на телефоне (320–414px) → посмотреть ряд «Populyar məhsullar» и промежуток под категориями.
+- **Expected Result:** ~2.4–2.7 карточки в ряду (следующая частично видна справа), компактные секции без пустого экрана, boutique-spacing сохранён; страница не получает горизонтальный скролл.
+- **Actual Result:** `.hscroll` карточка `clamp(142px,44vw,168px)` (~165px на 375px → ~1.9 карточки); `.hsection` на mobile `padding-block:34px` + `.hsection-head{margin-bottom:18px}` → большой gap под категориями.
+- **Root Cause:** Переразмеренные `grid-auto-columns` в `.hscroll` и завышенные вертикальные `padding-block`/`margin-bottom` секций на мобильной ширине.
+- **Fix Summary:**
+  - **Карточки компактнее (~23%):** `.hscroll { grid-auto-columns: clamp(112px, 34vw, 150px); gap: 10px }` — даёт 2.44–2.60 карточки на 320/360/375/390/414px, следующая карточка частично видна справа → явный сигнал свайпа. Desktop-ветка (`min-width:901` → `grid-template-columns: repeat(4,1fr)`) не затронута.
+  - **Плотность info:** на `≤900px` `.hscroll .product-info` padding 10/12, name 0.9rem, brand 0.64rem, price 0.94rem, add-btn 36px. Имя по-прежнему клампится в 2 строки (`min-height:2.4em`) → одинаковая высота карточек.
+  - **Вертикальный ритм:** на `≤640px` `.hsection { padding-block: 20px }` (было 34), `.hsection-head { margin-bottom: 12px }` (было 18), `.promo-strip { margin-top: 16px }`. Gap категории→Popular сократился (cats-section уже `padding-bottom:0`). Boutique-spacing сохранён.
+  - Общий reusable-компонент `HorizontalProductSection` не переписывался — секции Popular/Yeni/Endirimlər используют его как раньше; пустые секции скрываются (`null` при `!products.length && !loading`).
+- **Fix Verification checklist:**
+  - [ ] A. 320/360/375/390px → видно ~2.4–2.7 карточки, следующая частично видна.
+  - [ ] B. Горизонтальный свайп ряда плавный; страница НЕ скроллится горизонтально.
+  - [ ] C. Gap под круглыми категориями заметно меньше, «Populyar» начинается выше.
+  - [ ] D. Имя товара ≤2 строк, карточки одинаковой высоты; цена/бейдж/сердце/бренд читаемы.
+  - [ ] E. Круглые категории свайпаются, высота секции не выросла.
+  - [ ] F. Bottom Navigation не перекрывает товары.
+  - [ ] G. Desktop — без регрессий (сетка 4 колонки прежняя).
+- **Regression History:** 2026-08-07 — `vite build` — успешно; расчёт видимых карточек по формуле `clamp(112px,34vw,150px)`/gap 10 для 320–414px → 2.44–2.60 (в целевом диапазоне); на desktop-viewport (инструмент) `document.scrollWidth ≤ innerWidth` (нет горизонтального overflow страницы), desktop hero/сетка без регрессий. Живой мобильный viewport/тач — за владельцем (инструмент рендерит desktop).
+- **Notes:** `src/styles/index.css` (`.hscroll` размеры + `≤900`/`≤640` компакт-блоки). Связано с [[LAV-BUG-031]], [[LAV-BUG-033]] (мобильный вертикальный ритм каталога).

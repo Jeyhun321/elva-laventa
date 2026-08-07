@@ -58,7 +58,9 @@ function ScrollManager() {
         let raf = 0
         let tries = 0
         const restore = () => {
-          window.scrollTo(0, saved)
+          // behavior:'instant' — CSS `scroll-behavior: smooth`-u əvəz edir,
+          // yoxsa bərpa smooth animasiya kimi "sıçrayır" (LAV-BUG-036).
+          window.scrollTo({ top: saved, left: 0, behavior: 'instant' })
           if (++tries < 8) raf = requestAnimationFrame(restore)
         }
         raf = requestAnimationFrame(restore)
@@ -68,7 +70,10 @@ function ScrollManager() {
     // REPLACE (yerində yenilənmə: axtarış/filtr/sort) — mövqeyi SAXLA, sıçratma.
     // Yalnız PUSH (yeni səhifə) yuxarıdan başlayır.
     if (navType === 'PUSH') {
-      window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' })
+      // Yeni səhifə → dərhal yuxarı. behavior:'instant' MÜTLƏQ lazımdır:
+      // əks halda 'auto' CSS `scroll-behavior: smooth`-a tabe olub səhifəni
+      // товар açılmazdan əvvəl görünən şəkildə "sürüşdürür" (LAV-BUG-036).
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     }
     return undefined
   }, [location.key, navType])

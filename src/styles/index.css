@@ -4401,8 +4401,10 @@ a.product-media {
 .hscroll {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: clamp(142px, 44vw, 168px);
-  gap: 12px;
+  /* Kompakt kart (LAV-BUG-037): ~2.4–2.7 kart bir sıraya sığır, növbəti kart
+     sağdan yarı görünür → istifadəçi dərhal başa düşür ki, sıra sürüşür. */
+  grid-auto-columns: clamp(112px, 34vw, 150px);
+  gap: 10px;
   overflow-x: auto;
   scroll-snap-type: x proximity;
   padding-bottom: 6px;
@@ -4414,13 +4416,20 @@ a.product-media {
 
 /* Kompakt kart: lentdə kod sətri gizlənir, info sıxlaşdırılır */
 @media (max-width: 900px) {
-  .hscroll .product-info { padding: 12px 12px 14px; }
+  .hscroll .product-info { padding: 10px 10px 12px; gap: 6px; }
   .hscroll .card-code { display: none; }
-  .hscroll .product-name { font-size: 0.98rem; }
+  .hscroll .product-name { font-size: 0.9rem; }
+  .hscroll .product-brand { font-size: 0.64rem; }
+  .hscroll .price-block .new { font-size: 0.94rem; }
+  .hscroll .add-btn { width: 36px; height: 36px; }
 }
 
+/* Ana səhifə şaquli sıxlığı (LAV-BUG-037): bölmələr arası boşluq azaldılır,
+   amma boutique-ritm qalır. Kateqoriyalar → Popular gap-i də bununla kiçilir. */
 @media (max-width: 640px) {
-  .hsection { padding-block: 34px; }
+  .hsection { padding-block: 20px; }
+  .hsection-head { margin-bottom: 12px; }
+  .promo-strip { margin-top: 16px; }
 }
 
 @media (min-width: 901px) {
