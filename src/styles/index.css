@@ -848,6 +848,7 @@ ul {
 .product-grid > .reveal > .product-card { width: 100%; }
 
 .product-card {
+  position: relative;
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -858,6 +859,10 @@ ul {
   display: flex;
   flex-direction: column;
   transform-style: preserve-3d;
+  /* LAV-BUG-047: tap dərhal işləsin — 300ms ikiqat-tap gecikməsi/udulma olmasın
+     (üfüqi lentdə də). Boz "tap-highlight" sönür. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .product-card:hover {
   transform: translateY(-6px);
@@ -1005,6 +1010,19 @@ ul {
   color: var(--ink);
   line-height: 1.2;
 }
+
+/* LAV-BUG-047: BÜTÖV kart klik olunur (yalnız şəkil/ad deyil). Ad linkinin
+   ::after-i bütün kartı örtür → istifadəçi kartın istənilən yerinə toxunanda
+   məhsul açılır (marka/reytinq/qiymət "ölü zona" deyil). Sevimli və səbət
+   düymələri üstündə qalır (z-index) — öz onClick-ləri (stopPropagation) işləyir. */
+a.product-name::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.product-fav { z-index: 2; }
+.add-btn { position: relative; z-index: 2; }
 
 .product-colors {
   display: flex;
@@ -4792,6 +4810,10 @@ a.product-media {
   scroll-snap-type: x proximity;
   padding-bottom: 6px;
   scrollbar-width: none;
+  /* LAV-BUG-047: eyni ilə dairəvi kateqoriyalardakı (LAV-BUG-032) kimi —
+     lent yalnız ÜFÜQİ pan-it; brauzer tap-ı swipe başlanğıcı ilə qarışdırıb
+     klikı UDMASIN. Şaquli sürüşmə (səhifə) və tap sərbəst keçir. */
+  touch-action: pan-x;
 }
 .hscroll::-webkit-scrollbar { display: none; }
 .hscroll-item { min-width: 0; display: flex; scroll-snap-align: start; }

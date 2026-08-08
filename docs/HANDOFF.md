@@ -2,7 +2,9 @@
 
 ## Current Status
 
-**Mobile-полировка страницы товара (LAV-BUG-046): один тёмный badge «Pulsuz / çatdırılma» (2 строки + иконка коробки), зелёный «Sabah göndərilir» удалён; логотип в header ещё крупнее (`min(184px,44vw)`).** Поверх LAV-BUG-045 (header 2 строки) и пакета из 6 задач. Код в рабочем дереве, `vite build` — успешно; desktop проверен live (без регрессий). Готово к commit → push → deploy.
+**Фикс тапа по карточке товара на мобиле (LAV-BUG-047): один тап открывает товар (раньше нужно было несколько).** Та же первопричина, что у категорий (LAV-BUG-032): у горизонтальной ленты `.hscroll` не было `touch-action` → браузер глотал клик; плюс кликабельны были только фото/название. Фикс: `.hscroll{touch-action:pan-x}`, `.product-card{touch-action:manipulation}` + вся карточка кликабельна (stretched-link), кнопки fav/add подняты выше. `vite build` — успешно; проверено live на desktop (клик по цене → товар; сердечко → модалка без навигации). Готово к commit → push → deploy.
+
+**Предыдущее (LAV-BUG-046):** один тёмный badge «Pulsuz / çatdırılma» (2 строки + иконка коробки), зелёный «Sabah göndərilir» удалён; логотип в header крупнее (`min(184px,44vw)`).
 
 **Header товара (LAV-BUG-045):** 1-я строка — крупный логотип + Profile/Fav/Cart, 2-я строка — `[←]` Back + поиск (укорочен только слева).
 
@@ -71,13 +73,13 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260807-213001
+Recovery ID: R-20260808-162224
 
 1. **Проект:** Elva LaVenta — React/Vite storefront магазина женской одежды, Supabase (Frankfurt), деплой GitHub Pages.
 2. **Описание:** интернет-магазин: каталог, избранное, корзина, checkout (заказ через серверную RPC `place_order` + Telegram-уведомление), admin-панель, три языка AZ/RU/EN.
 3. **Текущее состояние:** выполнен пакет из 6 задач (header товара, галерея без цикла + новые стрелки, поиск по коду exact, UX-валидация размера, выбор доставки на Checkout). Код в рабочем дереве, `vite build` успешен, search unit-тест PASSED, галерея live-проверена (desktop). Живой мобильный/checkout end-to-end — за владельцем.
 4. **Что реализовано (этот пакет):** сжимаемый логотип в header товара (одна строка); ограниченная галерея + chevron-стрелки с disabled; код — только точное совпадение; sticky-валидация размера; radio-cards доставки Standard/Express с пересчётом Order Summary и записью способа в note (заказ + Telegram). Плюс прежнее: Product Page mobile (039), HomePage mobile (038), умный поиск, ScrollManager, is_featured (graceful degrade), inactivity 30м, язык в Settings.
-5. **Последняя задача:** LAV-BUG-046 (mobile-полировка товара: единый тёмный badge «Pulsuz / çatdırılma» в 2 строки с иконкой коробки, зелёный «Sabah göndərilir» удалён; логотип header ещё крупнее `min(184px,44vw)`). Файлы: `src/components/Icons.jsx` (`IconBox`), `src/pages/ProductPage.jsx`, `src/styles/index.css`. Поверх LAV-BUG-045 (header 2 строки) + пакета 040..044 + F-008.
+5. **Последняя задача:** LAV-BUG-047 — мобильный тап по карточке товара открывает её с первого раза. Причина (как LAV-BUG-032): у ленты .hscroll не было touch-action → клик глотался; + кликабельны были только фото/название. Фикс в src/styles/index.css: .hscroll touch-action:pan-x, .product-card touch-action:manipulation, вся карточка кликабельна (stretched a.product-name::after), fav/add z-index:2.
 6. **Изменённые файлы (последняя задача):** `src/components/Header.jsx` (обёртка `.header-search-row` + Back внутри), `src/styles/index.css` (`.header-search-row` contents/flex). Ранее в этой сессии: `src/components/Icons.jsx`, `src/lib/search.js`, `src/pages/ProductPage.jsx`, `src/pages/CheckoutPage.jsx`, `src/i18n/translations.js`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/HANDOFF.md`.
 7. **Проверки:** `vite build` — успешно; search unit-тест (node) — PASSED; gallery live (desktop `/product/20`) — границы/disabled/no-wrap PASSED; нет горизонтального overflow. Мобильный/Checkout end-to-end/Telegram — NOT VERIFIED (за владельцем).
 8. **Ограничения:** desktop НЕ переделывать (только регрессии); не удалять функциональность; не менять схему БД/RPC `place_order` (DDL — владелец); способ доставки — через note (без DDL); i18n AZ/RU/EN; не хардкодить турецкие строки; один пуш на задачу; не коммитить секреты.
@@ -92,7 +94,7 @@ Recovery ID: R-20260807-213001
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: LAV-BUG-046 (mobile: единый delivery-badge 2 строки + крупнее логотип) поверх LAV-BUG-045 — завершено в рабочем дереве; commit/push/deploy — следующий шаг
+Current task: LAV-BUG-047 (мобильный тап по карточке товара — 1 тап открывает; touch-action + stretched-link) — завершено в рабочем дереве; commit/push/deploy — следующий шаг
 Expected modified files:
   - src/components/Icons.jsx (IconChevron)
   - src/lib/search.js (code exact-only)

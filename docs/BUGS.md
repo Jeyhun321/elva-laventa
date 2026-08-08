@@ -1365,3 +1365,33 @@
   - [ ] Desktop — без изменений (badge `display:none`, logo-правила только в mobile media).
 - **Regression History:** 2026-08-07 — `vite build` — успешно; desktop live (`/product/20`): `.pd-badge-free` текст = `["Pulsuz","çatdırılma"]`, иконка есть, `.pd-badge-ship` отсутствует в DOM, badge `display:none` на desktop, нет горизонтального overflow, логотип desktop 210px (не тронут). Мобильная ширина — за владельцем (инструмент рендерит desktop 1536px).
 - **Notes:** `src/components/Icons.jsx` (`IconBox`), `src/pages/ProductPage.jsx` (`.pd-badge-free`, убран ship), `src/styles/index.css` (`.pd-badge-free`/`.pd-badge-icon`/`.pd-badge-text`, product-mobile logo `min(184px,44vw)`). Связано с [[LAV-BUG-045]] (header 2 строки), [[LAV-BUG-039]] (badges/overlay). i18n-ключ `badge_ships_fast` больше не используется (оставлен, безвреден).
+
+---
+
+## LAV-BUG-047 — Mobile: тап по карточке товара не открывает её с первого раза (нужно нажимать несколько раз)
+- **Module:** ProductCard / горизонтальные ленты HomePage (`src/styles/index.css`)
+- **Platform:** mobile (touch)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner (повтор поведения, аналогичного [[LAV-BUG-032]])
+- **Found Date:** 2026-08-08
+- **Developer:** Claude Code
+- **Description:** На мобильном по карточке товара приходилось тапать несколько раз, прежде чем открывалась страница товара — как раньше было с круглыми категориями (LAV-BUG-032).
+- **Steps to Reproduce:** Мобильный, главная → лента «Populyar məhsullar» / «Yeni gələnlər» → одиночный тап по карточке.
+- **Expected Result:** Один тап по любой части карточки → сразу открывается Product Page.
+- **Actual Result:** Первый тап «съедался», нужен повторный; тап по бренду/рейтингу/цене вообще не срабатывал.
+- **Root Cause:** ДВЕ причины. (1) **То же, что LAV-BUG-032:** горизонтальная лента `.hscroll` (в которой лежат карточки Popular/Yeni/Endirimlər) НЕ имела `touch-action` — браузер путал tap с началом горизонтального pan-свайпа и глотал клик; отсутствие `touch-action: manipulation` давало 300ms задержку двойного тапа. У круглых категорий это уже было исправлено (`.cats-row { touch-action: pan-x }`), а у ленты товаров — нет. (2) **«Мёртвые зоны»:** кликабельны были только фото и название (`<Link>`), а бренд/рейтинг/цена/отступы — нет; тап по ним ничего не делал → ощущение «не открылось».
+- **Fix Summary:**
+  - `.hscroll { touch-action: pan-x }` — лента пан-ит только горизонтально; вертикальный скролл страницы и tap проходят свободно, клик не глотается (зеркало фикса LAV-BUG-032).
+  - `.product-card { touch-action: manipulation; -webkit-tap-highlight-color: transparent }` — мгновенный tap без 300ms/двойного срабатывания, без серой tap-подсветки.
+  - **Вся карточка кликабельна (stretched-link):** `.product-card { position: relative }`, `a.product-name::after { position:absolute; inset:0; z-index:1 }` перекрывает всю карточку → тап по любому месту (бренд/рейтинг/цена/отступ) открывает товар. Кнопки «избранное»/«в корзину» подняты выше (`.product-fav`, `.add-btn` → `z-index:2`; их `onClick` уже с `stopPropagation`/`preventDefault`) — работают как раньше, без навигации.
+- **Regression Checklist:**
+  - [ ] Мобильный: одиночный тап по карточке (в т.ч. по цене/бренду/рейтингу) → сразу Product Page.
+  - [ ] Горизонтальный свайп ленты не открывает товар случайно; вертикальный скролл страницы свободен.
+  - [ ] Кнопка «избранное» на карточке → toggle/auth-модалка, НЕ навигация.
+  - [ ] Кнопка «в корзину» на карточке → добавление/auth-модалка, НЕ навигация.
+  - [ ] Desktop — карточки открываются, fav/add работают (без регрессий).
+- **Regression History:** 2026-08-08 — `vite build` — успешно; desktop live (Chrome preview): computed `touch-action` — `.hscroll`=`pan-x`, `.product-card`=`manipulation`; клик по ЦЕНЕ карточки (прежняя «мёртвая зона») → навигация на `/product/20`; клик по сердечку избранного → открылась модалка «Hesaba giriş» БЕЗ навигации. PASSED. Живой мобильный touch — за владельцем (инструмент рендерит desktop-viewport 1536px).
+- **Notes:** `src/styles/index.css` (`.hscroll` touch-action, `.product-card` touch-action + stretched-link, `a.product-name::after`, z-index кнопок). Тот же класс первопричины, что [[LAV-BUG-032]] (категории). Связано с [[LAV-BUG-037]] (лента карточек), [[LAV-BUG-036]] (переход в товар).
