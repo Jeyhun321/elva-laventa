@@ -1426,3 +1426,34 @@
   - [ ] Desktop — галерея и hover-tilt без регрессий (touch-события не участвуют).
 - **Regression History:** 2026-08-12 — `vite build` — успешно (ProductPage 11.52 kB). Live preview собранного билда (Chrome, `/product/20`, 3 фото), синтетические TouchEvents: computed `touch-action`=`manipulation`; вертикальный жест → `defaultPrevented=false`, индекс фото не меняется; горизонтальный жест влево → `defaultPrevented=true`, фото 0→1; навигация в границах 0→1→2, на границе БЕЗ wrap (остаётся 2), prev 2→1; стрелки (клик 1→2→1) и `.pd-fab` (избранное) кликабельны. Всё PASSED. Живой touch на реальном iPhone/webview — за владельцем (инструмент не эмулирует нативный touch-скролл).
 - **Notes:** `src/pages/ProductPage.jsx` (native touch-слушатели в `useEffect`, refs, `ref={galleryRef}`), `src/styles/index.css` (`.gallery-main` × 2 → `touch-action: manipulation`). Родственно [[LAV-BUG-032]]/[[LAV-BUG-047]] (тот же класс проблемы `touch-action` vs скролл/тап), [[LAV-BUG-041]] (та же функция `switchGalleryImage`, границы галереи сохранены).
+
+## LAV-BUG-049 — HomePage (mobile): страница не скроллится вертикально, если свайп начат с карточки/фото/категории в горизонтальных лентах
+- **Module:** HomePage — горизонтальные ленты `.hscroll` (Popular/Yeni/Endirimlər) и `.cats-row` (категории) (`src/styles/index.css`)
+- **Platform:** mobile (touch)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner
+- **Found Date:** 2026-08-12
+- **Developer:** Claude Code
+- **Description:** На мобильной главной вертикальный свайп прокручивал страницу только с пустых мест. Свайп, начатый с карточки товара, её фото, названия/цены/бейджа или с элемента категории, вертикально НЕ прокручивал — экран «залипал», приходилось искать пустое место.
+- **Steps to Reproduce:** Мобильный, главная → поставить палец на фото/тело карточки в ленте «Populyar məhsullar» (или на кружок категории) → свайп вверх/вниз.
+- **Expected Result:** Вертикальный жест прокручивает страницу из любой точки лент; горизонтальный жест по ленте по-прежнему листает её; tap открывает товар/категорию.
+- **Actual Result:** Вертикальный свайп над лентами блокировался (native page scroll не стартовал).
+- **Root Cause:** У горизонтальных лент `.hscroll` и `.cats-row` стояло `touch-action: pan-x` (добавлено в [[LAV-BUG-032]]/[[LAV-BUG-047]] для мгновенного tap). Комментарии в коде ошибочно утверждали, что `pan-x` «пропускает вертикальный скролл» — это неверно: **`pan-x` разрешает браузеру ТОЛЬКО горизонтальный пан и блокирует вертикальный page-scroll**, начатый на элементе. Поскольку `.product-card` (`touch-action: manipulation`) — потомок `.hscroll`, по спецификации эффективный touch-action = **пересечение элемента и предков** = `manipulation ∩ pan-x = pan-x` → вертикаль мертва над ВСЕЙ лентой, включая фото карточек. Именно прошлый «фикс» tap-а и создал этот баг. (Ср.: `.related-grid` на product page `touch-action` не задаёт → `auto` → там вертикаль работала — подтверждение модели.)
+- **Fix Summary:**
+  - `.hscroll` и `.cats-row`: `touch-action: pan-x` → `touch-action: pan-x pan-y`. Теперь горизонтальный жест панит ленту (pan-x, `overflow-x:auto`), вертикальный — скроллит страницу (pan-y, ближайший y-scrollable предок), а pinch/double-tap-zoom по-прежнему выключены → tap мгновенный и не глотается (выгода LAV-BUG-032/047 сохранена). Пересечение с картой: `manipulation ∩ (pan-x pan-y) = pan-x pan-y` → обе оси разрешены.
+  - Никаких JS-изменений, `pointer-events`, `preventDefault` или самодельного скролла — только корректная browser-native модель touch-action.
+- **Regression Checklist:**
+  - [ ] Мобильный: вертикальный свайп с фото карточки в ленте → страница скроллится (TC1).
+  - [ ] Мобильный: вертикальный свайп с текста/цены карточки → страница скроллится (TC2).
+  - [ ] Мобильный: вертикальный свайп с кружка категории → страница скроллится.
+  - [ ] Горизонтальный свайп по ленте (Popular/Yeni/Endirimlər) и по категориям → лента листается (TC7).
+  - [ ] Вертикальный свайп поверх ленты не блокируется (TC8).
+  - [ ] Tap по карточке → открывает товар; по категории → фильтр/переход (TC5).
+  - [ ] Свайп-скролл с карточки НЕ открывает товар случайно (нативное подавление click после скролла) (TC6).
+  - [ ] Favorite/cart на карточке → своё действие, без навигации (TC4).
+  - [ ] Desktop — ленты и карточки без регрессий (touch-action на mouse не влияет).
+- **Regression History:** 2026-08-12 — `vite build` — успешно. Live preview собранного билда (Chrome): чтение реальных CSSRule — `.hscroll`=`pan-x pan-y`, `.cats-row @(max-width:900px)`=`pan-x pan-y`, `.product-card`=`manipulation`, `.gallery-main`=`manipulation`; ссылка карточки цела (`/product/20`); горизонтальный `overflow-x:auto` не тронут. PASSED (уровень CSS-правил). Живой нативный touch-скролл на реальном iPhone/Android — за владельцем (инструмент не эмулирует нативный touch-скролл, только синтетические события + computed-стили).
+- **Notes:** `src/styles/index.css` (`.cats-row` и `.hscroll` → `touch-action: pan-x pan-y`). Прямое следствие [[LAV-BUG-032]]/[[LAV-BUG-047]] (там `pan-x` и был введён). Тот же класс, что [[LAV-BUG-048]] (product-page галерея: `pan-y`→`manipulation`). Product-page галерея уже исправлена в LAV-BUG-048; `.related-grid` в исправлении не нуждался (`auto`).
