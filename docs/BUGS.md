@@ -1395,3 +1395,34 @@
   - [ ] Desktop — карточки открываются, fav/add работают (без регрессий).
 - **Regression History:** 2026-08-08 — `vite build` — успешно; desktop live (Chrome preview): computed `touch-action` — `.hscroll`=`pan-x`, `.product-card`=`manipulation`; клик по ЦЕНЕ карточки (прежняя «мёртвая зона») → навигация на `/product/20`; клик по сердечку избранного → открылась модалка «Hesaba giriş» БЕЗ навигации. PASSED. Живой мобильный touch — за владельцем (инструмент рендерит desktop-viewport 1536px).
 - **Notes:** `src/styles/index.css` (`.hscroll` touch-action, `.product-card` touch-action + stretched-link, `a.product-name::after`, z-index кнопок). Тот же класс первопричины, что [[LAV-BUG-032]] (категории). Связано с [[LAV-BUG-037]] (лента карточек), [[LAV-BUG-036]] (переход в товар).
+
+## LAV-BUG-048 — Product Page (mobile): страница не скроллится, если вертикальный свайп начат с фото/галереи («залипание»)
+- **Module:** ProductPage — галерея (`src/pages/ProductPage.jsx`, `src/styles/index.css`)
+- **Platform:** mobile (touch)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner
+- **Found Date:** 2026-08-12
+- **Developer:** Claude Code
+- **Description:** На мобильном вертикальный свайп прокручивал страницу, только если жест начинался с пустой области. Если тот же свайп начинался прямо с фото товара / области галереи — страница не скроллилась, экран «залипал», приходилось искать пустое место.
+- **Steps to Reproduce:** Мобильный, Product Page → начать вертикальный свайп вниз/вверх прямо с середины/низа фотографии товара.
+- **Expected Result:** Страница прокручивается независимо от того, где начат вертикальный жест (фото, thumbnails, контент, пустая область). Горизонтальный свайп по фото продолжает листать галерею.
+- **Actual Result:** Свайп, начатый с фото/галереи, не прокручивал страницу.
+- **Root Cause:** Разделение «вертикаль=скролл / горизонталь=свайп галереи» держалось ИСКЛЮЧИТЕЛЬНО на CSS `touch-action: pan-y` у `.gallery-main`, а JS-обработчики свайпа жест не арбитрировали (никогда не вызывали `preventDefault`). На Chrome/Android `pan-y` вертикальный скролл разрешает (подтверждено на live), но на ряде мобильных браузеров (iOS Safari, встроенные webview Instagram/Telegram — массовые в AZ) значение `pan-y` трактуется слишком строго и блокирует вертикальный скролл над элементом. Пустые области с `touch-action:auto` при этом скроллятся — ровно наблюдаемый симптом. Оверлеев поверх фото нет; активного `preventDefault`/глобальных non-passive touch-слушателей нет; carousel-библиотек нет.
+- **Fix Summary:**
+  - `.gallery-main { touch-action: manipulation }` (было `pan-y`, в ДВУХ объявлениях) — `manipulation` все мобильные браузеры читают одинаково: вертикальный скролл ВСЕГДА разрешён. Убрана зависимость от «капризного» `pan-y`.
+  - Горизонтальный свайп теперь арбитрируется JS: `useEffect` вешает native-слушатели на `.gallery-main` (ref), `touchmove` — **non-passive** (`{ passive:false }`). Направление жеста фиксируется один раз (порог 10px). Вертикальный жест → `preventDefault` НЕ вызывается никогда → нативный скролл страницы свободен. Только **подтверждённый горизонтальный** жест (и при >1 фото) вызывает `preventDefault` (гасит iOS edge-back-swipe/rubber-band) и на `touchend` листает галерею (порог 40px, без wrap на границах).
+  - Удалены прежние React-обработчики `onTouchStart/Move/End` (React 18 вешает touchmove как passive → `preventDefault` там невозможен) и `touch` ref; актуальные `gallery.length`/`switchGalleryImage` пробрасываются в native-слушатель через refs.
+- **Regression Checklist:**
+  - [ ] Мобильный: вертикальный свайп, начатый с СЕРЕДИНЫ фото → страница скроллится.
+  - [ ] Мобильный: вертикальный свайп с НИЖНЕЙ части фото → страница скроллится.
+  - [ ] Мобильный: вертикальный свайп рядом с badge (не по самой кнопке) → страница скроллится.
+  - [ ] Горизонтальный свайп по фото → галерея листает изображение (в пределах границ, без зацикливания).
+  - [ ] Диагональный жест с явной вертикалью → побеждает скролл; с явной горизонталью → листает галерею.
+  - [ ] Favorite / Share / стрелки галереи / thumbnails / dots — работают по tap.
+  - [ ] Sticky Add-to-cart и валидация размера — без регрессий.
+  - [ ] Desktop — галерея и hover-tilt без регрессий (touch-события не участвуют).
+- **Regression History:** 2026-08-12 — `vite build` — успешно (ProductPage 11.52 kB). Live preview собранного билда (Chrome, `/product/20`, 3 фото), синтетические TouchEvents: computed `touch-action`=`manipulation`; вертикальный жест → `defaultPrevented=false`, индекс фото не меняется; горизонтальный жест влево → `defaultPrevented=true`, фото 0→1; навигация в границах 0→1→2, на границе БЕЗ wrap (остаётся 2), prev 2→1; стрелки (клик 1→2→1) и `.pd-fab` (избранное) кликабельны. Всё PASSED. Живой touch на реальном iPhone/webview — за владельцем (инструмент не эмулирует нативный touch-скролл).
+- **Notes:** `src/pages/ProductPage.jsx` (native touch-слушатели в `useEffect`, refs, `ref={galleryRef}`), `src/styles/index.css` (`.gallery-main` × 2 → `touch-action: manipulation`). Родственно [[LAV-BUG-032]]/[[LAV-BUG-047]] (тот же класс проблемы `touch-action` vs скролл/тап), [[LAV-BUG-041]] (та же функция `switchGalleryImage`, границы галереи сохранены).

@@ -2174,8 +2174,12 @@ a.product-media {
   overflow: hidden;
   background: linear-gradient(135deg, var(--lavender-mist), var(--cream));
   box-shadow: var(--shadow-sm);
-  /* Şaquli sürüşmə (səhifə) sərbəst; üfüqi jest şəkli dəyişir (swipe handler) */
-  touch-action: pan-y;
+  /* Şaquli səhifə sürüşməsi HƏMİŞƏ sərbəst olsun deyə `manipulation`:
+     bütün mobil brauzerlər (o cümlədən iOS Safari, Instagram/Telegram
+     webview) bunu düzgün oxuyur. Üfüqi swipe-ı JS (native touchmove,
+     qeyri-passiv) tutur; `pan-y` bəzi brauzerlərdə şaquli sürüşməni də
+     bloklayırdı → şəkil üstündə "yapışma". */
+  touch-action: manipulation;
 }
 .gallery-main img { width: 100%; height: 100%; object-fit: contain; }
 @media (min-width: 861px) {
@@ -3856,9 +3860,10 @@ a.product-media {
 }
 .color-swatches { display: flex; flex-wrap: wrap; gap: 2px; margin-left: -8px; }
 
-/* Şəkil üzərində sürüşdürmə: brauzerin üfüqi jestini bizə versin,
-   şaquli sürüşmə isə səhifəyə qalsın */
-.gallery-main { touch-action: pan-y; }
+/* Şəkil üzərində sürüşdürmə: şaquli sürüşmə həmişə səhifəyə qalsın
+   (`manipulation` bütün mobil brauzerlərdə etibarlıdır), üfüqi jesti isə
+   JS-dəki qeyri-passiv touchmove tutur. */
+.gallery-main { touch-action: manipulation; }
 
 
 @media (max-width: 900px) {

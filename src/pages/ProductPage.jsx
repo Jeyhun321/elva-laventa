@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useCatalog, discountPercent } from '../context/CatalogContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
@@ -23,7 +23,66 @@ export default function ProductPage() {
   const [added, setAdded] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
   const [shareNote, setShareNote] = useState(false)
-  const touch = useRef(null)
+
+  // Qalereya jesti: DOM node + jest arbitrajı üçün ref-lər.
+  // Şaquli jest → HEÇ VAXT preventDefault etmirik (səhifə sürüşməsi sərbəst).
+  // Yalnız TƏSDİQLƏNMİŞ üfüqi jestdə brauzeri dayandırıb şəkli dəyişirik.
+  const galleryRef = useRef(null)
+  const galleryLenRef = useRef(0)
+  const switchRef = useRef(() => {})
+
+  useEffect(() => {
+    const el = galleryRef.current
+    if (!el) return
+
+    const DIR_THRESHOLD = 10 // istiqamət təyini üçün minimum piksel
+    const SWIPE_MIN = 40 // şəkli dəyişmək üçün minimum üfüqi məsafə
+    let start = null
+
+    const onStart = (e) => {
+      if (e.touches.length !== 1) { start = null; return }
+      const p = e.touches[0]
+      start = { x: p.clientX, y: p.clientY, dir: null }
+    }
+
+    const onMove = (e) => {
+      if (!start) return
+      const p = e.touches[0]
+      const dx = p.clientX - start.x
+      const dy = p.clientY - start.y
+      // İstiqamət bir dəfə kilidlənir ki, jest ortada "sıçramasın".
+      if (start.dir === null && (Math.abs(dx) > DIR_THRESHOLD || Math.abs(dy) > DIR_THRESHOLD)) {
+        start.dir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
+      }
+      // Üfüqi jest təsdiqlənəndə (və birdən çox şəkil varsa) brauzerin öz
+      // davranışını (kənardan geri-swipe, üfüqi rezin effekt) dayandırırıq.
+      // Şaquli jestə TOXUNMURUQ → səhifə normal sürüşür.
+      if (start.dir === 'h' && galleryLenRef.current > 1 && e.cancelable) {
+        e.preventDefault()
+      }
+    }
+
+    const onEnd = (e) => {
+      const s = start
+      start = null
+      if (!s || s.dir !== 'h' || galleryLenRef.current < 2) return
+      const dx = e.changedTouches[0].clientX - s.x
+      if (Math.abs(dx) < SWIPE_MIN) return
+      switchRef.current(dx < 0 ? 1 : -1)
+    }
+
+    // touchmove qeyri-passiv olmalıdır ki, üfüqi jestdə preventDefault işləsin.
+    el.addEventListener('touchstart', onStart, { passive: true })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd, { passive: true })
+    el.addEventListener('touchcancel', onEnd, { passive: true })
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+      el.removeEventListener('touchcancel', onEnd)
+    }
+  }, [])
 
   if (!product) {
     return (
@@ -54,6 +113,10 @@ export default function ProductPage() {
     if (nextIndex < 0 || nextIndex >= gallery.length) return
     setSelectedImage(gallery[nextIndex])
   }
+  // Native touch listener-i (yuxarıdakı useEffect) hər renderdə ən son
+  // qalereya uzunluğunu və switch funksiyasını ref vasitəsilə oxuyur.
+  galleryLenRef.current = gallery.length
+  switchRef.current = switchGalleryImage
   const fav = isFavorite(product.id)
   const related = products
     .filter((p) => p.category === product.category && p.id !== product.id)
@@ -68,34 +131,9 @@ export default function ProductPage() {
     { label: 'attr_season', value: product.season },
   ].filter((a) => a.value)
 
-  // --- Şəkillər üzərində sürüşdürmə (swipe) ---
-  // Yalnız ÜFÜQİ jest şəkli dəyişir; şaquli hərəkət səhifənin sürüşməsinə mane olmur.
-  const SWIPE_MIN = 40
-
-  const onTouchStart = (e) => {
-    const p = e.touches[0]
-    touch.current = { x: p.clientX, y: p.clientY, horizontal: null }
-  }
-
-  const onTouchMove = (e) => {
-    if (!touch.current) return
-    const p = e.touches[0]
-    const dx = p.clientX - touch.current.x
-    const dy = p.clientY - touch.current.y
-    // İstiqamət bir dəfə təyin olunur ki, jest ortada "sıçramasın"
-    if (touch.current.horizontal === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-      touch.current.horizontal = Math.abs(dx) > Math.abs(dy)
-    }
-  }
-
-  const onTouchEnd = (e) => {
-    const start = touch.current
-    touch.current = null
-    if (!start || !start.horizontal || gallery.length < 2) return
-    const dx = e.changedTouches[0].clientX - start.x
-    if (Math.abs(dx) < SWIPE_MIN) return
-    switchGalleryImage(dx < 0 ? 1 : -1)
-  }
+  // Şəkil üzərində sürüşdürmə (swipe) məntiqi yuxarıdakı useEffect-dədir:
+  // qeyri-passiv native listener yalnız üfüqi jesti tutur, şaquli səhifə
+  // sürüşməsinə isə heç vaxt mane olmur.
 
   // Yoxlama SIRASI: əvvəl GİRİŞ, sonra ölçü.
   // Girişsiz alıcıdan ölçü soruşmağın mənası yoxdur — onsuz da əlavə edə bilmir.
@@ -156,12 +194,7 @@ export default function ProductPage() {
 
       <div className="product-detail">
         <div className="product-gallery">
-          <div
-            className="gallery-main"
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-          >
+          <div className="gallery-main" ref={galleryRef}>
             <ProductImage product={{ ...product, image: mainImage, name: t(product.name) }} eager />
 
             {/* Sol üst: universal "yeni" qığılcımı + BİR "Pulsuz çatdırılma" nişanı
