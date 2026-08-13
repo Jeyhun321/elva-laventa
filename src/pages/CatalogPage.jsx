@@ -30,8 +30,8 @@ export default function CatalogPage() {
   // URL-dəki sort ilkin dəyər kimi qəbul olunur (aşağıda useEffect ilə sinxron).
   const SORTS = ['popular', 'price_asc', 'price_desc', 'rating', 'discount', 'new']
   const [sort, setSort] = useState(() =>
-    SORTS.includes(sortParam) ? sortParam : 'price_asc'
-  ) // default: ucuzdan bahaya
+    SORTS.includes(sortParam) ? sortParam : 'popular'
+  ) // default: Populyar (featured + reytinq; axtarışda relevantlıq)
   const [minPrice, setMinPrice] = useState(bounds.min)
   const [maxPrice, setMaxPrice] = useState(bounds.max)
   // Yazı üçün ayrıca mətn state-i — istifadəçi sərbəst yaza bilsin
@@ -132,6 +132,27 @@ export default function CatalogPage() {
     const query = q.trim()
     const getCatText = (p) => catTextById.get(p.category) || ''
 
+    // VAHİD SIRALAMA — həm kataloq, həm axtarış nəticələri, həm də oxşarlar
+    // eyni seçilmiş sıralamaya tabedir (əvvəllər sıralama YALNIZ kataloqda işləyirdi).
+    // Massiv HEÇ VAXT yerində dəyişdirilmir: state/context toxunulmaz qalsın deyə
+    // nüsxə ([...list]) sortlanır. 'popular' üçün kontekstə uyğun müqayisə verilir:
+    //   - kataloq: featured əvvəl, sonra reytinq;
+    //   - axtarış: relevantlıq (scores) əvvəl (köhnə davranış qorunur);
+    //   - oxşarlar: similarProducts-un öz sırası (popularCmp = null → toxunmuruq).
+    const sortList = (list, popularCmp) => {
+      const arr = [...list]
+      switch (sort) {
+        case 'price_asc': arr.sort((a, b) => a.price - b.price); break
+        case 'price_desc': arr.sort((a, b) => b.price - a.price); break
+        case 'rating': arr.sort((a, b) => (b.rating || 0) - (a.rating || 0)); break
+        case 'discount': arr.sort((a, b) => discountPercent(b) - discountPercent(a)); break
+        case 'new': arr.sort((a, b) => b.id - a.id); break // ən yenilər əvvəldə (id ardıcıl)
+        case 'popular':
+        default: if (popularCmp) arr.sort(popularCmp); break
+      }
+      return arr
+    }
+
     // --- Axtarış rejimi (sorğu ≥ SEARCH_MIN) ---
     if (query.length >= SEARCH_MIN) {
       const { scores } = searchScores(products, query, getCatText)
@@ -140,17 +161,18 @@ export default function CatalogPage() {
       matches = matches.filter((p) => p.price >= minPrice && p.price <= maxPrice)
 
       if (matches.length > 0) {
-        // Relevantlıq ƏSAS, priority yalnız eyni relevantlıq daxilində sıralayır.
-        // ТЗ: релевантность > priority — nərelevant featured nəticəyə düşmür.
-        matches = [...matches].sort((a, b) =>
+        // 'popular' (default) → relevantlıq əsas, priority yalnız bərabər relevantlıqda.
+        // İstifadəçi konkret sıralama seçsə (qiymət/reytinq/…) — o tətbiq olunur.
+        const byRelevance = (a, b) =>
           ((scores.get(b.id) || 0) - (scores.get(a.id) || 0)) ||
           (Number(!!b.isFeatured) - Number(!!a.isFeatured)) ||
-          (b.rating - a.rating)
-        )
-        return { items: matches, similar: false }
+          ((b.rating || 0) - (a.rating || 0))
+        return { items: sortList(matches, byRelevance), similar: false }
       }
-      // Dəqiq uyğunluq yoxdur → oxşar məhsullar (açıq başlıqla)
-      return { items: similarProducts(products, query, getCatText), similar: true }
+      // Dəqiq uyğunluq yoxdur → oxşar məhsullar. 'popular'-da similarProducts sırası
+      // qalır (popularCmp = null), konkret sıralama seçiləndə isə tətbiq olunur.
+      const similar = similarProducts(products, query, getCatText)
+      return { items: sortList(similar, null), similar: true }
     }
 
     // --- Adi kataloq rejimi (axtarış yoxdur) ---
@@ -159,16 +181,12 @@ export default function CatalogPage() {
     if (onlySale) list = list.filter((p) => p.oldPrice)
     list = list.filter((p) => p.price >= minPrice && p.price <= maxPrice)
 
-    const sorted = [...list]
-    switch (sort) {
-      case 'price_asc': sorted.sort((a, b) => a.price - b.price); break
-      case 'price_desc': sorted.sort((a, b) => b.price - a.price); break
-      case 'rating': sorted.sort((a, b) => b.rating - a.rating); break
-      case 'discount': sorted.sort((a, b) => discountPercent(b) - discountPercent(a)); break
-      case 'new': sorted.sort((a, b) => b.id - a.id); break // Yeni gələnlər — ən yenilər əvvəldə
-      default: break
-    }
-    return { items: sorted, similar: false }
+    // 'popular' kataloqda: featured məhsullar əvvəl, sonra reytinq, sonra id.
+    const byPopular = (a, b) =>
+      (Number(!!b.isFeatured) - Number(!!a.isFeatured)) ||
+      ((b.rating || 0) - (a.rating || 0)) ||
+      (b.id - a.id)
+    return { items: sortList(list, byPopular), similar: false }
   }, [products, cat, q, sort, minPrice, maxPrice, onlySale, catTextById])
 
   const visible = result.items
@@ -374,7 +392,7 @@ export default function CatalogPage() {
                 applyMin(bounds.min)
                 applyMax(bounds.max)
                 setOnlySale(false)
-                setSort('price_asc')
+                setSort('popular')
               }}
             >
               {t('reset')}

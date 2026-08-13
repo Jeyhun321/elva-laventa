@@ -1608,6 +1608,19 @@ a.product-name::after {
   font-size: 0.9rem;
   font-weight: 600;
 }
+/* Mobil: "Dəqiq nəticə tapılmadı..." bildirişini daha görünən et — desktop toxunulmur.
+   Fon (açıq çəhrayı), mətn rəngi və border-radius saxlanılır; hündürlük/padding/
+   font böyüdülür. Banner deyil: mətn tam sığır, sətir keçir, üfüqi sürüşmə yaratmır. */
+@media (max-width: 900px) {
+  .search-similar-note {
+    margin: 2px 0 16px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    font-size: 1.02rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+}
 
 /* Header actions */
 .header-actions {

@@ -1489,3 +1489,34 @@
   - [ ] Нормальная покупка доступного товара с размером → SUCCESS (без регрессий).
 - **Regression History:** 2026-08-14 — `vite build` — успешно (в проекте нет test/lint-скриптов, только build). Серверная миграция и живой прогон E2E на устройстве — за владельцем (после запуска `supabase/order-stock-guard.sql`).
 - **Notes:** См. `docs/ECOMMERCE_E2E_QA.md` (постоянная QA-документация purchase-chain). Модель наличия — boolean `in_stock` (без числовых остатков и per-size stock); размер = наличие размера в `products.sizes`. Родственно [[LAV-BUG-047]] (тот же принцип «единая точка проверки» в ShopContext).
+
+## LAV-BUG-051 — Catalog (mobile): выбор сортировки не менял порядок в режиме поиска; `popular` был no-op; message «похожие товары» слишком мелкий
+- **Module:** CatalogPage — `result` useMemo (сортировка) + `.search-similar-note` (`src/pages/CatalogPage.jsx`, `src/styles/index.css`)
+- **Platform:** mobile (логика сортировки общая; правка UI сообщения — только mobile)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner
+- **Found Date:** 2026-08-14
+- **Developer:** Claude Code
+- **Description:** (1) На mobile-каталоге выбор сортировки визуально менялся, но порядок карточек не менялся. (2) Сообщение «Dəqiq nəticə tapılmadı. Oxşar məhsullar» на mobile было слишком мелким и легко пропускалось.
+- **Steps to Reproduce:** (1) Каталог с активным поиском (частый путь на mobile через хедер) → открыть фильтры → сменить сортировку → порядок не меняется. Также «Populyar» не давала определённого порядка. (2) Ввести partial code без exact match → мелкий message.
+- **Expected Result:** Все опции сортировки реально меняют порядок — в каталоге, в результатах поиска и в fallback «похожие товары». Message заметен на mobile.
+- **Actual Result:** Сортировка применялась ТОЛЬКО в ветке обычного каталога; в поиске/похожих игнорировалась. `popular` = `default: break` (no-op). Message мелкий.
+- **Root Cause:** В `result` useMemo ветка поиска (`query.length >= SEARCH_MIN`) возвращала список, упорядоченный только по релевантности, и не применяла выбранный `sort`. Обычная ветель каталога сортировала корректно, но `case 'popular'` отсутствовал (падал в `default: break`). На mobile контрол сортировки доступен только внутри filter-sheet, поэтому его чаще всего меняют при активном поиске — там, где sort игнорировался → «сортировка не работает».
+- **Fix Summary:**
+  - Вынесена единая `sortList(list, popularCmp)` (не мутирует state — сортирует копию `[...list]`), применяется во ВСЕХ режимах: каталог, результаты поиска, похожие. `price_asc/price_desc` — цена как NUMBER (`a.price-b.price`), `rating` — `(b.rating||0)-(a.rating||0)`, `discount` — `discountPercent`, `new` — `b.id-a.id` (id последователен = прокси даты; `created_at` во фронт-модель не мапится).
+  - `popular` реализован контекстно: каталог → featured-first, затем rating, затем id; поиск → релевантность (`scores`) + featured/rating (сохранён прежний порядок поиска); похожие → порядок `similarProducts` (popularCmp=null).
+  - Дефолт сортировки `price_asc` → `popular` (и в reset). Это сохраняет релевантность-по-умолчанию в поиске и делает «Populyar» реальным дефолтом каталога (featured+rating).
+  - `.search-similar-note` — mobile-override (`@media (max-width:900px)`): padding 10/14 → 14/18, font-size 0.9→1.02rem, weight 600→700, line-height 1.4, radius 12→14. Фон/цвет сохранены. Desktop-правило не тронуто.
+- **Regression Checklist:**
+  - [ ] Mobile каталог: price_asc/price_desc/rating/discount/new/popular — порядок реально меняется.
+  - [ ] Поиск по названию → сортировка применяется к результатам.
+  - [ ] Partial code без exact → похожие показаны, сортировка работает и для них.
+  - [ ] Category filter + sort, price filter + sort — работают вместе.
+  - [ ] Message на 320–430px читается, не обрезается, без horizontal scroll; карточки не ломаются.
+  - [ ] Desktop: сортировка и вид сообщения без регрессий (mobile-override не затрагивает).
+  - [ ] Не сломаны: exact code search, partial name search, categories, filters, cart, favorites, i18n AZ/RU/EN.
+- **Regression History:** 2026-08-14 — `vite build` — успешно (test/lint-скриптов в проекте нет). Живой прогон на устройстве — за владельцем.
+- **Notes:** `src/pages/CatalogPage.jsx` (единая sortList во всех ветках + дефолт `popular`), `src/styles/index.css` (mobile-override `.search-similar-note`). i18n `no_exact_matches` уже был AZ/RU/EN — сохранён.
