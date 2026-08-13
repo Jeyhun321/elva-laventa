@@ -495,6 +495,11 @@ export const ui = {
     ru: 'Выберите доступный размер товара.',
     en: 'Select an available product size.',
   },
+  cart_unavailable_notice: {
+    az: 'Bəzi məhsullar artıq stokda yoxdur. Davam etmək üçün onları səbətdən silin.',
+    ru: 'Некоторых товаров больше нет в наличии. Удалите их из корзины, чтобы продолжить.',
+    en: 'Some items are no longer in stock. Remove them from the cart to continue.',
+  },
   order_service_unavailable: {
     az: 'Sifarişi hazırda göndərmək alınmadı. Bir az sonra yenidən cəhd edin.',
     ru: 'Сейчас не удалось оформить заказ. Попробуйте немного позже.',

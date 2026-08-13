@@ -14,16 +14,21 @@ export default function ProductCard({ product, showRating = true }) {
   const { addToCart, toggleFavorite, isFavorite, canShop, promptAuth } = useShop()
   const [notice, setNotice] = useState('')
   const onSale = Boolean(product.oldPrice)
+  const outOfStock = product.inStock === false
   const fav = isFavorite(product.id)
   const tiltRef = useTilt({ max: 3, lift: -6 })
 
-  // Yoxlama SIRASI: əvvəl GİRİŞ, sonra ölçü.
+  // Yoxlama SIRASI: əvvəl GİRİŞ, sonra stok, sonra ölçü.
   const quickAdd = (e) => {
     e.preventDefault()
     e.stopPropagation()
     if (!canShop) {
       setNotice('')
       promptAuth('cart')
+      return
+    }
+    if (outOfStock) {
+      setNotice(t('out_of_stock'))
       return
     }
     if (product.sizes?.length > 1) {
@@ -86,7 +91,12 @@ export default function ProductCard({ product, showRating = true }) {
             {onSale && <span className="old">{product.oldPrice} ₼</span>}
             <span className="new">{product.price} ₼</span>
           </div>
-          <button className="add-btn" aria-label={t('add_to_cart')} onClick={quickAdd}>
+          <button
+            className="add-btn"
+            aria-label={outOfStock ? t('out_of_stock') : t('add_to_cart')}
+            onClick={quickAdd}
+            disabled={outOfStock}
+          >
             <IconBag />
           </button>
         </div>

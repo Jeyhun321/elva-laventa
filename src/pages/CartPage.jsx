@@ -19,6 +19,12 @@ export default function CartPage() {
     .map((item) => ({ item, product: getProduct(item.id) }))
     .filter((l) => l.product)
 
+  // Stok statusu kataloqdan (canlı) yoxlanılır. Admin məhsulu stokdan çıxarsa,
+  // səbətdəki köhnə sətir "stokda yoxdur" kimi işarələnir və oformleniyə keçid
+  // bağlanır. Son qorunma bazadadır (place_order in_stock yoxlayır).
+  const isAvailable = (product) => product.inStock !== false
+  const hasUnavailable = lines.some((l) => !isAvailable(l.product))
+
   const subtotal = lines.reduce((s, l) => s + (l.product.oldPrice || l.product.price) * l.item.qty, 0)
   const total = lines.reduce((s, l) => s + l.product.price * l.item.qty, 0)
   const discount = subtotal - total
@@ -48,7 +54,7 @@ export default function CartPage() {
       <div className="cart-layout">
         <div className="cart-lines">
           {lines.map(({ item, product }) => (
-            <div className="cart-line" key={`${item.id}-${item.size}`}>
+            <div className={`cart-line${isAvailable(product) ? '' : ' unavailable'}`} key={`${item.id}-${item.size}`}>
               <Link to={`/product/${product.id}`} className="cart-thumb">
                 <ProductImage product={{ ...product, name: t(product.name) }} />
               </Link>
@@ -58,6 +64,9 @@ export default function CartPage() {
                 <Link to={`/product/${product.id}`} className="cart-line-name">
                   {t(product.name)}
                 </Link>
+                {!isAvailable(product) && (
+                  <span className="cart-line-oos">{t('out_of_stock')}</span>
+                )}
                 {item.size && (
                   <span className="cart-size">{t('size')}: {item.size}</span>
                 )}
@@ -111,10 +120,19 @@ export default function CartPage() {
             <span>{t('total')}</span>
             <span>{total} ₼</span>
           </div>
-          {/* Qonaq da sifarişə keçə bilər — giriş yalnız təsdiq anındadır. */}
-          <Link to="/checkout" className="btn btn-primary btn-lg full">
-            {t('checkout')}
-          </Link>
+          {/* Səbətdə stokda olmayan məhsul varsa — oformleniyə keçid bağlıdır. */}
+          {hasUnavailable && (
+            <p className="cart-unavailable-notice" role="alert">{t('cart_unavailable_notice')}</p>
+          )}
+          {hasUnavailable ? (
+            <button type="button" className="btn btn-primary btn-lg full" disabled>
+              {t('checkout')}
+            </button>
+          ) : (
+            <Link to="/checkout" className="btn btn-primary btn-lg full">
+              {t('checkout')}
+            </Link>
+          )}
           <Link to="/catalog" className="continue-link">{t('back_to_catalog')}</Link>
         </aside>
       </div>

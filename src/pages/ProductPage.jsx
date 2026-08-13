@@ -137,11 +137,17 @@ export default function ProductPage() {
 
   // Yoxlama SIRASI: əvvəl GİRİŞ, sonra ölçü.
   // Girişsiz alıcıdan ölçü soruşmağın mənası yoxdur — onsuz da əlavə edə bilmir.
+  // Stok statusu — kataloqdan (canlı). Stokda yoxdursa məhsulu almaq olmaz:
+  // düymələr bloklanır, mətn göstərilir. Əsas qorunma isə addToCart-da və
+  // bazadakı place_order-dədir (köhnə tab/cache buradan da keçə bilməz).
+  const outOfStock = product.inStock === false
+
   const handleAdd = async () => {
     if (!canShop) {
       promptAuth('cart')
       return
     }
+    if (outOfStock) return
     if (needsSize && !size) {
       setWarn(true)
       return
@@ -156,6 +162,7 @@ export default function ProductPage() {
       promptAuth('cart')
       return
     }
+    if (outOfStock) return
     if (needsSize && !size) {
       setWarn(true)
       return
@@ -374,10 +381,10 @@ export default function ProductPage() {
 
           {/* Masaüstü alış düymələri. Mobildə gizlənir — altdakı sabit panel var. */}
           <div className="detail-actions">
-            <button className="btn btn-primary btn-lg" onClick={handleAdd}>
-              <IconBag /> {added ? t('in_cart') + ' ✓' : t('add_to_cart')}
+            <button className="btn btn-primary btn-lg" onClick={handleAdd} disabled={outOfStock}>
+              <IconBag /> {outOfStock ? t('out_of_stock') : (added ? t('in_cart') + ' ✓' : t('add_to_cart'))}
             </button>
-            <button className="btn btn-ghost btn-lg" onClick={handleBuy}>
+            <button className="btn btn-ghost btn-lg" onClick={handleBuy} disabled={outOfStock}>
               {t('buy_now')}
             </button>
             <button
@@ -445,8 +452,8 @@ export default function ProductPage() {
             </span>
             <span className="pd-buybar-delivery">{t('badge_free_delivery')}</span>
           </div>
-          <button className="pd-buybar-cta" onClick={handleAdd}>
-            <IconBag /> {added ? t('in_cart') + ' ✓' : t('add_to_cart')}
+          <button className="pd-buybar-cta" onClick={handleAdd} disabled={outOfStock}>
+            <IconBag /> {outOfStock ? t('out_of_stock') : (added ? t('in_cart') + ' ✓' : t('add_to_cart'))}
           </button>
         </div>
       </div>

@@ -1457,3 +1457,35 @@
   - [ ] Desktop — ленты и карточки без регрессий (touch-action на mouse не влияет).
 - **Regression History:** 2026-08-12 — `vite build` — успешно. Live preview собранного билда (Chrome): чтение реальных CSSRule — `.hscroll`=`pan-x pan-y`, `.cats-row @(max-width:900px)`=`pan-x pan-y`, `.product-card`=`manipulation`, `.gallery-main`=`manipulation`; ссылка карточки цела (`/product/20`); горизонтальный `overflow-x:auto` не тронут. PASSED (уровень CSS-правил). Живой нативный touch-скролл на реальном iPhone/Android — за владельцем (инструмент не эмулирует нативный touch-скролл, только синтетические события + computed-стили).
 - **Notes:** `src/styles/index.css` (`.cats-row` и `.hscroll` → `touch-action: pan-x pan-y`). Прямое следствие [[LAV-BUG-032]]/[[LAV-BUG-047]] (там `pan-x` и был введён). Тот же класс, что [[LAV-BUG-048]] (product-page галерея: `pan-y`→`manipulation`). Product-page галерея уже исправлена в LAV-BUG-048; `.related-grid` в исправлении не нуждался (`auto`).
+
+## LAV-BUG-050 — Out-of-stock товар можно купить: наличие не проверялось ни на фронте (add-to-cart/checkout), ни на сервере (place_order)
+- **Module:** E-commerce purchase chain — `src/context/ShopContext.jsx`, `src/pages/ProductPage.jsx`, `src/components/ProductCard.jsx`, `src/pages/CartPage.jsx`, `src/pages/CheckoutPage.jsx`, `src/context/CatalogContext.jsx`, `supabase/order-stock-guard.sql`
+- **Platform:** mobile + desktop (бизнес-логика, не зависит от viewport)
+- **Environment:** Production → Working tree (правка)
+- **Priority:** P0
+- **Severity:** S1
+- **Status:** FIXED (фронт) / PENDING OWNER (миграция БД `supabase/order-stock-guard.sql`)
+- **Found By:** Owner
+- **Found Date:** 2026-08-14
+- **Developer:** Claude Code
+- **Description:** Товар доступен → в админке снимают «Есть в наличии» (`in_stock=false`) → на витрине товар всё ещё можно добавить в корзину и оформить заказ. Симптом (кнопка Add to Cart) оказался вершиной цепочки: наличие не проверялось нигде в purchase-chain.
+- **Steps to Reproduce:** Открыть товар → админ снимает «Есть в наличии» → на storefront (refresh или старая вкладка) нажать «В корзину»/«Купить» → оформить заказ.
+- **Expected Result:** Товар с `in_stock=false` НЕЛЬЗЯ добавить в корзину и НЕЛЬЗЯ оформить — независимо от страницы, вкладки, кэша и старого React-стейта.
+- **Actual Result:** Добавлялся и заказывался по полной цене.
+- **Root Cause:** (1) **Сервер** — авторитетный `place_order` (RPC) проверял только `is_active`, серверную цену и размер, но **не проверял `in_stock`**. Это корневая причина: даже при исправлении фронта старая вкладка/кэш/ручная манипуляция localStorage прошли бы оформление. (2) **Фронт** — `addToCart`, `ProductPage.handleAdd/handleBuy`, `ProductCard.quickAdd` не смотрели на `product.inStock`; Cart/Checkout не помечали недоступные позиции и не блокировали переход.
+- **Fix Summary:**
+  - **Сервер (авторитет):** `supabase/order-stock-guard.sql` — `place_order` дополнен `if v_product.in_stock is not true then raise 'PRODUCT_UNAVAILABLE'`. Всё остальное (любой вошедший, серверная цена, проверка размера, Telegram, очистка корзины) без изменений. Требует запуска владельцем в Supabase SQL Editor.
+  - **Единая точка фронта:** `ShopContext.addToCart` резолвит товар через `getProduct` и отклоняет `!product || inStock===false` — все кнопки «добавить» проходят через неё. `setQty` запрещает УВЕЛИЧЕНИЕ кол-ва недоступного товара (уменьшение/удаление — можно).
+  - **UI:** ProductPage (кнопки Add/Buy/buybar `disabled` + текст «Нет в наличии»), ProductCard (add-btn `disabled` + notice), CartPage (позиция помечается «Нет в наличии», переход к оформлению блокируется), CheckoutPage (submit `disabled` + блок отправки до сервера с понятным сообщением).
+  - **Устаревшие вкладки:** `CatalogContext` — тихая ревалидация каталога по `visibilitychange` (без флага loading), сток/цена обновляются при возврате на вкладку. Цена и так всегда бралась из каталога live (Cart/Checkout не доверяют старой цене) + серверная цена в `place_order`.
+- **Regression Checklist:**
+  - [ ] E2E-02: `in_stock=false` → ProductPage → Add to Cart заблокирован.
+  - [ ] E2E-03: товар открыт доступным → админ off → та же (старая) вкладка → Add to Cart заблокирован (после ревалидации по возврату/сервером).
+  - [ ] E2E-04: в корзине → админ off → Cart помечает позицию, Checkout заблокирован.
+  - [ ] E2E-05: в избранном → админ off → карточка избранного: add-btn disabled.
+  - [ ] E2E-07: товар удалён/`is_active=false` → исчезает из каталога/избранного, `place_order` → PRODUCT_UNAVAILABLE.
+  - [ ] E2E-09: старый кэш/стейт → reopen → сервер отклоняет недоступный товар (даже при ручной правке localStorage).
+  - [ ] E2E-06: цена изменена в админке → Cart/Checkout показывают текущую, заказ пишет серверную.
+  - [ ] Нормальная покупка доступного товара с размером → SUCCESS (без регрессий).
+- **Regression History:** 2026-08-14 — `vite build` — успешно (в проекте нет test/lint-скриптов, только build). Серверная миграция и живой прогон E2E на устройстве — за владельцем (после запуска `supabase/order-stock-guard.sql`).
+- **Notes:** См. `docs/ECOMMERCE_E2E_QA.md` (постоянная QA-документация purchase-chain). Модель наличия — boolean `in_stock` (без числовых остатков и per-size stock); размер = наличие размера в `products.sizes`. Родственно [[LAV-BUG-047]] (тот же принцип «единая точка проверки» в ShopContext).

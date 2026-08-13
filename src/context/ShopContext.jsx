@@ -228,9 +228,16 @@ export function ShopProvider({ children }) {
     }
     if (!canChangeShop) return false
     if (!syncsToDatabase) return false
+    const productId = Number(id)
+    // MƏRKƏZİ BİZNES YOXLAMASI: stokda olmayan (və ya kataloqda olmayan/silinmiş)
+    // məhsul HEÇ BİR yoldan səbətə düşməməlidir. Bütün "əlavə et" düymələri
+    // (kart, məhsul səhifəsi, "indi al") bu funksiyadan keçir — deməli köhnə
+    // React state, köhnə tab və ya köhnə cache burada kəsilir. Son söz — bazadadır
+    // (place_order in_stock yoxlayır), bu isə UI səviyyəsində saxta əlavəni dayandırır.
+    const product = getProduct(productId)
+    if (!product || product.inStock === false) return false
     const accountSession = accountSessionRef.current
     const cartRequest = ++cartRequestRef.current
-    const productId = Number(id)
     const amount = Math.max(1, Math.min(20, Number(qty) || 1))
     const index = cart.findIndex((item) => item.id === productId && item.size === size)
     const quantity = index === -1 ? amount : Math.min(20, cart[index].qty + amount)
@@ -245,7 +252,7 @@ export function ShopProvider({ children }) {
     // (tələb 5: sifarişdən sonra yeni məhsul → sonra əl ilə silmə → yenə "başla").
     setOrderJustCompleted(false)
     return refreshCart(accountSession, cartRequest)
-  }, [accountId, canChangeShop, cart, isSignedIn, refreshCart, syncsToDatabase])
+  }, [accountId, canChangeShop, cart, getProduct, isSignedIn, refreshCart, syncsToDatabase])
 
   const removeFromCart = useCallback(async (id, size = null) => {
     if (!canChangeShop) return false
@@ -267,9 +274,17 @@ export function ShopProvider({ children }) {
     if (amount <= 0) return removeFromCart(id, size)
     if (!canChangeShop) return false
     if (!syncsToDatabase) return false
+    const productId = Number(id)
+    // Stokda olmayan məhsulun sayını ARTIRMAQ olmaz (azaltmaq/silmək olar).
+    // Beləliklə səbətdə qalmış köhnə məhsul stokdan çıxandan sonra "böyüdülüb"
+    // sifarişə keçə bilməz.
+    const product = getProduct(productId)
+    if (!product || product.inStock === false) {
+      const current = cart.find((item) => item.id === productId && item.size === size)
+      if (!current || amount > current.qty) return false
+    }
     const accountSession = accountSessionRef.current
     const cartRequest = ++cartRequestRef.current
-    const productId = Number(id)
     const safeQty = Math.min(20, amount)
     const { error } = await supabase.from('customer_cart_items').upsert({
       user_id: accountId,
@@ -279,7 +294,7 @@ export function ShopProvider({ children }) {
     }, { onConflict: 'user_id,product_id,size' })
     if (error) return false
     return refreshCart(accountSession, cartRequest)
-  }, [accountId, canChangeShop, refreshCart, removeFromCart, syncsToDatabase])
+  }, [accountId, canChangeShop, cart, getProduct, refreshCart, removeFromCart, syncsToDatabase])
 
   const clearCart = useCallback(async () => {
     if (!canChangeShop) return false

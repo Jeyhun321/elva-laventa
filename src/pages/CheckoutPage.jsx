@@ -76,6 +76,10 @@ export default function CheckoutPage() {
     .map((item) => ({ item, product: getProduct(item.id) }))
     .filter((l) => l.product)
 
+  // Stok statusu kataloqdan (canlı). Stokda olmayan məhsul varsa — sifariş
+  // göndərilmir (bazadakı place_order da onu PRODUCT_UNAVAILABLE ilə rədd edir).
+  const hasUnavailable = lines.some((l) => l.product.inStock === false)
+
   const total = lines.reduce((s, l) => s + l.product.price * l.item.qty, 0)
   // Çatdırılma haqqı və yekun (avtomatik yenilənir)
   const deliveryFee = delivery === 'express' ? EXPRESS_FEE : 0
@@ -148,6 +152,11 @@ export default function CheckoutPage() {
     e.preventDefault()
     setTouched({ name: true, phone: true, phoneCall: true, address: true })
     setErr('')
+    // Stokda olmayan məhsul varsa — serverə heç getmirik, aydın mesaj veririk.
+    if (hasUnavailable) {
+      setErr(t('cart_unavailable_notice'))
+      return
+    }
     if (!valid) {
       setErr(t('checkout_form_incomplete'))
       window.requestAnimationFrame(() => formRef.current?.querySelector('input.invalid')?.focus())
@@ -367,7 +376,10 @@ export default function CheckoutPage() {
             <b>{grandTotal} ₼</b>
           </div>
 
-          <button type="submit" className="btn btn-primary btn-lg full" disabled={busy}>
+          {hasUnavailable && (
+            <p className="cart-unavailable-notice" role="alert">{t('cart_unavailable_notice')}</p>
+          )}
+          <button type="submit" className="btn btn-primary btn-lg full" disabled={busy || hasUnavailable}>
             {busy ? t('order_sending') : t('place_order')}
           </button>
           {!loading && !isSignedIn && (

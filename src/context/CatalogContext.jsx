@@ -161,6 +161,30 @@ export function CatalogProvider({ children }) {
 
   useEffect(() => { load() }, [load])
 
+  // Köhnə tab problemi: istifadəçi məhsul/səbət tab-ını açıq saxlayıb, admin isə
+  // stoku/qiyməti dəyişir. Tab yenidən görünəndə kataloqu SƏSSİZ yeniləyirik
+  // (loading bayrağını qaldırmadan → UI sıçramır), beləliklə stok/qiymət canlı
+  // qalır. Kritik qorunma yenə də bazadadır (place_order). Kataloq yüklü deyilsə
+  // (hələ ilk yükləmə gedir və ya yerli surətdəyik) toxunmuruq.
+  useEffect(() => {
+    if (!isConfigured || !supabase) return undefined
+    const revalidate = async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const [{ data: prods, error: pe }, { data: cats, error: ce }] = await Promise.all([
+          supabase.from('products').select('*').eq('is_active', true).order('id'),
+          supabase.from('categories').select('*').order('sort_order'),
+        ])
+        if (!pe && prods) setProducts(prods.map(fromRow))
+        if (!ce && cats) setCategories([ALL, ...cats.map((c) => ({ id: c.id, label: c.label }))])
+      } catch {
+        // Səssiz yeniləmədir — alınmasa köhnə kataloq qalır, problem deyil.
+      }
+    }
+    document.addEventListener('visibilitychange', revalidate)
+    return () => document.removeEventListener('visibilitychange', revalidate)
+  }, [])
+
   // products — bazadan gələn BÜTÜN sətirlər (hər rəng ayrıca sətirdir).
   // Kataloq isə qruplaşdırılmış siyahını görür.
   const { forCatalog, byId } = useMemo(() => groupVariants(products), [products])
