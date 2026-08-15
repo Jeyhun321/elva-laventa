@@ -2,16 +2,15 @@
 
 ## Current Status
 
-**Phase 2 / Stage 1 (DB-фундамент единого discount-движка) — ГОТОВ в рабочем дереве.** Это SQL-only инкремент: приложение не меняется, пока владелец не выполнит скрипт И не выйдут клиентские стадии. Ничего существующего не сломано.
+**Phase 2 ПОЛНОСТЬЮ реализована** (промокоды + Wheel of Fortune на едином discount-движке). SQL (`supabase/promo-and-wheel.sql`) выполнен владельцем в Supabase (подтверждено). Клиент (Stage 2–6) реализован, собран и запушен.
 
-Реализован общий движок скидок для **промокодов** (campaign + individual) и **Wheel of Fortune** поверх ОДНОЙ trusted-модели (см. DECISIONS #D-007):
-- Таблицы: `promo_codes`, `promo_redemptions`, `wheel_config` (singleton), `wheel_spins`.
-- Trusted-RPC: `validate_promo` (preview для checkout, только чтение), `place_order(...,p_promo_code)` (8-арг: атомарная валидация + фиксация redemption + скидка в заказе; 7-арг делегирует с промо=null), `spin_wheel` (результат определяет сервер, weighted), `get_wheel_public_config`/`get_wheel_status`, `generate_promo_code`.
-- Безопасность: прямого доступа клиента к таблицам скидок нет (только через security-definer RPC); RLS admin-only через `is_admin()`; веса колеса на сервере; время окна — `Asia/Baku` по серверным часам; один спин на окно через `UNIQUE(account_id, window_key)`; двойное использование промо блокируется `SELECT ... FOR UPDATE`.
+- **Промокоды:** campaign + individual; checkout-блок «Promokod» (mobile) с preview и пересчётом; скидка server-trusted (`validate_promo` + 8-арг `place_order`); использование фиксируется только при заказе (`promo_redemptions`); double-use защищён `SELECT FOR UPDATE`.
+- **Wheel:** приглашение «Şansını sına» в окне (Asia/Baku), результат выбирает сервер (weighted), один спин на окно (`UNIQUE(account_id,window_key)`), выигрыш = account-bound individual-промокод (source=wheel) через общий движок; reroll через reload/DevTools невозможен.
+- **Admin:** вкладки «Промокоды» (CRUD, Generate, привязка к клиенту) и «Колесо фортуны» (окна, timezone, проценты+веса, expiry, спины/окно).
 
-**ТРЕБУЕТ ВЛАДЕЛЬЦА (обязательно, иначе Stage 2+ не заработает):** выполнить `supabase/promo-and-wheel.sql` в Supabase → SQL Editor. Скрипт идемпотентен; заодно активирует stock-guard (LAV-BUG-050), т.к. включает in_stock-проверку в `place_order`.
+**Проверено:** build OK; REST — trusted-RPC/RLS (anon→`AUTH_REQUIRED`; веса колеса скрыты; `promo_codes` анониму недоступны на чтение/запись); Playwright — колесо подключено (RPC 200), консоль чистая, вне окна приглашение корректно скрыто.
 
-Плюс из Phase 1: `supabase/realtime-catalog.sql` (Realtime каталога) — тоже за владельцем.
+**Осталось за владельцем (не блокирует деплой):** финальная авторизованная проверка на реальном телефоне — применить промокод на checkout и один спин колеса во временном окне. Playwright не может авторизоваться (Google) и форсировать окно.
 
 ## Current Branch
 
@@ -19,64 +18,58 @@
 
 ## Last Completed Task
 
-### Phase 2 / Stage 1 — единый discount-движок (SQL foundation)
+### Phase 2 Stage 2–6 — клиент промокодов + колеса
 
-- **Файлы:**
-  - `supabase/promo-and-wheel.sql` — новый, вся схема + RPC + RLS + интеграция в `place_order`.
-  - `docs/DECISIONS.md` (#D-007), `docs/TODO.md` (стадии Phase 2), `docs/HANDOFF.md`.
-- **Не менялось:** клиентский код НЕ трогался (Stage 1 — только SQL + docs). Существующий 7-арг `place_order` сохранён (делегирует), поэтому текущий checkout продолжает работать до Stage 2.
+- **Файлы:** `src/lib/promo.js`, `src/lib/wheel.js`, `src/components/WheelOfFortune.jsx` (new); `src/lib/orders.js` (8-арг place_order); `src/pages/CheckoutPage.jsx` (promo UI + пересчёт + авто-применение reward колеса); `src/pages/AdminPage.jsx` + `src/admin/db.js` (PromoPanel + WheelPanel + db-функции); `src/App.jsx` (монтаж колеса); `src/i18n/translations.js` (promo_* / wheel_*); `src/styles/index.css` (promo/admin/wheel).
+- **Не менялось по существу:** desktop-логика; колесо рендерится только на mobile (`useMediaQuery(max-width:900px)`); существующий 7-арг `place_order` не используется клиентом (перешли на 8-арг), но сохранён в БД.
 
 ## Last Verified Checks
 
-- SQL написан против реальной схемы (audit: `place-order-rpc.sql`, `order-stock-guard.sql`, `accounts-orders.sql`, `marketplace-foundation.sql`, `schema.sql`, `admin-lockdown.sql`). Интеграция скидки согласована с существующим триггером `recalc_order_total` (теперь вычитает `discount_amount`).
-- **NOT VERIFIED (по природе задачи):** SQL не выполнялся — его запускает владелец в Supabase (нет service_role/DDL-доступа из клиента). До выполнения скрипта и выхода Stage 2 фича НЕ live. Playwright-проверка promo/wheel возможна только после Stage 1 SQL + при наличии тест-аккаунта.
+- `npm run build` — **успешно**.
+- **REST (anon-ключ):** `validate_promo`/`spin_wheel`/`place_order`(8) → `AUTH_REQUIRED`; `get_wheel_public_config` → `{enabled,rewards:[5,10,15],windows,Asia/Baku,tolerance 5,expiry 24}` (веса скрыты); `get_wheel_status` → `signed_in:false,in_window:false`; anon SELECT `promo_codes` → `[]`; anon INSERT `promo_codes` → RLS violation.
+- **Playwright (mobile 360):** home грузится, `get_wheel_public_config`+`get_wheel_status` → 200, приглашение колеса скрыто (сейчас вне окна — корректно), console 0 ошибок.
+- **NOT VERIFIED (ограничения эмуляции):** реальное применение промокода на checkout и spin колеса требуют Google-сессии и активного окна — за владельцем на устройстве. Playwright не авторизуется и не форсирует серверное окно.
 
 ## Current Architecture Notes
 
-- **Единый discount-движок (D-007):** и промокод, и выигрыш колеса — записи в `promo_codes`; применение к заказу — только через `place_order`; факт использования — `promo_redemptions` (per-account/total лимиты считаются оттуда). Скидка — на merchandise subtotal; доставка в БД-итог не входит (экспресс-доплата в note/Telegram, как и раньше). `orders`: новые `discount_amount/promo_code/discount_source`.
-- **Коды ошибок промо (для i18n в Stage 2):** `PROMO_NOT_FOUND`, `PROMO_INACTIVE`, `PROMO_EXPIRED`, `PROMO_NOT_STARTED`, `PROMO_ACCOUNT_MISMATCH`, `PROMO_ALREADY_USED`, `PROMO_LIMIT_REACHED`, `PROMO_MIN_ORDER`, `AUTH_REQUIRED`.
-- **Коды колеса:** `WHEEL_DISABLED`, `WHEEL_CLOSED` (вне окна), `WHEEL_ALREADY_SPUN`, `WHEEL_NO_REWARDS`, `AUTH_REQUIRED`.
-- **Контракты RPC для Stage 2 клиента:**
-  - `validate_promo(p_code text, p_subtotal numeric)` → `{discount_type, discount_value, discount_amount}` (только достижимая скидка; НЕ фиксирует использование).
-  - `place_order(name,phone,phone_call,email,address,note,items,p_promo_code)` — checkout должен перейти на эту 8-арг версию, передавая применённый код.
-  - `get_wheel_public_config()` → `{enabled,timezone,windows,tolerance_minutes,reward_expiry_hours,rewards:[percent...]}` (без весов).
-  - `get_wheel_status()` → `{enabled,signed_in,in_window,window,already_spun,active_reward}`.
-  - `spin_wheel()` → `{percent, code, expires_at}`.
-- Прочее без изменений: Phase 1 (Realtime каталога D-006, честные цвета LAV-BUG-053, fallback поиска), LAV-BUG-052 (auth-resume).
+- **Единый discount-движок (D-007):** и промо, и выигрыш колеса — записи в `promo_codes`; применение — только через `place_order`; учёт — `promo_redemptions`. Скидка на merchandise subtotal; доставка отдельно. Один промо на заказ (stacking запрещён — checkout хранит один `appliedPromo`, замена очищает предыдущий).
+- **Клиентские RPC-обёртки:** `src/lib/promo.js` (`validatePromo`, `promoErrorKey`, `previewDiscount`), `src/lib/wheel.js` (`getWheelConfig`, `getWheelStatus`, `spinWheel`).
+- **Wheel reward → checkout:** после выигрыша код кладётся в `sessionStorage['elva_wheel_reward']`; CheckoutPage авто-применяет его один раз (безопасно: reward account-bound + one-use в БД, фарм невозможен). Очищается после успешного заказа/Remove.
+- Прочее без изменений: Phase 1 (Realtime D-006, честные цвета, fallback поиска), LAV-BUG-052.
 
 ## Known Issues
 
-- **PENDING OWNER:** `supabase/promo-and-wheel.sql` (Phase 2 spine); `supabase/realtime-catalog.sql` (Phase 1 Realtime); ранее — `supabase/order-stock-guard.sql` (перекрывается новым place_order из promo-and-wheel), `supabase/product-featured.sql` (F-007).
-- Phase 2 клиент (Stage 2–6) ещё не реализован — см. TODO.
+- Финальная авторизованная e2e-проверка promo/wheel — за владельцем (устройство + окно).
+- Ранее применённые/ожидающие миграции: `promo-and-wheel.sql` (применён, включает stock-guard); `realtime-catalog.sql` (Phase 1, если ещё не применён — для Realtime каталога); `product-featured.sql` (F-007, опционально).
 
 ## Risks
 
-- `place_order` переопределяется скриптом Phase 2 (обе арности). Логика повторяет order-stock-guard (in_stock + auth.uid) и добавляет промо; при применении важно выполнить файл целиком. Обратная совместимость: 7-арг сохранён → текущий клиент не ломается.
-- Фича НЕ должна считаться live до выполнения SQL владельцем и выхода клиентских стадий.
+- Wheel-приглашение появляется только внутри окна Asia/Baku (по серверному времени) — вне окна это ожидаемо «пусто», не баг.
+- `validate_promo` доступен любому авторизованному (нужно для preview); для individual-кодов чужим отдаёт `PROMO_ACCOUNT_MISMATCH` (скидка не раскрывается). Низкий риск enumeration для random-кодов — приемлемо.
 
 ## Next Recommended Step
 
-1. **Владельцу:** выполнить `supabase/promo-and-wheel.sql` (SQL Editor). Проверка: `select * from public.validate_promo('SUMMER2026', 100);` после вставки тест-кода; `select public.get_wheel_status();`.
-2. **Разработчику (Stage 2):** Checkout promo UI (mobile) + перевод клиента на 8-арг `place_order` + `validate_promo` preview + i18n кодов ошибок. Затем Stage 3–6 (см. TODO).
+1. **Владельцу:** на телефоне под Google — создать в админке campaign-код (напр. SUMMER2026, 20%, 1/аккаунт), применить на checkout, оформить заказ; проверить, что скидка в заказе и Telegram. Затем во временном окне крутнуть колесо и применить выигрыш.
+2. (Опц.) Настроить веса/проценты колеса и окна в админке под кампанию.
 
 ## Context For Next Session
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260815-143659
+Recovery ID: R-20260815-153000
 
-1. **Проект:** Elva LaVenta — React/Vite storefront (магазин женской одежды), Supabase (Frankfurt), GitHub Pages (base `/elva-laventa/`).
-2. **Описание:** интернет-магазин: каталог, избранное, корзина, checkout (RPC `place_order` + Telegram), admin-панель, AZ/RU/EN.
-3. **Текущее состояние:** Phase 2 Stage 1 (DB-фундамент единого discount-движка) готов в рабочем дереве и закоммичен как SQL+docs (приложение не изменено). Ждёт запуска владельцем `supabase/promo-and-wheel.sql`. Клиентские стадии 2–6 ещё не сделаны.
-4. **Что реализовано (Stage 1):** `supabase/promo-and-wheel.sql` — таблицы `promo_codes/promo_redemptions/wheel_config/wheel_spins`; RPC `validate_promo`, `place_order`(7 и 8 арг), `spin_wheel`, `get_wheel_public_config`, `get_wheel_status`, `generate_promo_code`, `_validate_promo`, `_wheel_current_window`; `orders.discount_amount/promo_code/discount_source`; `recalc_order_total` вычитает скидку; RLS admin-only; Realtime для promo_codes/wheel_config. Единая модель: выигрыш колеса = individual-промокод (source=wheel), применяется тем же движком.
-5. **Последняя задача:** Phase 2 Stage 1.
-6. **Изменённые файлы:** `supabase/promo-and-wheel.sql` (new); docs: `HANDOFF.md`, `DECISIONS.md` (D-007), `TODO.md`.
-7. **Проверки:** SQL написан по аудиту реальной схемы; НЕ выполнялся (запускает владелец). Клиент не менялся, build не затронут. Фича НЕ live до SQL + Stage 2.
-8. **Ограничения:** не делать две системы скидок; discount только server-trusted (клиент не считает total); ограничения по аккаунту — в БД/RPC/RLS, не только в localStorage; не ослаблять RLS; не хранить security-critical в localStorage; desktop не переделывать; storefront scope — mobile; Admin можно расширять; не добавлять зависимости без нужды; не ломать cart/checkout/express delivery/order/Telegram/auth/Realtime/favorites/навигацию/сток/цены; НЕ отправлять `?forceWheel=true` в прод.
-9. **Обязательные документы:** `docs/HANDOFF.md`, `docs/ECOMMERCE_E2E_QA.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/PROJECT.md`, `.claude/CODE_STYLE.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `.claude/CODEX.md`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/DECISIONS.md`, `docs/TODO.md`.
-10. **Что осталось:** владельцу — выполнить `promo-and-wheel.sql`. Разработчику — Stage 2 (checkout promo UI + 8-арг place_order + validate_promo + i18n), Stage 3 (Admin promo-модуль), Stage 4 (Admin wheel-конфиг), Stage 5 (mobile wheel UI), Stage 6 (playwright + build + deploy). Контракты RPC — в разделе «Current Architecture Notes» этого файла.
-11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`; затем Stage 2 (checkout).
-12. **После работы:** обновить `docs/HANDOFF.md` (полностью), при необходимости `FEATURES/BUGS/DECISIONS/TODO`, commit + push, запустить deploy (Actions не ждать).
+1. **Проект:** Elva LaVenta — React/Vite storefront (женская одежда), Supabase (Frankfurt), GitHub Pages (base `/elva-laventa/`).
+2. **Описание:** магазин: каталог, избранное, корзина, checkout (RPC `place_order` + Telegram), admin-панель, AZ/RU/EN.
+3. **Текущее состояние:** Phase 2 полностью реализована и запушена; SQL применён владельцем. Build OK; trusted-слой проверен по REST; Playwright wiring зелёный. Осталась авторизованная проверка на устройстве.
+4. **Что реализовано (Phase 2 клиент):** promo lib + wheel lib; checkout promo UI (mobile) + переход на 8-арг `place_order` + `validate_promo`; i18n promo_*/wheel_*; Admin PromoPanel (CRUD/Generate/привязка) + WheelPanel (конфиг); mobile WheelOfFortune (server-decided spin, one-per-window, reward через promo-движок); orders.js discount info; стили.
+5. **Последняя задача:** Phase 2 Stage 2–6.
+6. **Изменённые файлы:** `src/lib/promo.js`,`src/lib/wheel.js`,`src/components/WheelOfFortune.jsx` (new); `src/lib/orders.js`,`src/pages/CheckoutPage.jsx`,`src/pages/AdminPage.jsx`,`src/admin/db.js`,`src/App.jsx`,`src/i18n/translations.js`,`src/styles/index.css`; docs: HANDOFF/FEATURES(F-010)/TODO. SQL: `supabase/promo-and-wheel.sql` (уже был закоммичен в Stage 1).
+7. **Проверки:** build OK; REST trusted-RPC/RLS; Playwright wiring (RPC 200, консоль чистая). Авторизованный e2e — NOT VERIFIED (за владельцем).
+8. **Ограничения:** одна система скидок; discount только server-trusted; ограничения аккаунта — в БД/RPC/RLS; не ослаблять RLS; security-critical не в localStorage; desktop не переделывать; storefront scope mobile; без лишних зависимостей; не ломать cart/checkout/express delivery/order/Telegram/auth/Realtime/favorites/навигацию/сток/цены; нет `?forceWheel=`.
+9. **Обязательные документы:** `docs/HANDOFF.md`, `docs/ECOMMERCE_E2E_QA.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/*`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/DECISIONS.md`, `docs/TODO.md`.
+10. **Что осталось:** владельцу — авторизованная проверка promo/wheel на устройстве во временном окне; при желании настроить веса/окна колеса.
+11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`.
+12. **После работы:** обновлять `docs/HANDOFF.md` и профильные доки; commit + push; deploy (Actions не ждать).
 
 ### SESSION CHECKSUM
 
@@ -84,13 +77,15 @@ Recovery ID: R-20260815-143659
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: Phase 2 Stage 1 — единый discount-движок (SQL foundation) — готов в рабочем дереве и закоммичен; следующий шаг — владелец запускает SQL, затем Stage 2 (клиент)
+Current task: Phase 2 (promo codes + Wheel of Fortune) — реализована полностью, запушена; осталась авторизованная проверка владельцем на устройстве
 Expected modified files:
-  - supabase/promo-and-wheel.sql (new)
-  - docs/HANDOFF.md, docs/DECISIONS.md (D-007), docs/TODO.md
+  - src/lib/promo.js, src/lib/wheel.js, src/components/WheelOfFortune.jsx (new)
+  - src/lib/orders.js, src/pages/CheckoutPage.jsx, src/pages/AdminPage.jsx, src/admin/db.js, src/App.jsx
+  - src/i18n/translations.js, src/styles/index.css
+  - docs/HANDOFF.md, docs/FEATURES.md (F-010), docs/TODO.md
 Git status summary: изменения в рабочем дереве, не закоммичены на момент записи
 Documentation updated: YES
-Last verified build: не затронут (клиент не менялся); SQL — NOT EXECUTED (запускает владелец)
-Last verified tests: N/A на Stage 1 (SQL-only). Playwright promo/wheel — после Stage 1 SQL + Stage 2 клиента
+Last verified build: vite build — успешно, 2026-08-15
+Last verified tests: REST trusted-RPC/RLS + Playwright wiring — зелёные. Авторизованный e2e promo/wheel — NOT VERIFIED (за владельцем: устройство + окно)
 Recovery confidence: HIGH
 ```

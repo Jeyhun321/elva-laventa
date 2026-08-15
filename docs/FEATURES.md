@@ -14,6 +14,13 @@
 
 ---
 
+## [F-010] Промокоды + Wheel of Fortune на едином discount-движке (Phase 2)
+- **Описание:** система скидок с единой trusted-моделью (DECISIONS #D-007).
+  **Промокоды:** campaign (общий, лимит на аккаунт) и individual (привязан к клиенту); checkout-блок «Promokod» на mobile (Apply/Remove, пересчёт Order Summary, скидка на merchandise subtotal, доставка отдельно); i18n всех состояний (не найден/неактивен/просрочен/не начался/чужой аккаунт/уже использован/лимит/мин. сумма). Скидку считает и фиксирует сервер (`validate_promo` preview + 8-арг `place_order`); клиент шлёт только код. Использование пишется в `promo_redemptions` только при успешном заказе; double-use блокируется `SELECT FOR UPDATE`. **Admin:** вкладка «Промокоды» (CRUD, campaign/individual, Generate через RPC, привязка к клиенту из списка заказов, лимиты/даты/мин.сумма) + вкладка «Колесо фортуны» (вкл/выкл, окна, timezone, проценты+веса, expiry, спинов на окно). **Wheel (mobile):** приглашение «Şansını sına» в окне (Asia/Baku, ±5м), результат выбирает сервер (weighted), один спин на окно (`UNIQUE(account_id,window_key)`), выигрыш = account-bound individual-промокод (source=wheel), применяется тем же checkout-движком; reroll через reload/DevTools невозможен (сервер enforce). Заказ хранит `discount_amount/promo_code/discount_source`; Telegram-уведомление включает строку скидки.
+- **Дата:** 2026-08-15
+- **Изменённые файлы:** `supabase/promo-and-wheel.sql`; `src/lib/promo.js`, `src/lib/wheel.js` (new); `src/lib/orders.js`; `src/pages/CheckoutPage.jsx`; `src/pages/AdminPage.jsx`, `src/admin/db.js`; `src/components/WheelOfFortune.jsx` (new), `src/App.jsx`; `src/i18n/translations.js`; `src/styles/index.css`.
+- **Связанные задачи:** DECISIONS #D-007; TODO Phase 2. Проверено: build; REST trusted-RPC/RLS (anon→AUTH_REQUIRED, веса скрыты, промо не читаются/не создаются анонимом); Playwright wiring (RPC 200, консоль чистая). Финальная авторизованная проверка на устройстве во временном окне — за владельцем.
+
 ## [F-009] Admin → Storefront live-sync + честные цвета товара + структура fallback поиска (Phase 1)
 - **Описание:** пакет из 3 задач.
   1. **Realtime-синхронизация каталога.** Открытый пользовательский сайт получает изменения admin-панели (name, price, discount/old_price, stock/in_stock, sizes, colors, images, availability, is_featured и т.д.) **без ручного refresh и без full-page reload**. Реализовано через Supabase Realtime (`postgres_changes` на `products` и `categories`) → тихая ревалидация состояния каталога → React rerender. Ordering-guard (`dataSeq`) гарантирует, что поздний ответ не перезапишет более свежий (нет stale-cache гонки). Один канал, cleanup при размонтировании, debounce 300ms, авто-reconnect (supabase-realtime).

@@ -5,22 +5,35 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { createOrder } from '../lib/orders.js'
+import { validatePromo, previewDiscount, promoErrorKey } from '../lib/promo.js'
 import { CURRENCY } from '../config.js'
 import ProductImage from '../components/ProductImage.jsx'
 
 const BUYER_KEY = 'elva_buyer'
+// Wheel reward: код кладётся сюда после выигрыша, checkout его подхватывает.
+const WHEEL_REWARD_KEY = 'elva_wheel_reward'
 const ORDER_REDIRECT_SECONDS = 10
 // Çatdırılma üsulları (TASK 6). Ekspress üçün əlavə haqq.
 const EXPRESS_FEE = 5
 
 const ORDER_ERROR_KEY_BY_CODE = {
-  AUTH_REQUIRED: 'order_auth_required',
-  GOOGLE_AUTH_REQUIRED: 'order_auth_required',
   ORDER_FIELDS_REQUIRED: 'order_fields_required',
   CART_EMPTY: 'order_cart_empty',
   INVALID_ITEM: 'order_invalid_item',
   PRODUCT_UNAVAILABLE: 'order_product_unavailable',
   SIZE_INVALID: 'order_size_invalid',
+  // Промокод мог стать невалидным между Apply и отправкой заказа (Realtime/лимит/гонка)
+  PROMO_NOT_FOUND: 'promo_err_PROMO_NOT_FOUND',
+  PROMO_INACTIVE: 'promo_err_PROMO_INACTIVE',
+  PROMO_EXPIRED: 'promo_err_PROMO_EXPIRED',
+  PROMO_NOT_STARTED: 'promo_err_PROMO_NOT_STARTED',
+  PROMO_ACCOUNT_MISMATCH: 'promo_err_PROMO_ACCOUNT_MISMATCH',
+  PROMO_ALREADY_USED: 'promo_err_PROMO_ALREADY_USED',
+  PROMO_LIMIT_REACHED: 'promo_err_PROMO_LIMIT_REACHED',
+  PROMO_MIN_ORDER: 'promo_err_PROMO_MIN_ORDER',
+  // Общие auth-ошибки (проверяются последними, т.к. это подстрока)
+  GOOGLE_AUTH_REQUIRED: 'order_auth_required',
+  AUTH_REQUIRED: 'order_auth_required',
 }
 
 const getOrderErrorKey = (error) => {
@@ -72,6 +85,13 @@ export default function CheckoutPage() {
   const [redirectSeconds, setRedirectSeconds] = useState(ORDER_REDIRECT_SECONDS)
   const [err, setErr] = useState('')
 
+  // --- Promokod (единый discount-движок) ---
+  const [promoInput, setPromoInput] = useState('')
+  const [appliedPromo, setAppliedPromo] = useState(null) // {code, discountType, discountValue}
+  const [promoBusy, setPromoBusy] = useState(false)
+  const [promoErr, setPromoErr] = useState('') // i18n-ключ
+  const promoAutoTried = useRef(false)
+
   const lines = cart
     .map((item) => ({ item, product: getProduct(item.id) }))
     .filter((l) => l.product)
@@ -81,9 +101,47 @@ export default function CheckoutPage() {
   const hasUnavailable = lines.some((l) => l.product.inStock === false)
 
   const total = lines.reduce((s, l) => s + l.product.price * l.item.qty, 0)
+  // Скидка — на merchandise subtotal (не на доставку). Показ = preview; сервер
+  // при заказе пересчитывает авторитетно. Не ниже 0.
+  const discount = appliedPromo ? Math.min(total, previewDiscount(appliedPromo, total)) : 0
   // Çatdırılma haqqı və yekun (avtomatik yenilənir)
   const deliveryFee = delivery === 'express' ? EXPRESS_FEE : 0
-  const grandTotal = total + deliveryFee
+  const grandTotal = Math.max(0, total - discount) + deliveryFee
+
+  const applyPromo = async (rawCode) => {
+    const code = String(rawCode ?? promoInput).trim()
+    if (!code || promoBusy) return
+    setPromoBusy(true)
+    setPromoErr('')
+    try {
+      const promo = await validatePromo(code, total)
+      setAppliedPromo(promo)
+      setPromoInput(promo.code)
+      setPromoErr('')
+    } catch (e) {
+      setAppliedPromo(null)
+      setPromoErr(promoErrorKey(e?.message))
+    } finally {
+      setPromoBusy(false)
+    }
+  }
+
+  const removePromo = () => {
+    setAppliedPromo(null)
+    setPromoErr('')
+    setPromoInput('')
+    try { sessionStorage.removeItem(WHEEL_REWARD_KEY) } catch { /* ignore */ }
+  }
+
+  // Выигрыш колеса: код лежит в sessionStorage — подхватываем и авто-применяем один раз.
+  useEffect(() => {
+    if (promoAutoTried.current || loading || catalogLoading || lines.length === 0) return
+    let code = ''
+    try { code = sessionStorage.getItem(WHEEL_REWARD_KEY) || '' } catch { /* ignore */ }
+    promoAutoTried.current = true
+    if (code) applyPromo(code)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, catalogLoading, lines.length])
 
   useEffect(() => {
     // Səbət boşdursa, həm qonaq, həm girişli alıcı səbətə qaytarılır.
@@ -199,10 +257,14 @@ export default function CheckoutPage() {
         },
         lines,
         email: user?.email ?? null,
+        promoCode: appliedPromo?.code || null,
       })
 
       if (remember) localStorage.setItem(BUYER_KEY, JSON.stringify(buyer))
       else localStorage.removeItem(BUYER_KEY)
+
+      // Успех: выигрыш колеса больше не нужен в сессии.
+      try { sessionStorage.removeItem(WHEEL_REWARD_KEY) } catch { /* ignore */ }
 
       setDone(order)
       await clearCart()
@@ -367,6 +429,43 @@ export default function CheckoutPage() {
             <span>{t('remember_me')}</span>
           </label>
 
+          {/* Promokod — единый discount-движок. Скидку считает сервер; здесь preview. */}
+          <div className="promo-box">
+            <span className="checkout-h3 promo-box-title">{t('promo_title')}</span>
+            {appliedPromo ? (
+              <div className="promo-applied">
+                <span className="promo-applied-code">✓ {appliedPromo.code}</span>
+                <span className="promo-applied-amount">−{discount} {CURRENCY}</span>
+                <button type="button" className="promo-remove-btn" onClick={removePromo}>
+                  {t('promo_remove')}
+                </button>
+              </div>
+            ) : (
+              <div className="promo-row">
+                <input
+                  className="promo-input"
+                  value={promoInput}
+                  onChange={(e) => { setPromoInput(e.target.value); setPromoErr('') }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyPromo() } }}
+                  placeholder={t('promo_placeholder')}
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  aria-label={t('promo_title')}
+                />
+                <button
+                  type="button"
+                  className="btn btn-ghost promo-apply-btn"
+                  onClick={() => applyPromo()}
+                  disabled={promoBusy || !promoInput.trim()}
+                >
+                  {promoBusy ? '…' : t('promo_apply')}
+                </button>
+              </div>
+            )}
+            {promoErr && <em className="fld-err">{t(promoErr)}</em>}
+            {appliedPromo && <em className="fld-note">{t('promo_only_one')}</em>}
+          </div>
+
           {err && <div className="admin-msg err" role="alert">{err}</div>}
 
           {/* Yekun məbləğ düymənin ÜSTÜNDƏ — alıcı nə ödədiyini görmədən təsdiqləməsin.
@@ -414,6 +513,12 @@ export default function CheckoutPage() {
             <span>{t('products_subtotal')}</span>
             <span>{total} {CURRENCY}</span>
           </div>
+          {discount > 0 && (
+            <div className="summary-row summary-discount">
+              <span>{t('promo_discount')}{appliedPromo ? ` (${appliedPromo.code})` : ''}</span>
+              <span>−{discount} {CURRENCY}</span>
+            </div>
+          )}
           <div className="summary-row">
             <span>{delivery === 'express' ? t('delivery_express') : t('delivery_standard')}</span>
             <span>{deliveryFee ? `${deliveryFee} ${CURRENCY}` : t('delivery_free')}</span>

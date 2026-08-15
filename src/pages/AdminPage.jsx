@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { adminSupabase, isConfigured } from '../lib/supabase.js'
-import { loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin } from '../admin/db.js'
+import {
+  loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin,
+  listPromos, savePromo, deletePromo, generatePromoCode, listOrderCustomers, promoUsageCounts,
+  getWheelConfig, saveWheelConfig,
+} from '../admin/db.js'
 import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { extractColors } from '../admin/colors.js'
@@ -489,6 +493,12 @@ function Dashboard({ session, onExit }) {
   <button className={`admin-tab${tab === 'orders' ? ' active' : ''}`} onClick={() => setTab('orders')}>
     Заказы
   </button>
+  <button className={`admin-tab${tab === 'promo' ? ' active' : ''}`} onClick={() => setTab('promo')}>
+    Промокоды
+  </button>
+  <button className={`admin-tab${tab === 'wheel' ? ' active' : ''}`} onClick={() => setTab('wheel')}>
+    Колесо фортуны
+  </button>
   <button className={`admin-tab${tab === 'logs' ? ' active' : ''}`} onClick={() => setTab('logs')}>
     Системные логи
   </button>
@@ -500,6 +510,10 @@ function Dashboard({ session, onExit }) {
   <OrdersPanel onNotify={say} />
 ) : tab === 'logs' ? (
   <SystemLogsPanel />
+) : tab === 'promo' ? (
+  <PromoPanel onNotify={say} />
+) : tab === 'wheel' ? (
+  <WheelPanel onNotify={say} />
 ) : (
       <>
       {busy === 'load' && <p className="admin-sub">Загружаю…</p>}
@@ -554,6 +568,332 @@ function Dashboard({ session, onExit }) {
       )}
       </>
       )}
+    </div>
+  )
+}
+
+/* ---------------- Промокоды / купоны ---------------- */
+const emptyPromo = () => ({
+  code: '', type: 'campaign', discount_type: 'percent', discount_value: '10',
+  active: true, starts_at: '', expires_at: '',
+  max_total_uses: '', max_uses_per_account: '1', minimum_order_amount: '',
+  assigned_account_id: '', source: 'manual',
+})
+
+const toLocalInput = (iso) => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function PromoPanel({ onNotify }) {
+  const [promos, setPromos] = useState([])
+  const [usage, setUsage] = useState({})
+  const [customers, setCustomers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [list, counts, custs] = await Promise.all([
+        listPromos(), promoUsageCounts(), listOrderCustomers(),
+      ])
+      setPromos(list); setUsage(counts); setCustomers(custs)
+    } catch (e) {
+      onNotify('err', e.message || 'Не удалось загрузить промокоды')
+    } finally {
+      setLoading(false)
+    }
+  }, [onNotify])
+
+  useEffect(() => { load() }, [load])
+
+  const startEdit = (p) => setForm({
+    ...p,
+    starts_at: toLocalInput(p.starts_at),
+    expires_at: toLocalInput(p.expires_at),
+  })
+
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }))
+
+  const generate = async () => {
+    try {
+      const prefix = form.type === 'individual' ? 'VIP' : 'PROMO'
+      const code = await generatePromoCode(prefix)
+      set({ code })
+    } catch (e) {
+      onNotify('err', e.message || 'Не удалось сгенерировать код')
+    }
+  }
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      await savePromo(form)
+      onNotify('ok', 'Промокод сохранён')
+      setForm(null)
+      await load()
+    } catch (e) {
+      const msg = e.message === 'CODE_REQUIRED' ? 'Введите или сгенерируйте код'
+        : e.message === 'ACCOUNT_REQUIRED' ? 'Для индивидуального кода выберите клиента'
+        : /duplicate|unique/i.test(e.message || '') ? 'Такой код уже существует'
+        : (e.message || 'Ошибка сохранения')
+      onNotify('err', msg)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async (p) => {
+    if (!window.confirm(`Удалить промокод ${p.code}?`)) return
+    try {
+      await deletePromo(p.id)
+      onNotify('ok', 'Промокод удалён')
+      await load()
+    } catch (e) {
+      onNotify('err', e.message || 'Не удалось удалить')
+    }
+  }
+
+  const fmtDiscount = (p) => p.discount_type === 'percent' ? `${Number(p.discount_value)}%` : `${Number(p.discount_value)} ₼`
+  const custLabel = (id) => {
+    const c = customers.find((x) => x.id === id)
+    return c ? (c.name || c.email || id.slice(0, 8)) : id.slice(0, 8) + '…'
+  }
+
+  return (
+    <div className="admin-promo">
+      <div className="admin-head-actions" style={{ marginBottom: 12 }}>
+        <button className="btn btn-primary" onClick={() => setForm(emptyPromo())}>
+          <IconPlus /> Новый промокод
+        </button>
+      </div>
+
+      {loading ? <p className="admin-sub">Загружаю…</p> : (
+        <div className="admin-list">
+          {promos.length === 0 && <p className="admin-sub">Пока нет промокодов.</p>}
+          {promos.map((p) => (
+            <div className={`admin-row${p.active ? '' : ' inactive'}`} key={p.id}>
+              <div className="admin-row-main">
+                <b>{p.code} <span className="promo-badge">{p.type === 'individual' ? 'персональный' : 'кампания'}</span>
+                  {p.source === 'wheel' && <span className="promo-badge wheel">колесо</span>}
+                </b>
+                <span className="admin-row-meta">
+                  {fmtDiscount(p)}
+                  {' · использовано '}{usage[p.id] || 0}{p.max_total_uses ? `/${p.max_total_uses}` : ''}
+                  {p.max_uses_per_account ? ` · ${p.max_uses_per_account}/аккаунт` : ''}
+                  {p.minimum_order_amount ? ` · от ${p.minimum_order_amount} ₼` : ''}
+                  {p.expires_at ? ` · до ${new Date(p.expires_at).toLocaleDateString()}` : ''}
+                  {!p.active && ' · выключен'}
+                  {p.type === 'individual' && p.assigned_account_id ? ` · ${custLabel(p.assigned_account_id)}` : ''}
+                </span>
+              </div>
+              <div className="admin-row-actions">
+                <button className="btn-ghost btn-sm" onClick={() => startEdit(p)}>Изменить</button>
+                <button className="cart-remove" onClick={() => remove(p)} aria-label="Удалить"><IconTrash /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {form && (
+        <div className="admin-modal" role="dialog" aria-modal="true" onClick={() => !busy && setForm(null)}>
+          <div className="admin-modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-head">
+              <h3>{form.id ? 'Изменить промокод' : 'Новый промокод'}</h3>
+              <button className="icon-btn" onClick={() => setForm(null)} aria-label="Закрыть"><IconClose /></button>
+            </div>
+
+            <div className="admin-modal-body">
+            <label className="fld"><span>Код</span>
+              <div className="promo-row">
+                <input value={form.code} onChange={(e) => set({ code: e.target.value.toUpperCase() })}
+                  placeholder="SUMMER2026" style={{ textTransform: 'uppercase' }} />
+                <button type="button" className="btn btn-ghost" onClick={generate}>Сгенерировать</button>
+              </div>
+            </label>
+
+            <label className="fld"><span>Тип</span>
+              <select value={form.type} onChange={(e) => set({ type: e.target.value })}>
+                <option value="campaign">Кампания (много аккаунтов)</option>
+                <option value="individual">Персональный (один клиент)</option>
+              </select>
+            </label>
+
+            <div className="admin-form-grid2">
+              <label className="fld"><span>Тип скидки</span>
+                <select value={form.discount_type} onChange={(e) => set({ discount_type: e.target.value })}>
+                  <option value="percent">Процент %</option>
+                  <option value="fixed">Фикс. сумма ₼</option>
+                </select>
+              </label>
+              <label className="fld"><span>Значение</span>
+                <input type="number" min="0" step="0.01" value={form.discount_value}
+                  onChange={(e) => set({ discount_value: e.target.value })} />
+              </label>
+            </div>
+
+            {form.type === 'individual' && (
+              <label className="fld"><span>Клиент</span>
+                <select value={form.assigned_account_id} onChange={(e) => set({ assigned_account_id: e.target.value })}>
+                  <option value="">— выберите клиента —</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name || '(без имени)'} · {c.email || c.id.slice(0, 8)}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <div className="admin-form-grid2">
+              <label className="fld"><span>Начало (необяз.)</span>
+                <input type="datetime-local" value={form.starts_at} onChange={(e) => set({ starts_at: e.target.value })} />
+              </label>
+              <label className="fld"><span>Окончание (необяз.)</span>
+                <input type="datetime-local" value={form.expires_at} onChange={(e) => set({ expires_at: e.target.value })} />
+              </label>
+            </div>
+
+            <div className="admin-form-grid2">
+              <label className="fld"><span>Всего использований</span>
+                <input type="number" min="1" value={form.max_total_uses}
+                  onChange={(e) => set({ max_total_uses: e.target.value })} placeholder="без лимита" />
+              </label>
+              <label className="fld"><span>На один аккаунт</span>
+                <input type="number" min="1" value={form.max_uses_per_account}
+                  onChange={(e) => set({ max_uses_per_account: e.target.value })} placeholder="без лимита" />
+              </label>
+            </div>
+
+            <label className="fld"><span>Мин. сумма заказа ₼ (необяз.)</span>
+              <input type="number" min="0" step="0.01" value={form.minimum_order_amount}
+                onChange={(e) => set({ minimum_order_amount: e.target.value })} placeholder="нет" />
+            </label>
+
+            <label className="checkbox-row">
+              <input type="checkbox" checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
+              <span>Активен</span>
+            </label>
+            </div>
+
+            <div className="admin-modal-foot">
+              <button className="btn btn-ghost" onClick={() => setForm(null)} disabled={busy}>Отмена</button>
+              <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Сохраняю…' : 'Сохранить'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ---------------- Колесо фортуны — настройки ---------------- */
+function WheelPanel({ onNotify }) {
+  const [cfg, setCfg] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    getWheelConfig()
+      .then((c) => { if (alive) setCfg(c) })
+      .catch((e) => onNotify('err', e.message || 'Не удалось загрузить конфиг'))
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [onNotify])
+
+  const set = (patch) => setCfg((c) => ({ ...c, ...patch }))
+  const setReward = (i, patch) => setCfg((c) => ({
+    ...c, rewards: c.rewards.map((r, j) => j === i ? { ...r, ...patch } : r),
+  }))
+  const addReward = () => setCfg((c) => ({ ...c, rewards: [...(c.rewards || []), { percent: 5, weight: 10 }] }))
+  const removeReward = (i) => setCfg((c) => ({ ...c, rewards: c.rewards.filter((_, j) => j !== i) }))
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      const clean = {
+        ...cfg,
+        windows: (Array.isArray(cfg.windows) ? cfg.windows : String(cfg.windows || '').split(','))
+          .map((w) => String(w).trim()).filter(Boolean),
+        rewards: (cfg.rewards || [])
+          .map((r) => ({ percent: Number(r.percent) || 0, weight: Number(r.weight) || 0 }))
+          .filter((r) => r.percent > 0),
+      }
+      const saved = await saveWheelConfig(clean)
+      setCfg(saved)
+      onNotify('ok', 'Настройки колеса сохранены')
+    } catch (e) {
+      onNotify('err', e.message || 'Ошибка сохранения')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (loading) return <p className="admin-sub">Загружаю…</p>
+  if (!cfg) return <p className="admin-sub">Конфигурация колеса не найдена. Выполните supabase/promo-and-wheel.sql.</p>
+
+  const windowsText = Array.isArray(cfg.windows) ? cfg.windows.join(', ') : (cfg.windows || '')
+
+  return (
+    <div className="admin-wheel">
+      <label className="checkbox-row">
+        <input type="checkbox" checked={cfg.enabled !== false} onChange={(e) => set({ enabled: e.target.checked })} />
+        <span>Колесо включено</span>
+      </label>
+
+      <div className="admin-form-grid2">
+        <label className="fld"><span>Часовой пояс</span>
+          <input value={cfg.timezone || 'Asia/Baku'} onChange={(e) => set({ timezone: e.target.value })} />
+        </label>
+        <label className="fld"><span>Допуск, мин (±)</span>
+          <input type="number" min="0" max="60" value={cfg.tolerance_minutes ?? 5}
+            onChange={(e) => set({ tolerance_minutes: e.target.value })} />
+        </label>
+      </div>
+
+      <label className="fld"><span>Окна (через запятую, HH:MM)</span>
+        <input value={windowsText} onChange={(e) => set({ windows: e.target.value.split(',') })}
+          placeholder="10:00, 13:00, 18:00, 21:00" />
+      </label>
+
+      <div className="admin-form-grid2">
+        <label className="fld"><span>Срок награды, ч</span>
+          <input type="number" min="1" value={cfg.reward_expiry_hours ?? 24}
+            onChange={(e) => set({ reward_expiry_hours: e.target.value })} />
+        </label>
+        <label className="fld"><span>Спинов на окно</span>
+          <input type="number" min="1" value={cfg.max_spins_per_window ?? 1}
+            onChange={(e) => set({ max_spins_per_window: e.target.value })} />
+        </label>
+      </div>
+
+      <div className="wheel-rewards">
+        <div className="wheel-rewards-head">
+          <span>Награды и веса</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={addReward}><IconPlus /> Добавить</button>
+        </div>
+        <p className="admin-sub">Показываются только достижимые (вес &gt; 0) проценты. Вероятность = вес / сумма весов.</p>
+        {(cfg.rewards || []).map((r, i) => (
+          <div className="wheel-reward-row" key={i}>
+            <label className="fld"><span>Скидка %</span>
+              <input type="number" min="1" value={r.percent} onChange={(e) => setReward(i, { percent: e.target.value })} />
+            </label>
+            <label className="fld"><span>Вес</span>
+              <input type="number" min="0" value={r.weight} onChange={(e) => setReward(i, { weight: e.target.value })} />
+            </label>
+            <button type="button" className="cart-remove" onClick={() => removeReward(i)} aria-label="Убрать"><IconTrash /></button>
+          </div>
+        ))}
+      </div>
+
+      <div className="admin-form-foot">
+        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Сохраняю…' : 'Сохранить'}</button>
+      </div>
     </div>
   )
 }

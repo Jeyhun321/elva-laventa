@@ -169,3 +169,136 @@ export const signIn = async (email, password) => {
 export const signOutAdmin = async () => {
   if (supabase) await supabase.auth.signOut()
 }
+
+// ============================================================
+//  Промокоды / купоны (единый discount-движок, RLS: только is_admin)
+// ============================================================
+
+export const promoFromRow = (r) => ({
+  id: r.id,
+  code: r.code || '',
+  type: r.type || 'campaign',
+  discount_type: r.discount_type || 'percent',
+  discount_value: r.discount_value == null ? '' : String(r.discount_value),
+  active: r.active !== false,
+  starts_at: r.starts_at || '',
+  expires_at: r.expires_at || '',
+  max_total_uses: r.max_total_uses == null ? '' : String(r.max_total_uses),
+  max_uses_per_account: r.max_uses_per_account == null ? '' : String(r.max_uses_per_account),
+  minimum_order_amount: r.minimum_order_amount == null ? '' : String(r.minimum_order_amount),
+  assigned_account_id: r.assigned_account_id || '',
+  source: r.source || 'manual',
+  created_at: r.created_at,
+})
+
+const promoToRow = (p) => {
+  const num = (v) => (v === '' || v == null ? null : Number(v))
+  const iso = (v) => (v ? new Date(v).toISOString() : null)
+  return {
+    code: (p.code || '').trim().toUpperCase(),
+    type: p.type === 'individual' ? 'individual' : 'campaign',
+    discount_type: p.discount_type === 'fixed' ? 'fixed' : 'percent',
+    discount_value: Number(p.discount_value) || 0,
+    active: p.active !== false,
+    starts_at: iso(p.starts_at),
+    expires_at: iso(p.expires_at),
+    max_total_uses: num(p.max_total_uses),
+    max_uses_per_account: num(p.max_uses_per_account),
+    minimum_order_amount: num(p.minimum_order_amount),
+    assigned_account_id: p.type === 'individual' ? (p.assigned_account_id || null) : null,
+    source: p.source === 'wheel' ? 'wheel' : 'manual',
+  }
+}
+
+export const listPromos = async () => {
+  const sb = need()
+  const { data, error } = await sb
+    .from('promo_codes')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data || []).map(promoFromRow)
+}
+
+// Использования по каждому промокоду (для колонки "использовано")
+export const promoUsageCounts = async () => {
+  const sb = need()
+  const { data, error } = await sb.from('promo_redemptions').select('promo_id')
+  if (error) return {}
+  const counts = {}
+  for (const r of data || []) counts[r.promo_id] = (counts[r.promo_id] || 0) + 1
+  return counts
+}
+
+export const savePromo = async (p) => {
+  const sb = need()
+  const row = promoToRow(p)
+  if (!row.code) throw new Error('CODE_REQUIRED')
+  if (row.type === 'individual' && !row.assigned_account_id) throw new Error('ACCOUNT_REQUIRED')
+  const query = p.id
+    ? sb.from('promo_codes').update(row).eq('id', p.id).select().single()
+    : sb.from('promo_codes').insert(row).select().single()
+  const { data, error } = await query
+  if (error) throw error
+  return promoFromRow(data)
+}
+
+export const deletePromo = async (id) => {
+  const sb = need()
+  const { error } = await sb.from('promo_codes').delete().eq('id', id)
+  if (error) throw error
+}
+
+// Генерация уникального кода на сервере (не голый random)
+export const generatePromoCode = async (prefix = 'VIP') => {
+  const sb = need()
+  const { data, error } = await sb.rpc('generate_promo_code', { p_prefix: prefix })
+  if (error) throw error
+  return data
+}
+
+// Список клиентов для привязки individual-кода — из заказов (admin RLS разрешает).
+// Дедуп по user_id; берём имя и email из последнего заказа клиента.
+export const listOrderCustomers = async () => {
+  const sb = need()
+  const { data, error } = await sb
+    .from('orders')
+    .select('user_id, customer_name, email, created_at')
+    .not('user_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(500)
+  if (error) return []
+  const seen = new Map()
+  for (const o of data || []) {
+    if (!o.user_id || seen.has(o.user_id)) continue
+    seen.set(o.user_id, { id: o.user_id, name: o.customer_name || '', email: o.email || '' })
+  }
+  return [...seen.values()]
+}
+
+// ============================================================
+//  Wheel of Fortune — конфигурация (singleton id=1, RLS: только is_admin)
+// ============================================================
+
+export const getWheelConfig = async () => {
+  const sb = need()
+  const { data, error } = await sb.from('wheel_config').select('*').eq('id', 1).maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export const saveWheelConfig = async (cfg) => {
+  const sb = need()
+  const row = {
+    enabled: cfg.enabled !== false,
+    timezone: (cfg.timezone || 'Asia/Baku').trim(),
+    windows: Array.isArray(cfg.windows) ? cfg.windows : [],
+    tolerance_minutes: Number(cfg.tolerance_minutes) || 0,
+    rewards: Array.isArray(cfg.rewards) ? cfg.rewards : [],
+    reward_expiry_hours: Number(cfg.reward_expiry_hours) || 24,
+    max_spins_per_window: Number(cfg.max_spins_per_window) || 1,
+  }
+  const { data, error } = await sb.from('wheel_config').update(row).eq('id', 1).select().single()
+  if (error) throw error
+  return data
+}

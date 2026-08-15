@@ -293,6 +293,62 @@ export const ui = {
     ru: 'Точных совпадений не найдено.',
     en: 'No exact matches found.',
   },
+
+  // --- Promokod (checkout) ---
+  promo_title: { az: 'Promokod', ru: 'Промокод', en: 'Promo code' },
+  promo_placeholder: { az: 'Kod daxil edin', ru: 'Введите код', en: 'Enter code' },
+  promo_apply: { az: 'Tətbiq et', ru: 'Применить', en: 'Apply' },
+  promo_remove: { az: 'Sil', ru: 'Убрать', en: 'Remove' },
+  promo_applied: { az: 'Promokod tətbiq olundu', ru: 'Промокод применён', en: 'Promo code applied' },
+  promo_discount: { az: 'Endirim', ru: 'Скидка', en: 'Discount' },
+  promo_only_one: {
+    az: 'Bir sifarişə yalnız bir promokod tətbiq olunur.',
+    ru: 'На один заказ применяется только один промокод.',
+    en: 'Only one promo code per order.',
+  },
+  promo_err_PROMO_NOT_FOUND: { az: 'Belə promokod yoxdur.', ru: 'Такого промокода нет.', en: 'Promo code not found.' },
+  promo_err_PROMO_INACTIVE: { az: 'Promokod aktiv deyil.', ru: 'Промокод неактивен.', en: 'Promo code is inactive.' },
+  promo_err_PROMO_EXPIRED: { az: 'Promokodun vaxtı bitib.', ru: 'Срок промокода истёк.', en: 'Promo code expired.' },
+  promo_err_PROMO_NOT_STARTED: { az: 'Promokod hələ aktiv deyil.', ru: 'Промокод ещё не активен.', en: 'Promo code is not active yet.' },
+  promo_err_PROMO_ACCOUNT_MISMATCH: { az: 'Bu promokod başqa hesaba aiddir.', ru: 'Промокод принадлежит другому аккаунту.', en: 'This code belongs to another account.' },
+  promo_err_PROMO_ALREADY_USED: { az: 'Bu promokoddan artıq istifadə etmisiniz.', ru: 'Вы уже использовали этот промокод.', en: 'You have already used this code.' },
+  promo_err_PROMO_LIMIT_REACHED: { az: 'Promokodun istifadə limiti bitib.', ru: 'Лимит использования промокода исчерпан.', en: 'Promo usage limit reached.' },
+  promo_err_PROMO_MIN_ORDER: { az: 'Sifariş məbləği minimuma çatmır.', ru: 'Сумма заказа ниже минимальной.', en: 'Order amount is below the minimum.' },
+  promo_err_AUTH_REQUIRED: { az: 'Promokod üçün daxil olun.', ru: 'Войдите, чтобы применить промокод.', en: 'Sign in to use a promo code.' },
+  promo_err_PROMO_INVALID: { az: 'Promokod tətbiq olunmadı.', ru: 'Промокод не применён.', en: 'Promo code could not be applied.' },
+
+  // --- Wheel of Fortune ---
+  wheel_invite_title: { az: 'Şansını sına', ru: 'Испытай удачу', en: 'Try your luck' },
+  wheel_invite_text: {
+    az: 'Endirim çarxını fırlat və endirim qazan!',
+    ru: 'Крути колесо и выиграй скидку!',
+    en: 'Spin the wheel and win a discount!',
+  },
+  wheel_spin: { az: 'Fırlat', ru: 'Крутить', en: 'Spin' },
+  wheel_spinning: { az: 'Fırlanır…', ru: 'Крутится…', en: 'Spinning…' },
+  wheel_login_required: {
+    az: 'Endirim çarxını fırlatmaq üçün daxil olun.',
+    ru: 'Войдите, чтобы крутить колесо скидок.',
+    en: 'Sign in to spin the discount wheel.',
+  },
+  wheel_already_spun: {
+    az: 'Bu dövr üçün artıq fırlatmısınız. Növbəti dövrdə yenidən cəhd edin.',
+    ru: 'В этом окне вы уже крутили. Попробуйте в следующем.',
+    en: 'You already spun in this window. Try the next one.',
+  },
+  wheel_win_title: { az: 'Təbriklər!', ru: 'Поздравляем!', en: 'Congratulations!' },
+  wheel_win_text: {
+    az: '{percent}% endirim qazandınız!',
+    ru: 'Вы выиграли скидку {percent}%!',
+    en: 'You won a {percent}% discount!',
+  },
+  wheel_use_reward: { az: 'Endirimi istifadə et', ru: 'Использовать скидку', en: 'Use discount' },
+  wheel_reward_hint: {
+    az: 'Kod ödənişdə avtomatik tətbiq olunacaq.',
+    ru: 'Код автоматически применится при оформлении.',
+    en: 'The code will apply automatically at checkout.',
+  },
+  wheel_error: { az: 'Xəta baş verdi. Yenidən cəhd edin.', ru: 'Произошла ошибка. Попробуйте ещё раз.', en: 'Something went wrong. Try again.' },
   nothing_found: {
     az: 'Heç nə tapılmadı',
     ru: 'Ничего не найдено',

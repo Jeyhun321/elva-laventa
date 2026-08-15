@@ -4,6 +4,7 @@ import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import TabBar from './components/TabBar.jsx'
 import ShopAuthGate from './components/ShopAuthGate.jsx'
+import WheelOfFortune from './components/WheelOfFortune.jsx'
 import SystemLogReporter from './components/SystemLogReporter.jsx'
 import { useI18n } from './i18n/I18nContext.jsx'
 import { useCatalog } from './context/CatalogContext.jsx'
@@ -162,6 +163,7 @@ export default function App() {
       <Footer />
       <TabBar />
       <ShopAuthGate />
+      <WheelOfFortune />
     </>
   )
 }

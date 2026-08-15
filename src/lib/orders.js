@@ -8,7 +8,7 @@ import { logSystemEvent } from './systemLogs.js'
 //  Sifarişlər — bazaya yazılır, WhatsApp-a yönləndirmə yoxdur
 // ============================================================
 
-export const createOrder = async ({ buyer, lines, email = null }) => {
+export const createOrder = async ({ buyer, lines, email = null, promoCode = null }) => {
   if (!supabase) throw new Error('NO_DB')
 
   const { data: authData, error: authError } = await supabase.auth.getUser()
@@ -21,6 +21,8 @@ export const createOrder = async ({ buyer, lines, email = null }) => {
     qty: item.qty,
   }))
 
+  // 8-arg place_order: промокод проверяется и применяется на сервере (trusted).
+  // Клиент не считает и не присылает скидку/итог — только код (или null).
   const { data, error } = await supabase.rpc('place_order', {
     p_customer_name: buyer.name.trim(),
     p_phone: buyer.phone.trim(),
@@ -29,6 +31,7 @@ export const createOrder = async ({ buyer, lines, email = null }) => {
     p_address: buyer.address.trim(),
     p_note: buyer.note?.trim() || null,
     p_items: items,
+    p_promo_code: promoCode ? String(promoCode).trim() : null,
   })
 
   if (error) {

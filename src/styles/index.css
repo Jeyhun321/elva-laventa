@@ -1637,6 +1637,140 @@ a.product-name::after {
   }
 }
 
+/* ============================================================
+   Promokod (checkout) — Phase 2
+   ============================================================ */
+.promo-box { margin: 6px 0 4px; display: flex; flex-direction: column; gap: 8px; }
+.promo-box-title { margin: 0; }
+.promo-row { display: flex; gap: 8px; align-items: stretch; }
+.promo-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line, #e7dbe3);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.promo-input:focus { outline: none; border-color: var(--plum); }
+.promo-apply-btn { flex: 0 0 auto; white-space: nowrap; padding-inline: 18px; }
+.promo-applied {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--lavender-mist, rgba(229, 57, 154, 0.08));
+  border: 1px solid rgba(229, 57, 154, 0.25);
+}
+.promo-applied-code { font-weight: 700; color: var(--plum); letter-spacing: 0.03em; }
+.promo-applied-amount { margin-left: auto; font-weight: 700; color: var(--plum); }
+.promo-remove-btn {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--ink-soft, #7a6b73);
+  font-size: 0.9rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px;
+}
+.summary-discount span { color: var(--plum); }
+
+/* Admin: промокоды + колесо (Phase 2) */
+.admin-form-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.admin-form-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.promo-badge {
+  display: inline-block; font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px; margin-left: 6px;
+  background: rgba(229, 57, 154, 0.1); color: var(--plum); vertical-align: middle;
+}
+.promo-badge.wheel { background: rgba(120, 80, 200, 0.12); color: #6a3fb0; }
+.wheel-rewards { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
+.wheel-rewards-head { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
+.wheel-reward-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+
+/* ============================================================
+   Mobile Wheel of Fortune (Phase 2) — только mobile (рендерится по useMediaQuery)
+   ============================================================ */
+.wheel-invite {
+  position: fixed;
+  right: 14px;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px)); /* над таббаром */
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--plum, #b3155f), #e5399a);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 22px rgba(179, 21, 95, 0.35);
+  cursor: pointer;
+  animation: wheel-invite-pulse 2.4s ease-in-out infinite;
+}
+.wheel-invite-emoji { font-size: 1.2rem; }
+@keyframes wheel-invite-pulse {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) { .wheel-invite { animation: none; } }
+
+.wheel-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(30, 10, 20, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.wheel-modal {
+  position: relative;
+  width: 100%; max-width: 360px;
+  background: var(--cream, #fdf6f0);
+  border-radius: 22px;
+  padding: 24px 20px 20px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.wheel-close {
+  position: absolute; top: 10px; right: 12px;
+  background: none; border: none; font-size: 1.8rem; line-height: 1;
+  color: var(--ink-soft, #7a6b73); cursor: pointer;
+}
+.wheel-title { font-family: var(--serif); color: var(--plum); font-size: 1.5rem; margin-bottom: 4px; }
+.wheel-sub { color: var(--ink-soft, #7a6b73); font-size: 0.95rem; margin-bottom: 16px; }
+
+.wheel-stage { position: relative; width: 260px; height: 260px; margin: 0 auto 18px; }
+.wheel-disc {
+  width: 100%; height: 100%; border-radius: 50%;
+  position: relative;
+  border: 6px solid #fff;
+  box-shadow: 0 10px 30px rgba(179, 21, 95, 0.25);
+  transition: transform 4s cubic-bezier(0.17, 0.67, 0.2, 1);
+}
+.wheel-label { position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-start; pointer-events: none; }
+.wheel-label b { margin-top: 14px; color: #fff; font-size: 0.95rem; font-weight: 800; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.wheel-pointer {
+  position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+  z-index: 3; width: 0; height: 0;
+  border-left: 12px solid transparent; border-right: 12px solid transparent;
+  border-top: 20px solid var(--plum, #b3155f);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
+}
+.wheel-hub {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 2; width: 42px; height: 42px; border-radius: 50%;
+  background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.wheel-msg { color: var(--plum); font-weight: 600; margin-bottom: 10px; }
+.wheel-result h2 { font-family: var(--serif); color: var(--plum); font-size: 1.7rem; margin-bottom: 6px; }
+.wheel-win-text { font-size: 1.1rem; margin-bottom: 18px; }
+.wheel-reward-hint { color: var(--ink-soft, #7a6b73); font-size: 0.85rem; margin-top: 10px; }
+
 /* Header actions */
 .header-actions {
   display: flex;
