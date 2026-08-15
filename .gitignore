@@ -14,3 +14,6 @@ yarn-debug.log*
 yarn-error.log*
 .vscode/*
 !.vscode/extensions.json
+
+# Playwright MCP local artifacts (snapshots, console logs) — never commit
+.playwright-mcp/

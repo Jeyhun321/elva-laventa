@@ -186,3 +186,42 @@ docs/TODO.md:
 - genuine open work only, if it exists.
 
 Do not duplicate the same information unnecessarily across files.
+
+## 11. Mobile browser testing (playwright-mobile MCP)
+
+The project has a working `playwright-mobile` MCP for real mobile browser
+automation. It is confirmed operational and must be used as described below.
+This complements the existing mobile-first rule in CLAUDE.md and the bug
+lifecycle in docs/BUG_PROCESS.md — it does not replace them.
+
+1. When a task is MOBILE and can be checked through a browser, Claude Code must
+   use the available `playwright-mobile` MCP to reproduce and verify it.
+
+2. For a bug fix:
+   - first try to reproduce the bug;
+   - check console errors;
+   - check failed network requests, if they are relevant to the problem;
+   - only then analyze the root cause and change code;
+   - after the fix, replay the same mobile scenario.
+
+3. For UI/UX changes:
+   - after implementation, verify the result through the mobile browser when
+     that is possible.
+
+4. Desktop browser testing is never a substitute for mobile testing.
+
+5. Do not change Desktop behaviour when a task is explicitly limited to MOBILE.
+
+6. Do not claim that real touch/swipe or OS-specific mobile behaviour was
+   verified if the Playwright MCP could not technically reproduce it (for
+   example, synthetic touch events do not trigger native scrolling).
+
+7. For behaviour that cannot be reliably checked through emulation, explicitly
+   state that final real-device verification is still required.
+
+8. Do not run browser testing pointlessly for tasks that need no runtime or UI
+   verification.
+
+9. Preserve the existing project workflow:
+   fix → targeted verification → commit → push → start deploy.
+   Do not wait for GitHub Actions to finish.
