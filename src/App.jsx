@@ -89,7 +89,13 @@ function AccountHomeRedirect() {
   useEffect(() => {
     if (loading) return
     const nextAccountId = user?.id || null
-    if (previousAccountId.current !== undefined && previousAccountId.current !== nextAccountId && nextAccountId) {
+    const previous = previousAccountId.current
+    // Ana səhifəyə YALNIZ bir HƏQİQİ hesabdan BAŞQA həqiqi hesaba keçəndə (A → B)
+    // qayıdırıq. `null → hesab` keçidinə TOXUNMURUQ: bu, ya adi ilk giriş, ya da
+    // tab arxa plandan qayıdanda Supabase-in sessiyanı yenidən qurarkən buraxdığı
+    // qısamüddətli "çıxış → giriş" sıçrayışıdır (token refresh). Əvvəllər bu sıçrayış
+    // məhsul/səbət/checkout səhifəsində olan istifadəçini səhvən ana səhifəyə atırdı.
+    if (previous && nextAccountId && previous !== nextAccountId) {
       navigate('/', { replace: true })
     }
     previousAccountId.current = nextAccountId

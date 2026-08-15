@@ -1520,3 +1520,31 @@
   - [ ] Не сломаны: exact code search, partial name search, categories, filters, cart, favorites, i18n AZ/RU/EN.
 - **Regression History:** 2026-08-14 — `vite build` — успешно (test/lint-скриптов в проекте нет). Живой прогон на устройстве — за владельцем.
 - **Notes:** `src/pages/CatalogPage.jsx` (единая sortList во всех ветках + дефолт `popular`), `src/styles/index.css` (mobile-override `.search-similar-note`). i18n `no_exact_matches` уже был AZ/RU/EN — сохранён.
+
+## LAV-BUG-052 — Mobile: после долгого фона/idle авторизованного покупателя внезапно выбрасывает на главную (тапы по товару «не открывают», checkout уходит на home)
+- **Module:** App shell — `AccountHomeRedirect` (`src/App.jsx`)
+- **Platform:** mobile (проявляется после background→foreground / tab suspension; логика общая для обеих платформ)
+- **Environment:** Production (реальное устройство, авторизованный Google-покупатель)
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED
+- **Found By:** Owner (report)
+- **Found Date:** 2026-08-15
+- **Developer:** Claude Code
+- **Description:** На реальном mobile сайт сначала работает нормально, но через некоторое время / после долгого фона / после background→foreground: тап по карточке товара «не открывает» товар, повторные тапы «ничего не делают», навигация ощущается зависшей, а из checkout/навигации пользователя внезапно кидает на главную. Refresh временно возвращает нормальную работу.
+- **Steps to Reproduce (авторизованный покупатель):**
+  1. Войти (Google), открыть товар / корзину / checkout.
+  2. Свернуть вкладку/браузер или заблокировать телефон надолго (истечение access-token).
+  3. Вернуться на вкладку и сразу тапать по карточкам / продолжать checkout.
+  4. Наблюдать: вместо открытия товара — возврат на главную; повторные тапы «съедаются» редиректом.
+- **Expected Result:** После возврата из фона обновление сессии Supabase (token refresh) не должно менять текущий маршрут. На главную возвращаем ТОЛЬКО при реальной смене аккаунта A→B.
+- **Actual Result:** `AccountHomeRedirect` делал `navigate('/', {replace:true})` при любом переходе `previous !== next && next` — включая `null → тот же аккаунт`.
+- **Root Cause:** `AuthContext.onAuthStateChange` — единственная точка, задающая `user = session?.user ?? null`. На mobile при возврате из фона Supabase (`autoRefreshToken`) выполняет recovery/refresh; при кратковременном сбое recovery он может отдать `SIGNED_OUT` (user→null), а следом `SIGNED_IN` (user→тот же id). `AccountHomeRedirect` трактовал переход `null → аккаунт` как «смена аккаунта» и форсировал редирект на `/` с `replace:true`. Если это совпадало с тапом по карточке — навигация тапа перетиралась редиректом → «товар не открывается / тапы не работают / из checkout выбросило на home». Refresh чинил, т.к. свежая загрузка инициализировала `previousAccountId` без null-скачка.
+- **Fix Summary:** Условие редиректа сужено до РЕАЛЬНОЙ смены аккаунта: редирект только когда `previous` И `next` оба непустые и различаются (`previous && nextAccountId && previous !== nextAccountId`). Переходы `null → аккаунт` (обычный первый вход и token-refresh скачок «выход→вход») больше не вызывают редирект. Сохранено: реальная смена аккаунта A→B по-прежнему уводит на главную; `previousAccountId` продолжает трекаться на каждом изменении. Изменён только `src/App.jsx` (одно условие + комментарий). Новых зависимостей нет, бизнес-логика auth/cart/checkout не менялась.
+- **Fix Verification checklist:**
+  - [x] `vite build` — успешно.
+  - [x] Playwright (guest, эмуляция): 10+ циклов `home→product→back` на собранном бандле — товар открывается 10/10, 0 редиректов на `/`.
+  - [x] Playwright (guest, эмуляция): 5+ циклов `visibilitychange hidden→visible` + `pageshow` на странице товара — маршрут не меняется, редиректов нет, зависших overlay нет.
+  - [ ] **Real device (за владельцем):** авторизованный покупатель, реальное Android/iOS tab suspension → возврат из фона → тап по товару открывает товар; checkout не уходит на home. Playwright НЕ воспроизводит настоящий OS-suspend и авторизованную Supabase-сессию.
+- **Regression History:** 2026-08-15 — `vite build` успешно; guest-регрессия через playwright-mobile (эмуляция) — зелёная. Авторизованный resume-путь — NOT VERIFIED на реальном устройстве (за владельцем).
+- **Notes:** Root cause найден аудитом кода (Phases 3–5): auth/redirect-путь требует авторизованной сессии, которую Playwright без Google-логина воспроизвести не может, поэтому фикс подтверждён логикой + build + guest-регрессией, а финальное подтверждение — на реальном телефоне. Смежное наблюдение (НЕ входит в scope этой правки): при том же null-скачке `ShopContext` кратковременно опустошает корзину — теоретически может дать `checkout → /cart`; после устранения источника (home-редирект) основной симптом закрыт, но при повторении на устройстве стоит проверить и это.
