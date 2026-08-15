@@ -2,13 +2,16 @@
 
 ## Current Status
 
-**Phase 1 (пакет из 3 задач) завершён в рабочем дереве.** Mobile UI scope; desktop не переделывался.
+**Phase 2 / Stage 1 (DB-фундамент единого discount-движка) — ГОТОВ в рабочем дереве.** Это SQL-only инкремент: приложение не меняется, пока владелец не выполнит скрипт И не выйдут клиентские стадии. Ничего существующего не сломано.
 
-1. **Realtime Admin → Storefront (F-009 / D-006):** открытый пользовательский сайт получает изменения admin-панели без ручного refresh и без full-page reload. Supabase Realtime (`postgres_changes` на `products`/`categories`) → тихая ревалидация каталога → React rerender. Ordering-guard `dataSeq` исключает stale-перезапись.
-2. **Реальные цвета товара (LAV-BUG-053):** Product Page больше не показывает декоративную палитру `colors` как несколько «выбираемых» цветов. Реальные `variants` (>1) — как раньше; одноцветный товар → ровно 1 настоящий swatch.
-3. **Структура fallback поиска (mobile):** «Dəqiq nəticə tapılmadı.» (компактный alert) + отдельный заголовок «Oxşar məhsullar» + product grid.
+Реализован общий движок скидок для **промокодов** (campaign + individual) и **Wheel of Fortune** поверх ОДНОЙ trusted-модели (см. DECISIONS #D-007):
+- Таблицы: `promo_codes`, `promo_redemptions`, `wheel_config` (singleton), `wheel_spins`.
+- Trusted-RPC: `validate_promo` (preview для checkout, только чтение), `place_order(...,p_promo_code)` (8-арг: атомарная валидация + фиксация redemption + скидка в заказе; 7-арг делегирует с промо=null), `spin_wheel` (результат определяет сервер, weighted), `get_wheel_public_config`/`get_wheel_status`, `generate_promo_code`.
+- Безопасность: прямого доступа клиента к таблицам скидок нет (только через security-definer RPC); RLS admin-only через `is_admin()`; веса колеса на сервере; время окна — `Asia/Baku` по серверным часам; один спин на окно через `UNIQUE(account_id, window_key)`; двойное использование промо блокируется `SELECT ... FOR UPDATE`.
 
-**Требует владельца:** запустить `supabase/realtime-catalog.sql` (добавляет `products`/`categories` в `supabase_realtime` publication — без этого Realtime-подписка успешна, но событий нет). Плюс из прошлых задач: `supabase/order-stock-guard.sql` (LAV-BUG-050).
+**ТРЕБУЕТ ВЛАДЕЛЬЦА (обязательно, иначе Stage 2+ не заработает):** выполнить `supabase/promo-and-wheel.sql` в Supabase → SQL Editor. Скрипт идемпотентен; заодно активирует stock-guard (LAV-BUG-050), т.к. включает in_stock-проверку в `place_order`.
+
+Плюс из Phase 1: `supabase/realtime-catalog.sql` (Realtime каталога) — тоже за владельцем.
 
 ## Current Branch
 
@@ -16,69 +19,64 @@
 
 ## Last Completed Task
 
-### Phase 1 — live-sync + честные цвета + структура fallback поиска
+### Phase 2 / Stage 1 — единый discount-движок (SQL foundation)
 
 - **Файлы:**
-  - `src/context/CatalogContext.jsx` — Supabase Realtime канал (`catalog-sync`) на `products`/`categories` c debounce 300ms и cleanup; общий `revalidate` (тихий, без `loading`); ordering-guard `dataSeq` в `load`+`revalidate`; `applyData` — единая точка записи state.
-  - `src/pages/ProductPage.jsx` — `singleColor = product.colorHex || product.colors?.[0]`; ветка декоративной палитры заменена на один реальный swatch.
-  - `src/pages/CatalogPage.jsx` — fallback разбит: `p.search-similar-note` (short alert) + `h2.search-similar-title` (`related`) + grid.
-  - `src/i18n/translations.js` — новый ключ `no_exact_matches_short` (AZ/RU/EN).
-  - `src/styles/index.css` — `.search-similar-note` компактный inline-block; новый `.search-similar-title`; mobile-media обновлён.
-  - `supabase/realtime-catalog.sql` — идемпотентное включение publication (запускает владелец).
-- **Не менялось:** desktop-логика; auth/cart/favorites/checkout/поиск-алгоритм/exact-code/категории/сортировка/i18n; поле `colors` сохранено (используется `ProductImage` как gradient fallback).
+  - `supabase/promo-and-wheel.sql` — новый, вся схема + RPC + RLS + интеграция в `place_order`.
+  - `docs/DECISIONS.md` (#D-007), `docs/TODO.md` (стадии Phase 2), `docs/HANDOFF.md`.
+- **Не менялось:** клиентский код НЕ трогался (Stage 1 — только SQL + docs). Существующий 7-арг `place_order` сохранён (делегирует), поэтому текущий checkout продолжает работать до Stage 2.
 
 ## Last Verified Checks
 
-- `npm run build` — **успешно**.
-- **Playwright (playwright-mobile MCP, эмуляция Pixel 10 / 360×732, собранный бандл через `vite preview`):**
-  - Task 1: товар 2001 (один цвет) → **1** swatch (`#f7b7d2`), 0 variant-dots; товар 2006 (реальные варианты) → **2** variant-dots. Регрессии цвет-вариантов нет.
-  - Task 2: поиск `q=200` → DOM-порядок `p.search-similar-note` («Dəqiq nəticə tapılmadı.») → `h2.search-similar-title` («Oxşar məhsullar») → `product-grid` (12 карточек); alert — компактный inline-block; горизонтального оверфлоу нет на 360px. Скриншот подтверждает.
-  - Console — 0 ошибок от изменений; REST `products`/`categories` — 200.
-- **NOT VERIFIED (ограничения / за владельцем):**
-  - Realtime end-to-end (admin-мутация → storefront live update) — не прогонялся: требует включённой publication + admin-доступа к боевым данным (правка production-данных вне безопасного scope). WebSocket-handshake сетевой инструмент Playwright не логирует; хук на `WebSocket` вставал позже маунта. Код подписки — стандартный supabase channel API, console чистый.
-  - `supabase/realtime-catalog.sql` и `supabase/order-stock-guard.sql` — запуск за владельцем.
-  - Desktop-вид (логически не менялся) — визуально за владельцем.
+- SQL написан против реальной схемы (audit: `place-order-rpc.sql`, `order-stock-guard.sql`, `accounts-orders.sql`, `marketplace-foundation.sql`, `schema.sql`, `admin-lockdown.sql`). Интеграция скидки согласована с существующим триггером `recalc_order_total` (теперь вычитает `discount_amount`).
+- **NOT VERIFIED (по природе задачи):** SQL не выполнялся — его запускает владелец в Supabase (нет service_role/DDL-доступа из клиента). До выполнения скрипта и выхода Stage 2 фича НЕ live. Playwright-проверка promo/wheel возможна только после Stage 1 SQL + при наличии тест-аккаунта.
 
 ## Current Architecture Notes
 
-- **Каталог live-data:** `CatalogContext` — единая точка записи `applyData(prods,cats,seq)`; `dataSeq` (монотонный) гарантирует «последний запрос побеждает» для трёх путей: initial `load` (с `loading`), `revalidate` (тихий: visibility-возврат + realtime), realtime-канал. Товары не кэшируются в localStorage (state в памяти + локальный файл-fallback) → stale-cache гонки нет.
-- **Realtime:** один канал `catalog-sync`, `postgres_changes` `*` на `public.products` и `public.categories`, debounce 300ms, `supabase.removeChannel` в cleanup; провайдер смонтирован один раз (root) → дублей листенеров нет; auth-refresh провайдер не ремонтирует; supabase-realtime сам reconnect-ит.
-- **Цвета товара:** реальные варианты = строки с общим `code` + `color_name` (`groupVariants` → `variants`); декоративная палитра `colors` — только для gradient-плейсхолдера `ProductImage`. Product Page: `variants>1` → селектор вариантов; иначе 1 swatch (`colorHex||colors[0]`).
-- Прочее без изменений: LAV-BUG-052 (auth-resume редирект), catalog sort 051, stock guards 050 (сервер ждёт миграции), touch-ленты 049, gallery 048, ScrollManager 036.
+- **Единый discount-движок (D-007):** и промокод, и выигрыш колеса — записи в `promo_codes`; применение к заказу — только через `place_order`; факт использования — `promo_redemptions` (per-account/total лимиты считаются оттуда). Скидка — на merchandise subtotal; доставка в БД-итог не входит (экспресс-доплата в note/Telegram, как и раньше). `orders`: новые `discount_amount/promo_code/discount_source`.
+- **Коды ошибок промо (для i18n в Stage 2):** `PROMO_NOT_FOUND`, `PROMO_INACTIVE`, `PROMO_EXPIRED`, `PROMO_NOT_STARTED`, `PROMO_ACCOUNT_MISMATCH`, `PROMO_ALREADY_USED`, `PROMO_LIMIT_REACHED`, `PROMO_MIN_ORDER`, `AUTH_REQUIRED`.
+- **Коды колеса:** `WHEEL_DISABLED`, `WHEEL_CLOSED` (вне окна), `WHEEL_ALREADY_SPUN`, `WHEEL_NO_REWARDS`, `AUTH_REQUIRED`.
+- **Контракты RPC для Stage 2 клиента:**
+  - `validate_promo(p_code text, p_subtotal numeric)` → `{discount_type, discount_value, discount_amount}` (только достижимая скидка; НЕ фиксирует использование).
+  - `place_order(name,phone,phone_call,email,address,note,items,p_promo_code)` — checkout должен перейти на эту 8-арг версию, передавая применённый код.
+  - `get_wheel_public_config()` → `{enabled,timezone,windows,tolerance_minutes,reward_expiry_hours,rewards:[percent...]}` (без весов).
+  - `get_wheel_status()` → `{enabled,signed_in,in_window,window,already_spun,active_reward}`.
+  - `spin_wheel()` → `{percent, code, expires_at}`.
+- Прочее без изменений: Phase 1 (Realtime каталога D-006, честные цвета LAV-BUG-053, fallback поиска), LAV-BUG-052 (auth-resume).
 
 ## Known Issues
 
-- **PENDING OWNER:** `supabase/realtime-catalog.sql` (иначе Realtime без событий); `supabase/order-stock-guard.sql` (LAV-BUG-050); `supabase/product-featured.sql` (F-007).
-- Смежное (вне scope): при auth null-скачке `ShopContext` кратко опустошает корзину (см. LAV-BUG-052 Notes).
+- **PENDING OWNER:** `supabase/promo-and-wheel.sql` (Phase 2 spine); `supabase/realtime-catalog.sql` (Phase 1 Realtime); ранее — `supabase/order-stock-guard.sql` (перекрывается новым place_order из promo-and-wheel), `supabase/product-featured.sql` (F-007).
+- Phase 2 клиент (Stage 2–6) ещё не реализован — см. TODO.
 
 ## Risks
 
-- Структура fallback поиска изменилась в DOM и на desktop (два элемента вместо одного) — это структурная корректность, не редизайн; desktop-стиль `.search-similar-title` умеренный.
-- Realtime добавляет постоянный WebSocket к Supabase на всех клиентских вкладках — нагрузка минимальна (один канал, debounce). Без publication деградирует до прежней visibility-ревалидации.
+- `place_order` переопределяется скриптом Phase 2 (обе арности). Логика повторяет order-stock-guard (in_stock + auth.uid) и добавляет промо; при применении важно выполнить файл целиком. Обратная совместимость: 7-арг сохранён → текущий клиент не ломается.
+- Фича НЕ должна считаться live до выполнения SQL владельцем и выхода клиентских стадий.
 
 ## Next Recommended Step
 
-1. **Владельцу:** запустить `supabase/realtime-catalog.sql` (SQL Editor), затем проверить e2e: открыть сайт на телефоне, изменить тестовый товар в admin (цена/наличие/цвет), убедиться, что storefront обновился без refresh; вернуть тестовые данные.
-2. **Владельцу:** `supabase/order-stock-guard.sql` (LAV-BUG-050), `supabase/product-featured.sql` (F-007).
+1. **Владельцу:** выполнить `supabase/promo-and-wheel.sql` (SQL Editor). Проверка: `select * from public.validate_promo('SUMMER2026', 100);` после вставки тест-кода; `select public.get_wheel_status();`.
+2. **Разработчику (Stage 2):** Checkout promo UI (mobile) + перевод клиента на 8-арг `place_order` + `validate_promo` preview + i18n кодов ошибок. Затем Stage 3–6 (см. TODO).
 
 ## Context For Next Session
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260815-133520
+Recovery ID: R-20260815-143659
 
-1. **Проект:** Elva LaVenta — React/Vite storefront магазина женской одежды, Supabase (Frankfurt), деплой GitHub Pages (base `/elva-laventa/`).
-2. **Описание:** интернет-магазин: каталог, избранное, корзина, checkout (RPC `place_order` + Telegram), admin-панель, три языка AZ/RU/EN.
-3. **Текущее состояние:** Phase 1 завершён в рабочем дереве и (после этого шага) закоммичен/запушен. `vite build` успешен, playwright-mobile проверка Task 1/Task 2 зелёная. Ждёт запуска владельцем `supabase/realtime-catalog.sql` (для Realtime) и `supabase/order-stock-guard.sql` (LAV-BUG-050).
-4. **Что реализовано (Phase 1):** (1) Supabase Realtime синхронизация каталога Admin→Storefront без reload (CatalogContext: канал `catalog-sync` на products/categories, debounce, cleanup, ordering-guard `dataSeq`, общий тихий `revalidate`, единый `applyData`); (2) реальные цвета на Product Page (`singleColor=colorHex||colors[0]`, декоративная палитра больше не рендерится как несколько цветов); (3) структура fallback поиска (alert `no_exact_matches_short` + заголовок `related` + grid) с CSS.
-5. **Последняя задача:** Phase 1 (3 задачи выше).
-6. **Изменённые файлы:** `src/context/CatalogContext.jsx`, `src/pages/ProductPage.jsx`, `src/pages/CatalogPage.jsx`, `src/i18n/translations.js`, `src/styles/index.css`, `supabase/realtime-catalog.sql` (new); docs: `HANDOFF.md`, `FEATURES.md` (F-009), `DECISIONS.md` (D-006), `BUGS.md` (LAV-BUG-053).
-7. **Проверки:** `vite build` — успешно; playwright-mobile: Task1 (1 цвет→1 swatch, варианты→2 dots), Task2 (alert+заголовок+grid, без оверфлоу на 360px), console без ошибок. Realtime e2e — NOT VERIFIED (нужна publication + admin-мутация боевых данных; вне безопасного scope).
-8. **Ограничения:** desktop не переделывать; не удалять функциональность; не менять схему БД без необходимости; наличие — boolean `in_stock`; i18n AZ/RU/EN без хардкода; один пуш на задачу; не коммитить секреты; НЕ решать sync через reload/периодический refresh; не создавать второй механизм данных; не ломать поиск/exact-code/категории/сортировку/корзину/избранное/галерею/checkout/auth.
-9. **Обязательные документы:** `docs/HANDOFF.md`, `docs/ECOMMERCE_E2E_QA.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/PROJECT.md`, `.claude/CODE_STYLE.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `.claude/CODEX.md`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/DECISIONS.md`.
-10. **Что осталось:** владельцу — `supabase/realtime-catalog.sql` + e2e-проверка realtime на устройстве; `supabase/order-stock-guard.sql`; `supabase/product-featured.sql`.
-11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`.
-12. **После работы:** обновить `docs/HANDOFF.md` (полностью переписать), при необходимости `FEATURES/DECISIONS/BUGS`, commit + push в `main`, запустить deploy (GitHub Actions не ждать).
+1. **Проект:** Elva LaVenta — React/Vite storefront (магазин женской одежды), Supabase (Frankfurt), GitHub Pages (base `/elva-laventa/`).
+2. **Описание:** интернет-магазин: каталог, избранное, корзина, checkout (RPC `place_order` + Telegram), admin-панель, AZ/RU/EN.
+3. **Текущее состояние:** Phase 2 Stage 1 (DB-фундамент единого discount-движка) готов в рабочем дереве и закоммичен как SQL+docs (приложение не изменено). Ждёт запуска владельцем `supabase/promo-and-wheel.sql`. Клиентские стадии 2–6 ещё не сделаны.
+4. **Что реализовано (Stage 1):** `supabase/promo-and-wheel.sql` — таблицы `promo_codes/promo_redemptions/wheel_config/wheel_spins`; RPC `validate_promo`, `place_order`(7 и 8 арг), `spin_wheel`, `get_wheel_public_config`, `get_wheel_status`, `generate_promo_code`, `_validate_promo`, `_wheel_current_window`; `orders.discount_amount/promo_code/discount_source`; `recalc_order_total` вычитает скидку; RLS admin-only; Realtime для promo_codes/wheel_config. Единая модель: выигрыш колеса = individual-промокод (source=wheel), применяется тем же движком.
+5. **Последняя задача:** Phase 2 Stage 1.
+6. **Изменённые файлы:** `supabase/promo-and-wheel.sql` (new); docs: `HANDOFF.md`, `DECISIONS.md` (D-007), `TODO.md`.
+7. **Проверки:** SQL написан по аудиту реальной схемы; НЕ выполнялся (запускает владелец). Клиент не менялся, build не затронут. Фича НЕ live до SQL + Stage 2.
+8. **Ограничения:** не делать две системы скидок; discount только server-trusted (клиент не считает total); ограничения по аккаунту — в БД/RPC/RLS, не только в localStorage; не ослаблять RLS; не хранить security-critical в localStorage; desktop не переделывать; storefront scope — mobile; Admin можно расширять; не добавлять зависимости без нужды; не ломать cart/checkout/express delivery/order/Telegram/auth/Realtime/favorites/навигацию/сток/цены; НЕ отправлять `?forceWheel=true` в прод.
+9. **Обязательные документы:** `docs/HANDOFF.md`, `docs/ECOMMERCE_E2E_QA.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/PROJECT.md`, `.claude/CODE_STYLE.md`, `.claude/REVIEW.md`, `.claude/SECURITY.md`, `.claude/CODEX.md`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/DECISIONS.md`, `docs/TODO.md`.
+10. **Что осталось:** владельцу — выполнить `promo-and-wheel.sql`. Разработчику — Stage 2 (checkout promo UI + 8-арг place_order + validate_promo + i18n), Stage 3 (Admin promo-модуль), Stage 4 (Admin wheel-конфиг), Stage 5 (mobile wheel UI), Stage 6 (playwright + build + deploy). Контракты RPC — в разделе «Current Architecture Notes» этого файла.
+11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`; затем Stage 2 (checkout).
+12. **После работы:** обновить `docs/HANDOFF.md` (полностью), при необходимости `FEATURES/BUGS/DECISIONS/TODO`, commit + push, запустить deploy (Actions не ждать).
 
 ### SESSION CHECKSUM
 
@@ -86,16 +84,13 @@ Recovery ID: R-20260815-133520
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: Phase 1 (realtime admin→storefront sync + real product colors + mobile search fallback structure) — завершено в рабочем дереве; commit/push/deploy — следующий шаг
+Current task: Phase 2 Stage 1 — единый discount-движок (SQL foundation) — готов в рабочем дереве и закоммичен; следующий шаг — владелец запускает SQL, затем Stage 2 (клиент)
 Expected modified files:
-  - src/context/CatalogContext.jsx (Realtime + ordering-guard + revalidate)
-  - src/pages/ProductPage.jsx (singleColor)
-  - src/pages/CatalogPage.jsx, src/i18n/translations.js, src/styles/index.css (fallback structure)
-  - supabase/realtime-catalog.sql (new)
-  - docs/HANDOFF.md, docs/FEATURES.md, docs/DECISIONS.md, docs/BUGS.md
+  - supabase/promo-and-wheel.sql (new)
+  - docs/HANDOFF.md, docs/DECISIONS.md (D-007), docs/TODO.md
 Git status summary: изменения в рабочем дереве, не закоммичены на момент записи
 Documentation updated: YES
-Last verified build: vite build — успешно, 2026-08-15
-Last verified tests: test/lint-скриптов нет (только build). playwright-mobile: Task1/Task2 зелёные. Realtime e2e — NOT VERIFIED (нужна publication + admin-мутация; вне scope)
+Last verified build: не затронут (клиент не менялся); SQL — NOT EXECUTED (запускает владелец)
+Last verified tests: N/A на Stage 1 (SQL-only). Playwright promo/wheel — после Stage 1 SQL + Stage 2 клиента
 Recovery confidence: HIGH
 ```
