@@ -24,7 +24,8 @@
 
 Важно для пользователей или близкого релиза; заметно влияет на работу магазина.
 
-- [ ] **Phase 2 / Wheel FIX (владелец, ОБЯЗАТЕЛЬНО):** выполнить `supabase/wheel-spin-fix.sql` в Supabase SQL Editor — без него FIRLAT падает («Xəta baş verdi», root cause: `gen_random_bytes`/pgcrypto vs `search_path=public`). Также включает 7 секторов (5/10/15 active, 20/30/40/50 locked). (см. BUGS #LAV-BUG-054, HANDOFF)
+- [x] **Phase 2 / Wheel FIX:** `supabase/wheel-spin-fix.sql` применён владельцем; LIVE-подтверждено (реальный spin 5%, auto-open, 7 секторов). (BUGS #LAV-BUG-054)
+- [ ] **Phase 2 / Promo FIX (владелец, ОБЯЗАТЕЛЬНО):** выполнить `supabase/promo-validate-fix.sql` — иначе применение ЛЮБОГО валидного промо/награды на checkout падает (42702 ambiguous `promo_id`). Клиентских изменений не нужно. После — LIVE-проверка checkout с wheel-наградой (окно не требуется). (см. BUGS #LAV-BUG-055)
 - [x] **Phase 2 / Stage 1 (владелец):** `supabase/promo-and-wheel.sql` выполнен в Supabase (подтверждено владельцем 2026-08-15).
 - [x] **Phase 2 / Stage 2:** Checkout promo UI (mobile) + 8-арг `place_order(..., p_promo_code)` + `validate_promo` preview + i18n состояний.
 - [x] **Phase 2 / Stage 3:** Admin — модуль «Промокоды» (CRUD, campaign/individual, Generate, привязка к клиенту).

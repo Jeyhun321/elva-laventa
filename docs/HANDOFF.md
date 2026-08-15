@@ -2,16 +2,12 @@
 
 ## Current Status
 
-**Wheel of Fortune доработан и исправлен** (Phase 2). Главный баг FIRLAT → «Xəta baş verdi» — **root cause найден и устранён**.
+**Wheel of Fortune — LIVE-подтверждён на боевом Supabase** (spin работает). При финальной live-проверке найден и исправлен **второй баг** в применении промокодов.
 
-- **BUG (LAV-BUG-054):** `spin_wheel`/`generate_promo_code` вызывали `gen_random_bytes` (pgcrypto) при `search_path=public`; в Supabase pgcrypto в схеме `extensions` → рантайм-ошибка `42883 function gen_random_bytes(integer) does not exist`. Подтверждено фактически через REST. **Фикс:** переход на встроенный `random()` (без pgcrypto).
-- **7 секторов:** колесо показывает 5/10/15/20/30/40/50; ACTIVE = 5/10/15 (weight>0, реально выпадают), LOCKED = 20/30/40/50 (weight=0, 🔒, сервер их НИКОГДА не возвращает). `get_wheel_public_config` отдаёт `sectors:[{percent,active}]` без весов.
-- **Auto-open:** в активном окне (Asia/Baku, серверное время) модал открывается сам (в т.ч. если пользователь уже был на сайте — сработает на следующем 60-сек refresh статуса/visibility), без refresh. Закрытие крестиком запоминает окно → не переоткрывается (нет infinite popup). CTA «Şansını sına» остаётся вторичной точкой входа, поднят над таббаром.
-- **Animation → server result:** посадка колеса вычисляется из серверного процента (`landOn(percent)`); win-текст из того же значения → расхождение невозможно.
-- **i18n бизнес-ошибок:** WHEEL_ALREADY_SPUN / WHEEL_CLOSED / AUTH_REQUIRED — понятные локализованные сообщения; generic только для реально неизвестной ошибки.
-- **Admin:** в «Колесо фортуны» каждый сектор помечен ACTIVE/LOCKED (weight>0 / =0) + пояснение.
+- **LAV-BUG-054 (Wheel spin) — FIXED & LIVE VERIFIED.** `wheel-spin-fix.sql` применён владельцем. Реальный `spin_wheel` → 200, вернул 5% (активная награда); mobile auto-open в активном окне (Asia/Baku 16:25) сработал сам; win «5% endirim qazandınız»; reward сохранён (expiry +24ч); второй spin → `WHEEL_ALREADY_SPUN`; refresh не даёт reroll; console 0 ошибок; 42883 больше нет; 7 секторов (5/10/15 active, 20/30/40/50 🔒 locked).
+- **LAV-BUG-055 (Promo apply) — FIXED в SQL, ТРЕБУЕТ запуска владельцем.** Live-тест с реальной наградой вскрыл `42702 column reference "promo_id" is ambiguous` в `_validate_promo` (OUT-колонка `promo_id` vs `promo_redemptions.promo_id`). Ломает применение ЛЮБОГО валидного промо/награды на checkout. Фикс — алиас `pr.` в `supabase/promo-validate-fix.sql` (клиент не меняется).
 
-**OWNER ACTION REQUIRED:** выполнить **`supabase/wheel-spin-fix.sql`** в Supabase → SQL Editor. Идемпотентно; сохраняет текущие веса 5/10/15, добавляет locked 20/30/40/50. До этого FIRLAT будет падать.
+**OWNER ACTION REQUIRED (1 шаг):** выполнить **`supabase/promo-validate-fix.sql`** в Supabase → SQL Editor. После этого checkout со скидкой заработает; окно колеса для проверки НЕ требуется (награды `WHEEL-*` уже выданы, валидны 24ч).
 
 ## Current Branch
 
@@ -19,58 +15,59 @@
 
 ## Last Completed Task
 
-### Wheel fix + 7 секторов (active/locked) + auto-open + i18n ошибок
+### Финальная LIVE-проверка Wheel + фикс promo 42702
 
-- **Файлы:** `supabase/wheel-spin-fix.sql` (new — фикс RPC + sectors + seed); `src/components/WheelOfFortune.jsx` (auto-open/dismissal/7-секторов/land/i18n); `src/lib/wheel.js` (без изменений контракта — использует sectors); `src/pages/AdminPage.jsx` (ACTIVE/LOCKED бейджи); `src/i18n/translations.js` (`wheel_closed`, `wheel_locked`); `src/styles/index.css` (CTA-отступ/z-index, метки 7 секторов, locked-стиль, grid admin).
-- **Не менялось:** promo checkout, place_order, orders, delivery, cart, auth, realtime, предыдущие mobile-фиксы — не тронуты.
+- **Файлы:** `supabase/promo-validate-fix.sql` (new — фикс `_validate_promo`); docs: `BUGS.md` (054 → LIVE VERIFIED, new 055), `TODO.md`, `HANDOFF.md`. **Клиентский код НЕ менялся** (баг чисто серверный).
+- Предыдущий фикс `supabase/wheel-spin-fix.sql` — применён и live-подтверждён.
 
-## Last Verified Checks
+## Last Verified Checks (LIVE, боевой Supabase, без стабов)
 
-- **Root cause:** REST `generate_promo_code` → `42883 gen_random_bytes does not exist` (фактическое подтверждение).
-- `npm run build` — успешно.
-- **Playwright (mobile 360, стаб RPC для рендера):** auto-open в окне ✓; 7 секторов ✓ (5/10/15 ACTIVE, 20/30/40/50 🔒 LOCKED); FIRLAT → «10% endirim qazandınız» ✓; dismissal (X) → нет повторного popup ✓; modal в вьюпорте, без гориз. оверфлоу ✓; CTA поднят над таббаром ✓; console 0 ошибок ✓.
-- **Security regression (REST):** anon/authed-non-admin не создают промо, не меняют wheel_config (попытка 50%/weight100 → RLS 0 строк); spin вне окна → WHEEL_CLOSED. RLS не ослаблен.
-- **NOT VERIFIED (ограничения эмуляции + OWNER SQL):** реальный server-spin (после `wheel-spin-fix.sql`, под Google-auth, в активном окне) — Playwright не логинится в Google и не форсирует серверное окно; стаб проверяет только клиентский UI/анимацию.
+- **SQL fix активен:** `generate_promo_code('WHEEL')` → `WHEEL-ZUPHT3` (200), 42883 нет.
+- **7 секторов:** `get_wheel_public_config` → sectors 5/10/15 active, 20/30/40/50 active:false; веса скрыты.
+- **Реальный spin:** REST `spin_wheel` (account A) → 5%, `active_reward` сохранён, expiry +24ч; второй spin → `WHEEL_ALREADY_SPUN`. Mobile UI (account B, playwright): auto-open в окне → FIRLAT → `spin_wheel` 200 → win «5% endirim qazandınız»; refresh → без reroll (показ награды, спина нет); console 0 ошибок.
+- **Только 5/10/15 выпадают:** конфиг 20/30/40/50 active:false (weight 0); сервер выбирает только weight>0.
+- **Security (LIVE):** anon spin → AUTH_REQUIRED; non-admin UPDATE wheel_config (self 50%) → RLS 0 строк; non-admin INSERT promo → 42501; wheel_config select → [] (веса скрыты).
+- **НАЙДЕН БАГ 42702** (validate_promo/place_order на валидном коде) → исправлен в `promo-validate-fix.sql`.
+- **NOT VERIFIED (до запуска promo-validate-fix.sql):** checkout со скидкой + order discount persistence + reuse-blocked через реальный заказ — заблокированы багом 42702; проверю сразу после применения фикса (окно не нужно).
 
 ## Current Architecture Notes
 
-- **Wheel trust:** окно/результат/один-спин — сервер (`spin_wheel`, `_wheel_current_window` Asia/Baku, `UNIQUE(account_id,window_key)`). Результат weighted через `random()` (server-side, не frontend). Клиент только анимирует к готовому результату.
-- **Sectors:** `wheel_config.rewards` хранит все 7; ACTIVE=weight>0, LOCKED=weight=0. `get_wheel_public_config.sectors` = все (с флагом active, без весов). Frontend: если `sectors` есть — рисует их; иначе fallback `[5,10,15,20,30,40,50]` (active = из `rewards`).
-- **Reward → promo:** individual account-bound, one-use, expiry `reward_expiry_hours`, `source=wheel`; применяется общим checkout promo-движком (единая система).
-- **Auto-open:** `WheelOfFortune` (mobile-only, useMediaQuery) — статус раз в 60с + на visibility; открывается при `enabled&&in_window&&signed_in&&!already_spun` и если окно не «dismissed» в этой сессии.
+- Wheel: окно/результат/один-спин — сервер (Asia/Baku, weighted `random()`, `UNIQUE(account_id,window_key)`). Reward = individual one-use промокод (`source=wheel`, expiry `reward_expiry_hours`) через общий promo-движок.
+- 7 секторов: `wheel_config.rewards` = 5/10/15/20/30/40/50; ACTIVE weight>0, LOCKED weight=0. `get_wheel_public_config.sectors` без весов. Frontend fallback `[5,10,15,20,30,40,50]`.
+- Auto-open: `WheelOfFortune` (mobile-only), статус раз в 60с + visibility; открывается при `in_window&&signed_in&&!already_spun`, не переоткрывается для dismissed-окна.
+- Promo: `validate_promo` (preview) + `place_order(...,p_promo_code)` (trusted, atomic redemption). Скидка на merchandise subtotal.
 
 ## Known Issues
 
-- **PENDING OWNER:** `supabase/wheel-spin-fix.sql` (иначе FIRLAT падает). Плюс из прошлого — `realtime-catalog.sql` (если ещё не применён), `product-featured.sql` (F-007, опц.).
+- **PENDING OWNER:** `supabase/promo-validate-fix.sql` (иначе checkout со скидкой падает 42702). Ранее — `realtime-catalog.sql` / `product-featured.sql` (опц.).
 
 ## Risks
 
-- До запуска `wheel-spin-fix.sql` спин не работает (клиент покажет generic-ошибку на реальный 42883). После запуска — заработает; клиент уже готов (7 секторов рисуются и через fallback, и через server sectors).
-- Auto-open реагирует в пределах 60с после начала окна (компромисс «без агрессивного polling»).
+- До применения `promo-validate-fix.sql` любой валидный промокод/награда на checkout не применяется (42702). После — заработает (клиент готов).
 
 ## Next Recommended Step
 
-1. **Владельцу:** выполнить `supabase/wheel-spin-fix.sql`. Проверка: `select public.generate_promo_code('WHEEL');` (вернёт код), `select public.get_wheel_public_config();` (7 sectors).
-2. **Владельцу (на телефоне):** в активном окне под Google — FIRLAT → выигрыш 5/10/15 → «использовать» → применяется на checkout. Второй спин в том же окне заблокирован; refresh не даёт reroll.
+1. **Владельцу:** выполнить `supabase/promo-validate-fix.sql`. Проверка: `select * from public.validate_promo('<WHEEL-код из get_wheel_status>', 49);` → вернёт discount без 42702.
+2. **После этого (я или владелец):** checkout с wheel-наградой → скидка 5% в summary, заказ хранит `discount_amount/promo_code/discount_source='wheel'`, повторное применение → `PROMO_ALREADY_USED`.
 
 ## Context For Next Session
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260815-160500
+Recovery ID: R-20260815-164500
 
-1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (base `/elva-laventa/`).
-2. **Описание:** магазин: каталог, избранное, корзина, checkout (`place_order`+Telegram), admin, AZ/RU/EN, промокоды + Wheel of Fortune (единый discount-движок).
-3. **Текущее состояние:** Wheel-фикс готов и запушен. Root cause спина (gen_random_bytes/pgcrypto) устранён в `supabase/wheel-spin-fix.sql` (OWNER должен выполнить). Клиент: auto-open, 7 секторов active/locked, посадка на серверный результат, i18n ошибок, admin ACTIVE/LOCKED. Build + playwright(stub) + REST security — зелёные.
-4. **Что реализовано:** см. «Last Completed Task».
-5. **Последняя задача:** LAV-BUG-054 + доработка колеса (auto-open, 7 секторов, i18n).
-6. **Изменённые файлы:** `supabase/wheel-spin-fix.sql` (new); `src/components/WheelOfFortune.jsx`, `src/pages/AdminPage.jsx`, `src/i18n/translations.js`, `src/styles/index.css`; docs: HANDOFF/BUGS(054)/TODO.
-7. **Проверки:** root cause (REST 42883); build; playwright stub (auto-open/7 секторов/land/dismiss/layout, console 0); REST security (RLS не ослаблен). Реальный server-spin — NOT VERIFIED до OWNER SQL.
-8. **Ограничения:** mobile scope; desktop не трогать; одна система скидок; результат колеса только server-side; не ослаблять RLS; нет service_role во фронте; не `?forceWheel=`; не ломать promo/checkout/orders/delivery/auth/realtime/предыдущие фиксы.
+1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (`/elva-laventa/`).
+2. **Описание:** магазин: каталог, корзина, checkout (`place_order`+Telegram), admin, AZ/RU/EN, промокоды + Wheel of Fortune (единый discount-движок).
+3. **Текущее состояние:** Wheel LIVE-подтверждён (spin 5%). Найден+исправлен promo-баг 42702 → `supabase/promo-validate-fix.sql` (OWNER должен выполнить). Клиент не менялся в этом шаге.
+4. **Что реализовано:** фикс `_validate_promo` (алиас `pr.`); ранее — wheel-spin-fix (random(), 7 секторов), клиент колеса (auto-open, sectors, land, i18n).
+5. **Последняя задача:** финальная LIVE-проверка + LAV-BUG-055.
+6. **Изменённые файлы:** `supabase/promo-validate-fix.sql` (new); docs HANDOFF/BUGS/TODO.
+7. **Проверки:** LIVE spin/auto-open/security — VERIFIED; checkout discount — NOT VERIFIED до применения promo-validate-fix.sql.
+8. **Ограничения:** mobile scope; desktop не трогать; одна система скидок; результат колеса только server-side; не ослаблять RLS; нет service_role во фронте; не `?forceWheel=`.
 9. **Обязательные документы:** `docs/HANDOFF.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/*`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/DECISIONS.md`, `docs/TODO.md`.
-10. **Что осталось:** OWNER — `wheel-spin-fix.sql` + проверка реального спина на телефоне в окне.
+10. **Что осталось:** OWNER — `promo-validate-fix.sql`; затем LIVE checkout со скидкой.
 11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`.
-12. **После работы:** обновить docs; commit + push; deploy (Actions не ждать).
+12. **После работы:** обновить docs; commit+push; deploy (Actions не ждать).
 
 ### SESSION CHECKSUM
 
@@ -78,14 +75,13 @@ Recovery ID: R-20260815-160500
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: Wheel fix (spin bug root cause) + 7 sectors active/locked + auto-open + i18n — код готов и запушен; OWNER должен выполнить supabase/wheel-spin-fix.sql
+Current task: Wheel LIVE verified (spin OK); found+fixed promo 42702 (_validate_promo) — OWNER must run supabase/promo-validate-fix.sql, затем checkout-скидка проверяется
 Expected modified files:
-  - supabase/wheel-spin-fix.sql (new)
-  - src/components/WheelOfFortune.jsx, src/pages/AdminPage.jsx, src/i18n/translations.js, src/styles/index.css
-  - docs/HANDOFF.md, docs/BUGS.md (LAV-BUG-054), docs/TODO.md
+  - supabase/promo-validate-fix.sql (new)
+  - docs/HANDOFF.md, docs/BUGS.md (054 live, 055 new), docs/TODO.md
 Git status summary: изменения в рабочем дереве, не закоммичены на момент записи
 Documentation updated: YES
-Last verified build: vite build — успешно, 2026-08-15
-Last verified tests: root cause REST(42883); playwright stub (auto-open/7 sectors/land/dismiss, console 0); REST security (RLS intact). Реальный server-spin — NOT VERIFIED до OWNER SQL
+Last verified build: клиент не менялся; предыдущий vite build — успешно
+Last verified tests: LIVE — spin 5%, auto-open, 7 sectors, security (RLS), console 0. Checkout-скидка — NOT VERIFIED до promo-validate-fix.sql
 Recovery confidence: HIGH
 ```

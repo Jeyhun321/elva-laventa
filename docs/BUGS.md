@@ -1579,7 +1579,7 @@
 - **Environment:** Production (внутри активного окна колеса)
 - **Priority:** P1
 - **Severity:** S2
-- **Status:** FIXED (в коде/SQL) — требует запуска `supabase/wheel-spin-fix.sql` владельцем
+- **Status:** FIXED — `supabase/wheel-spin-fix.sql` применён владельцем; LIVE-подтверждено (реальный spin вернул 5%).
 - **Found By:** Owner (mobile screenshot)
 - **Found Date:** 2026-08-15
 - **Developer:** Claude Code
@@ -1594,6 +1594,27 @@
   - [x] `vite build` — успешно.
   - [x] Playwright (стаб RPC): auto-open в окне, 7 секторов (5/10/15 active, 20/30/40/50 🔒 locked), FIRLAT→win «10% endirim qazandınız», dismissal без повторного popup, modal в вьюпорте без оверфлоу, console 0 ошибок.
   - [x] Security regression: anon/authed-non-admin не создают промо, не меняют wheel_config (попытка 50%/weight100 → RLS 0 строк), spin вне окна → WHEEL_CLOSED.
-  - [ ] **OWNER:** выполнить `supabase/wheel-spin-fix.sql`; затем в активном окне реальный FIRLAT (server spin) — не проверяется в эмуляции (нет Google-auth + нельзя форсировать серверное окно).
-- **Regression History:** 2026-08-15 — build + playwright(stub) + REST security — зелёные. Реальный server-spin — NOT VERIFIED до запуска SQL владельцем.
+  - [x] **LIVE (после применения SQL владельцем):** реальный `spin_wheel` (REST + mobile UI, без стаба) → 200, вернул 5% (активная награда); auto-open в активном окне (Asia/Baku 16:25); win «5% endirim qazandınız»; reward сохранён (`get_wheel_status.active_reward`, expiry +24ч); второй spin → `WHEEL_ALREADY_SPUN`; refresh не даёт reroll; console 0 ошибок; `spin_wheel`→200 (нет 42883).
+- **Regression History:** 2026-08-15 — LIVE VERIFIED на боевом Supabase (реальный spin 5%). 
 - **Notes:** Не workaround (generic-ошибку не прятали) — устранена первопричина. Reward → account-bound one-use промокод через общий движок (без второй системы).
+
+## LAV-BUG-055 — Promo apply на ВАЛИДНОМ коде падал: 42702 «column reference "promo_id" is ambiguous»
+- **Module:** `_validate_promo` (`supabase/promo-and-wheel.sql`) → влияет на `validate_promo` (checkout Apply) и `place_order` (redemption)
+- **Platform:** both (серверная логика)
+- **Environment:** Production
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED (SQL) — требует запуска `supabase/promo-validate-fix.sql` владельцем
+- **Found By:** Claude Code (LIVE e2e, при применении реальной wheel-награды на checkout)
+- **Found Date:** 2026-08-15
+- **Developer:** Claude Code
+- **Description:** Применение существующего промокода (в т.ч. wheel-награды) на checkout завершалось ошибкой; заказ со скидкой не оформлялся.
+- **Steps to Reproduce:** `select * from validate_promo('<существующий код>', 49);` → 42702. Раньше не всплывало — тестировались только несуществующие коды (выход из функции до подсчёта использований).
+- **Root Cause (фактический):** в `_validate_promo` OUT-колонка `promo_id` (RETURNS TABLE) конфликтует с `public.promo_redemptions.promo_id` в запросах `select count(*) ... where promo_id = v.id`. PL/pgSQL видит обе → 42702.
+- **Fix Summary:** Алиас таблицы `promo_redemptions pr` и квалификация `pr.promo_id`/`pr.account_id` в обоих подсчётах. Контракт/логика не изменены. Файл `supabase/promo-validate-fix.sql` (идемпотентно). Клиентских изменений не требуется.
+- **Fix Verification checklist:**
+  - [x] Root cause подтверждён фактической ошибкой (REST 42702 на реальном коде).
+  - [x] Проверены остальные RETURNS TABLE функции (place_order/validate_promo/get_wheel_*) — других коллизий нет.
+  - [ ] **OWNER:** выполнить `supabase/promo-validate-fix.sql`; затем LIVE-проверка checkout с wheel-наградой (окно не требуется — награда уже выдана).
+- **Regression History:** 2026-08-15 — fix готов; LIVE checkout — NOT VERIFIED до запуска SQL владельцем.
+- **Notes:** Найден именно LIVE-тестом (стаб бы это скрыл). Активные wheel-награды (`WHEEL-*`) остаются валидны 24ч — можно использовать для проверки checkout после применения фикса.
