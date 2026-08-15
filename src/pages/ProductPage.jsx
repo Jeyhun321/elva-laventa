@@ -94,6 +94,13 @@ export default function ProductPage() {
   }
 
   const onSale = Boolean(product.oldPrice)
+  // Rəng seçimi YALNIZ real məlumatı əks etdirir:
+  //  - eyni kodlu, adlandırılmış variantlar (product.variants) varsa → onları göstəririk;
+  //  - əks halda məhsulun BİR real rəngi (color_hex, yoxdursa palitranın əsas tonu).
+  // `product.colors` — parçanın DEKORATİV palitrasıdır (şəkil gradient-i üçün), satın
+  // alına bilən ayrı rənglər DEYİL — ona görə onu artıq "seçilə bilən rənglər" kimi
+  // sıralamırıq (tək məhsula uydurma çoxrənglilik yaratmasın).
+  const singleColor = product.colorHex || product.colors?.[0] || ''
   const savedImages = product.images?.length ? product.images : (product.image ? [product.image] : [])
   // Qalereya məhsulun ÖZ şəklinin qovluğundan qurulur (linen-01, linen-02...).
   // Koda görə axtarmaq olmaz: rəng variantlarında kod ortaqdır və narıncı don
@@ -336,15 +343,14 @@ export default function ProductPage() {
                 <span className="size-warn">{t('out_of_stock')}</span>
               )}
             </div>
-          ) : product.colors?.length ? (
+          ) : singleColor ? (
             <div className="detail-field">
               <span className="field-label">{t('color')}</span>
               <div className="color-swatches">
-                {product.colors.map((c, i) => (
-                  <span key={i} className="swatch-wrap">
-                    <span className="swatch" style={{ background: c }} title={c} />
-                  </span>
-                ))}
+                {/* Tək real rəng — məhsulun öz color-way-i (uydurma variant yoxdur) */}
+                <span className="swatch-wrap">
+                  <span className="swatch" style={{ background: singleColor }} title={singleColor} />
+                </span>
               </div>
             </div>
           ) : null}

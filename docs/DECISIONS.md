@@ -14,6 +14,13 @@
 
 ---
 
+## [D-006] Admin → Storefront синхронизация через Supabase Realtime + ordering-guard
+- **Дата:** 2026-08-15
+- **Причина:** после правок в admin-панели открытый пользовательский сайт показывал старые данные до ручного refresh.
+- **Рассматривались варианты:** (A) периодический polling каталога; (B) full-page reload по событию/таймеру; (C) Supabase Realtime (`postgres_changes`) → тихая ревалидация состояния.
+- **Почему выбран этот вариант:** (C) — admin пишет напрямую в таблицы `products`/`categories` Supabase, поэтому Realtime на этих таблицах покрывает все editable-поля без параллельной системы данных. Reload запрещён требованием. Один канал в `CatalogContext`, debounce 300ms, cleanup при размонтировании; ревалидация тихая (без подъёма `loading` → без мигания). Гонку «свежие данные ↔ поздний ответ» закрывает монотонный `dataSeq` (последний запрос побеждает; initial load, visibility-revalidate и realtime-revalidate используют один guard).
+- **Последствия:** таблицы `products` и `categories` должны быть в publication `supabase_realtime` — идемпотентный `supabase/realtime-catalog.sql` запускает владелец (без него подписка успешна, но событий нет — деградация до visibility-revalidate). У товаров нет localStorage-кэша (state в памяти + локальный файл-fallback), поэтому stale-cache перезаписи нет. Не ломать: единый `dataSeq`, единственный канал, cleanup (иначе утечки/дубли листенеров).
+
 ## [D-005] Favorites/cart без localStorage + session-token и request-version
 - **Дата:** 2026-08-01
 - **Причина:** гонки при быстрой смене аккаунтов (A→B→A): устаревший async SELECT/DELETE приходил позже нового и перезаписывал state старым снимком; orphan-id давал ложный бейдж.

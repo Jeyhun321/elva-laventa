@@ -423,9 +423,13 @@ export default function CatalogPage() {
             </label>
           </div>
 
-          {/* Dəqiq uyğunluq yoxdursa — açıq bildiriş: bunlar oxşar məhsullardır */}
+          {/* Dəqiq uyğunluq yoxdursa: (1) informativ mesaj, (2) AYRICA bölmə başlığı
+              "Oxşar məhsullar", (3) məhsul şəbəkəsi. Əvvəllər hamısı bir sətirdə idi. */}
           {showSimilarNotice && visible.length > 0 && (
-            <p className="search-similar-note" role="status">{t('no_exact_matches')}</p>
+            <>
+              <p className="search-similar-note" role="status">{t('no_exact_matches_short')}</p>
+              <h2 className="search-similar-title">{t('related')}</h2>
+            </>
           )}
 
           {visible.length > 0 ? (

@@ -14,6 +14,15 @@
 
 ---
 
+## [F-009] Admin → Storefront live-sync + честные цвета товара + структура fallback поиска (Phase 1)
+- **Описание:** пакет из 3 задач.
+  1. **Realtime-синхронизация каталога.** Открытый пользовательский сайт получает изменения admin-панели (name, price, discount/old_price, stock/in_stock, sizes, colors, images, availability, is_featured и т.д.) **без ручного refresh и без full-page reload**. Реализовано через Supabase Realtime (`postgres_changes` на `products` и `categories`) → тихая ревалидация состояния каталога → React rerender. Ordering-guard (`dataSeq`) гарантирует, что поздний ответ не перезапишет более свежий (нет stale-cache гонки). Один канал, cleanup при размонтировании, debounce 300ms, авто-reconnect (supabase-realtime).
+  2. **Цвета товара = реальные данные.** Product Page больше не показывает декоративную палитру `colors` как набор «выбираемых» цветов. Реальные цвет-варианты (`variants` — строки с общим кодом и `color_name`) показываются как раньше; одноцветный товар показывает ровно ОДИН настоящий swatch (`color_hex`, иначе основной тон палитры). Никаких фиктивных дополнительных цветов.
+  3. **Структура fallback поиска (mobile).** Объединённая фраза разбита на компактный alert «Dəqiq nəticə tapılmadı.» + отдельный заголовок секции «Oxşar məhsullar» + product grid.
+- **Дата:** 2026-08-15
+- **Изменённые файлы:** `src/context/CatalogContext.jsx` (Realtime + ordering-guard + shared revalidate), `src/pages/ProductPage.jsx` (singleColor), `src/pages/CatalogPage.jsx` + `src/i18n/translations.js` (`no_exact_matches_short`) + `src/styles/index.css` (структура fallback), `supabase/realtime-catalog.sql` (включение publication — за владельцем).
+- **Связанные задачи:** DECISIONS #D-006; BUGS #LAV-BUG-053. Ограничение: Realtime требует добавить таблицы в `supabase_realtime` publication (SQL готов, запускает владелец); e2e admin→storefront не прогонялся во избежание правки боевых данных.
+
 ## [F-008] Выбор способа доставки на Checkout (Стандарт / Экспресс)
 - **Описание:** на оформлении заказа — выбор способа доставки красивыми radio-cards в стиле LaVenta: **Стандартная** (0 ₼, 1–3 рабочих дня, по умолчанию) и **Экспресс** (+5 ₼, до 6 часов). Order Summary пересчитывается автоматически (Товары + Доставка = Итого); inline-итог над кнопкой тоже учитывает доплату. Выбранный способ сохраняется вместе с заказом и попадает в Telegram-уведомление — через поле `note` (серверная RPC `place_order` кладёт `note` в заказ и в сообщение как «Qeyd: …»), без изменения схемы БД. i18n AZ/RU/EN.
 - **Дата:** 2026-08-07

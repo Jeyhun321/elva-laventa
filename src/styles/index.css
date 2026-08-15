@@ -1598,9 +1598,12 @@ a.product-name::after {
 .search-clear:hover { color: var(--plum); }
 .search-clear svg { width: 16px; height: 16px; }
 
-/* "Dəqiq nəticə yoxdur — oxşar məhsullar" bildirişi (axtarış fallback) */
+/* Axtarış fallback: (1) informativ mesaj "Dəqiq nəticə tapılmadı." — kompakt
+   çip (banner deyil, məzmuna görə enlənir), (2) ayrıca "Oxşar məhsullar" başlığı. */
 .search-similar-note {
-  margin: 0 0 14px;
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 0 12px;
   padding: 10px 14px;
   border-radius: 12px;
   background: var(--lavender-mist, rgba(229, 57, 154, 0.08));
@@ -1608,17 +1611,29 @@ a.product-name::after {
   font-size: 0.9rem;
   font-weight: 600;
 }
-/* Mobil: "Dəqiq nəticə tapılmadı..." bildirişini daha görünən et — desktop toxunulmur.
-   Fon (açıq çəhrayı), mətn rəngi və border-radius saxlanılır; hündürlük/padding/
-   font böyüdülür. Banner deyil: mətn tam sığır, sətir keçir, üfüqi sürüşmə yaratmır. */
+/* "Oxşar məhsullar" — məhsul şəbəkəsinin bölmə başlığı (alert-in bir hissəsi deyil) */
+.search-similar-title {
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.1;
+  margin: 0 0 16px;
+  color: var(--ink);
+}
+/* Mobil: mesaj bir sətirdə, yaxşı oxunan; başlıq isə aydın seçilən bölmə başlığı.
+   Fon (açıq çəhrayı), mətn rəngi və radius saxlanılır. Üfüqi sürüşmə yaratmır. */
 @media (max-width: 900px) {
   .search-similar-note {
-    margin: 2px 0 16px;
-    padding: 14px 18px;
+    margin: 2px 0 12px;
+    padding: 12px 16px;
     border-radius: 14px;
-    font-size: 1.02rem;
+    font-size: 1rem;
     font-weight: 700;
-    line-height: 1.4;
+    line-height: 1.35;
+  }
+  .search-similar-title {
+    font-size: 1.3rem;
+    margin: 0 0 14px;
   }
 }
 

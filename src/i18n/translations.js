@@ -286,6 +286,13 @@ export const ui = {
     ru: 'Точных совпадений не найдено. Похожие товары',
     en: 'No exact matches found. Similar products',
   },
+  // Yalnız informativ mesaj (alert). "Oxşar məhsullar" ayrıca bölmə başlığıdır
+  // (t('related')) — birləşmiş `no_exact_matches` artıq UI-da istifadə olunmur.
+  no_exact_matches_short: {
+    az: 'Dəqiq nəticə tapılmadı.',
+    ru: 'Точных совпадений не найдено.',
+    en: 'No exact matches found.',
+  },
   nothing_found: {
     az: 'Heç nə tapılmadı',
     ru: 'Ничего не найдено',

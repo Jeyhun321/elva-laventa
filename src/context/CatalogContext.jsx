@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { supabase, isConfigured, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase.js'
 import { logSystemEvent } from '../lib/systemLogs.js'
 import localCatalog from '../data/catalog.json'
@@ -109,8 +109,22 @@ export function CatalogProvider({ children }) {
   const [loading, setLoading] = useState(isConfigured)
   const [source, setSource] = useState(isConfigured ? 'loading' : 'local')
 
+  // Ən son sorğu qalib gəlir. İlkin yükləmə, tab qayıdışı və realtime yeniləməsi
+  // eyni state-ə yazır — köhnə (gec gələn) cavab yenisini ƏZMƏSİN deyə ardıcıllıq
+  // nömrəsi saxlayırıq (fresh data → stale cache override problemi qarşısı alınır).
+  const dataSeq = useRef(0)
+
+  const applyData = useCallback((prods, cats, seq) => {
+    if (seq !== dataSeq.current) return false // daha yeni sorğu artıq yazıb
+    if (prods) setProducts(prods.map(fromRow))
+    if (cats) setCategories([ALL, ...cats.map((c) => ({ id: c.id, label: c.label }))])
+    setSource('supabase')
+    return true
+  }, [])
+
   const load = useCallback(async () => {
     if (!isConfigured || !supabase) return
+    const seq = ++dataSeq.current
     setLoading(true)
     try {
       const [{ data: prods, error: pe }, { data: cats, error: ce }] = await Promise.all([
@@ -119,32 +133,29 @@ export function CatalogProvider({ children }) {
       ])
       if (pe) throw pe
       if (ce) throw ce
-
-      if (prods) setProducts(prods.map(fromRow))
-      if (cats) {
-        setCategories([ALL, ...cats.map((c) => ({ id: c.id, label: c.label }))])
-      }
-      setSource('supabase')
+      applyData(prods, cats, seq)
     } catch (e) {
       // 1-ci cəhd alınmadı. Yerli fayla keçməzdən əvvəl anonim açarla təkrar yoxlayırıq —
       // beləliklə xarab sessiya vəsiqəsi ucbatından köhnə qiymətlər göstərilmir.
       try {
         const { prods, cats } = await fetchAnonCatalog()
-        if (prods) setProducts(prods.map(fromRow))
-        if (cats) setCategories([ALL, ...cats.map((c) => ({ id: c.id, label: c.label }))])
-        setSource('supabase')
-
-        void logSystemEvent({
-          level: 'info',
-          source: 'catalog',
-          event: 'catalog_recovered_anon',
-          message: `Каталог загружен анонимно после ошибки: ${e?.message || 'без описания'}`,
-        })
+        if (applyData(prods, cats, seq)) {
+          void logSystemEvent({
+            level: 'info',
+            source: 'catalog',
+            event: 'catalog_recovered_anon',
+            message: `Каталог загружен анонимно после ошибки: ${e?.message || 'без описания'}`,
+          })
+        }
         return
       } catch (anonError) {
-        console.warn('Kataloq bazadan yüklənmədi, yerli surət istifadə olunur:', e.message)
-        setProducts(localProducts)
-        setCategories(localCatalog.categories)
+        // Yalnız bu hələ ən son sorğudursa yerli surətə keçirik (yeni cavab gəldisə toxunmuruq).
+        if (seq === dataSeq.current) {
+          console.warn('Kataloq bazadan yüklənmədi, yerli surət istifadə olunur:', e.message)
+          setProducts(localProducts)
+          setCategories(localCatalog.categories)
+          setSource('local')
+        }
         void logSystemEvent({
           level: 'warning',
           source: 'catalog',
@@ -152,38 +163,73 @@ export function CatalogProvider({ children }) {
           message: e?.message || 'Каталог не загрузился из базы',
           details: { anonRetry: anonError?.message || 'не удалось' },
         })
-        setSource('local')
       }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [applyData])
 
   useEffect(() => { load() }, [load])
 
-  // Köhnə tab problemi: istifadəçi məhsul/səbət tab-ını açıq saxlayıb, admin isə
-  // stoku/qiyməti dəyişir. Tab yenidən görünəndə kataloqu SƏSSİZ yeniləyirik
-  // (loading bayrağını qaldırmadan → UI sıçramır), beləliklə stok/qiymət canlı
-  // qalır. Kritik qorunma yenə də bazadadır (place_order). Kataloq yüklü deyilsə
-  // (hələ ilk yükləmə gedir və ya yerli surətdəyik) toxunmuruq.
-  useEffect(() => {
-    if (!isConfigured || !supabase) return undefined
-    const revalidate = async () => {
-      if (document.visibilityState !== 'visible') return
+  // SƏSSİZ yeniləmə (loading bayrağını qaldırmadan → UI sıçramır): tab qayıdanda
+  // VƏ admin realtime dəyişikliyində çağırılır. Arxa plandayıqsa keçirik — tab
+  // görünəndə onsuz da yenidən çağırılır.
+  const revalidate = useCallback(async () => {
+    if (!isConfigured || !supabase) return
+    if (document.visibilityState === 'hidden') return
+    const seq = ++dataSeq.current
+    try {
+      const [{ data: prods, error: pe }, { data: cats, error: ce }] = await Promise.all([
+        supabase.from('products').select('*').eq('is_active', true).order('id'),
+        supabase.from('categories').select('*').order('sort_order'),
+      ])
+      if (pe || ce) throw pe || ce
+      applyData(prods, cats, seq)
+    } catch {
+      // Xarab sessiya vəsiqəsində anonim açarla təkrar — səssiz yeniləmədir.
       try {
-        const [{ data: prods, error: pe }, { data: cats, error: ce }] = await Promise.all([
-          supabase.from('products').select('*').eq('is_active', true).order('id'),
-          supabase.from('categories').select('*').order('sort_order'),
-        ])
-        if (!pe && prods) setProducts(prods.map(fromRow))
-        if (!ce && cats) setCategories([ALL, ...cats.map((c) => ({ id: c.id, label: c.label }))])
+        const { prods, cats } = await fetchAnonCatalog()
+        applyData(prods, cats, seq)
       } catch {
-        // Səssiz yeniləmədir — alınmasa köhnə kataloq qalır, problem deyil.
+        // Alınmadı — köhnə kataloq qalır, problem deyil.
       }
     }
-    document.addEventListener('visibilitychange', revalidate)
-    return () => document.removeEventListener('visibilitychange', revalidate)
-  }, [])
+  }, [applyData])
+
+  // Köhnə tab problemi: istifadəçi tab-ı açıq saxlayıb, admin stoku/qiyməti dəyişir.
+  // Tab yenidən görünəndə kataloqu səssiz yeniləyirik ki, stok/qiymət canlı qalsın.
+  useEffect(() => {
+    if (!isConfigured || !supabase) return undefined
+    const onVisible = () => { if (document.visibilityState === 'visible') revalidate() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [revalidate])
+
+  // Admin → Storefront CANLI sinxronizasiya (Supabase Realtime).
+  // Admin `products`/`categories` cədvəlini dəyişdikdə açıq müştəri səhifəsi FULL
+  // RELOAD OLMADAN yenilənir: dəyişiklik siqnalı gəlir → səssiz `revalidate` →
+  // React yenidən render. Çoxlu ardıcıl sətir dəyişikliyi bir yeniləməyə yığılır
+  // (debounce 300ms). TƏK kanal yaradılır və cleanup-da silinir → listener sızması
+  // yoxdur; şəbəkə kəsilib-qoşulanda supabase-realtime özü yenidən qoşulur.
+  // QEYD: bunun işləməsi üçün Supabase-də `products` (və `categories`) cədvəli
+  // `supabase_realtime` publication-a əlavə olunmalıdır (bax: supabase/realtime-catalog.sql).
+  useEffect(() => {
+    if (!isConfigured || !supabase) return undefined
+    let timer = 0
+    const schedule = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => { revalidate() }, 300)
+    }
+    const channel = supabase
+      .channel('catalog-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, schedule)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, schedule)
+      .subscribe()
+    return () => {
+      window.clearTimeout(timer)
+      supabase.removeChannel(channel)
+    }
+  }, [revalidate])
 
   // products — bazadan gələn BÜTÜN sətirlər (hər rəng ayrıca sətirdir).
   // Kataloq isə qruplaşdırılmış siyahını görür.

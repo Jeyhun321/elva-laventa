@@ -1548,3 +1548,27 @@
   - [ ] **Real device (за владельцем):** авторизованный покупатель, реальное Android/iOS tab suspension → возврат из фона → тап по товару открывает товар; checkout не уходит на home. Playwright НЕ воспроизводит настоящий OS-suspend и авторизованную Supabase-сессию.
 - **Regression History:** 2026-08-15 — `vite build` успешно; guest-регрессия через playwright-mobile (эмуляция) — зелёная. Авторизованный resume-путь — NOT VERIFIED на реальном устройстве (за владельцем).
 - **Notes:** Root cause найден аудитом кода (Phases 3–5): auth/redirect-путь требует авторизованной сессии, которую Playwright без Google-логина воспроизвести не может, поэтому фикс подтверждён логикой + build + guest-регрессией, а финальное подтверждение — на реальном телефоне. Смежное наблюдение (НЕ входит в scope этой правки): при том же null-скачке `ShopContext` кратковременно опустошает корзину — теоретически может дать `checkout → /cart`; после устранения источника (home-редирект) основной симптом закрыт, но при повторении на устройстве стоит проверить и это.
+
+## LAV-BUG-053 — Product Page: одноцветный товар показывал несколько «выбираемых» цветов (декоративная палитра ткани отображалась как color-варианты)
+- **Module:** ProductPage — блок «RƏNG» (`src/pages/ProductPage.jsx`)
+- **Platform:** both (UI scope Phase 1 — mobile)
+- **Environment:** Production
+- **Priority:** P2
+- **Severity:** S3
+- **Status:** FIXED
+- **Found By:** Owner (screenshot)
+- **Found Date:** 2026-08-15
+- **Developer:** Claude Code
+- **Description:** Товар с одним реальным цветом (напр. 2001 «Çiçəkli Maxi Don») на Product Page показывал 4 цветовых кружка, будто он доступен в других цветах.
+- **Steps to Reproduce:** Открыть товар без реальных цвет-вариантов (один код, `color_name` пуст) → под «RƏNG» отображалось несколько кружков.
+- **Expected Result:** Число color-опций = числу реальных цветов товара. 1 цвет → 1 опция; N вариантов → N; фиктивные цвета не создаются.
+- **Actual Result:** Ветка `product.colors?.length` рендерила ВСЮ декоративную палитру `colors` (hex-набор цвета ткани для gradient-плейсхолдера в `ProductImage`) как отдельные «выбираемые» цвета.
+- **Root Cause:** `product.colors` — это декоративная палитра (используется в `ProductImage` как gradient fallback), а НЕ отдельные покупаемые цвета. Реальные цвет-варианты моделируются как отдельные строки с общим `code` и `color_name` (`product.variants`, группируются в `CatalogContext.groupVariants`). Для одноцветного товара `variants.length<=1`, и UI ошибочно падал в ветку `colors`, рисуя всю палитру.
+- **Fix Summary:** В ProductPage color-селектор теперь строго по реальным данным: `variants.length>1` → реальные варианты (без изменений); иначе → ровно ОДИН swatch реального цвета товара (`product.colorHex || product.colors?.[0]`); если цвета нет — блок не показывается. Декоративная палитра `colors` больше не рендерится как несколько color-опций (поле сохранено — оно используется `ProductImage`). Свотчи и раньше были display-only (не влияют на корзину/размер), поэтому selection/Add-to-Cart не затронуты.
+- **Fix Verification checklist:**
+  - [x] Playwright (эмуляция, собранный бандл): товар 2001 (один цвет) → 1 swatch (`#f7b7d2`), variantDots 0.
+  - [x] Playwright: товар 2006 (реальные варианты «Narıncı»/«Bej») → 2 variant-dots.
+  - [x] `vite build` — успешно; console без ошибок.
+  - [ ] Desktop-вид цветов — не менялся логически; owner может подтвердить визуально.
+- **Regression History:** 2026-08-15 — `vite build` успешно; проверка через playwright-mobile — зелёная.
+- **Notes:** Часть Phase 1 (F-009). Связано с F-003/D-002 (реальные цвет-варианты). Работает вместе с Realtime (D-006): при удалении/добавлении цвета админом storefront обновляется без ручного refresh.
