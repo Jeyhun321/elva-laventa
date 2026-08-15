@@ -2,15 +2,16 @@
 
 ## Current Status
 
-**Phase 2 ПОЛНОСТЬЮ реализована** (промокоды + Wheel of Fortune на едином discount-движке). SQL (`supabase/promo-and-wheel.sql`) выполнен владельцем в Supabase (подтверждено). Клиент (Stage 2–6) реализован, собран и запушен.
+**Wheel of Fortune доработан и исправлен** (Phase 2). Главный баг FIRLAT → «Xəta baş verdi» — **root cause найден и устранён**.
 
-- **Промокоды:** campaign + individual; checkout-блок «Promokod» (mobile) с preview и пересчётом; скидка server-trusted (`validate_promo` + 8-арг `place_order`); использование фиксируется только при заказе (`promo_redemptions`); double-use защищён `SELECT FOR UPDATE`.
-- **Wheel:** приглашение «Şansını sına» в окне (Asia/Baku), результат выбирает сервер (weighted), один спин на окно (`UNIQUE(account_id,window_key)`), выигрыш = account-bound individual-промокод (source=wheel) через общий движок; reroll через reload/DevTools невозможен.
-- **Admin:** вкладки «Промокоды» (CRUD, Generate, привязка к клиенту) и «Колесо фортуны» (окна, timezone, проценты+веса, expiry, спины/окно).
+- **BUG (LAV-BUG-054):** `spin_wheel`/`generate_promo_code` вызывали `gen_random_bytes` (pgcrypto) при `search_path=public`; в Supabase pgcrypto в схеме `extensions` → рантайм-ошибка `42883 function gen_random_bytes(integer) does not exist`. Подтверждено фактически через REST. **Фикс:** переход на встроенный `random()` (без pgcrypto).
+- **7 секторов:** колесо показывает 5/10/15/20/30/40/50; ACTIVE = 5/10/15 (weight>0, реально выпадают), LOCKED = 20/30/40/50 (weight=0, 🔒, сервер их НИКОГДА не возвращает). `get_wheel_public_config` отдаёт `sectors:[{percent,active}]` без весов.
+- **Auto-open:** в активном окне (Asia/Baku, серверное время) модал открывается сам (в т.ч. если пользователь уже был на сайте — сработает на следующем 60-сек refresh статуса/visibility), без refresh. Закрытие крестиком запоминает окно → не переоткрывается (нет infinite popup). CTA «Şansını sına» остаётся вторичной точкой входа, поднят над таббаром.
+- **Animation → server result:** посадка колеса вычисляется из серверного процента (`landOn(percent)`); win-текст из того же значения → расхождение невозможно.
+- **i18n бизнес-ошибок:** WHEEL_ALREADY_SPUN / WHEEL_CLOSED / AUTH_REQUIRED — понятные локализованные сообщения; generic только для реально неизвестной ошибки.
+- **Admin:** в «Колесо фортуны» каждый сектор помечен ACTIVE/LOCKED (weight>0 / =0) + пояснение.
 
-**Проверено:** build OK; REST — trusted-RPC/RLS (anon→`AUTH_REQUIRED`; веса колеса скрыты; `promo_codes` анониму недоступны на чтение/запись); Playwright — колесо подключено (RPC 200), консоль чистая, вне окна приглашение корректно скрыто.
-
-**Осталось за владельцем (не блокирует деплой):** финальная авторизованная проверка на реальном телефоне — применить промокод на checkout и один спин колеса во временном окне. Playwright не может авторизоваться (Google) и форсировать окно.
+**OWNER ACTION REQUIRED:** выполнить **`supabase/wheel-spin-fix.sql`** в Supabase → SQL Editor. Идемпотентно; сохраняет текущие веса 5/10/15, добавляет locked 20/30/40/50. До этого FIRLAT будет падать.
 
 ## Current Branch
 
@@ -18,58 +19,58 @@
 
 ## Last Completed Task
 
-### Phase 2 Stage 2–6 — клиент промокодов + колеса
+### Wheel fix + 7 секторов (active/locked) + auto-open + i18n ошибок
 
-- **Файлы:** `src/lib/promo.js`, `src/lib/wheel.js`, `src/components/WheelOfFortune.jsx` (new); `src/lib/orders.js` (8-арг place_order); `src/pages/CheckoutPage.jsx` (promo UI + пересчёт + авто-применение reward колеса); `src/pages/AdminPage.jsx` + `src/admin/db.js` (PromoPanel + WheelPanel + db-функции); `src/App.jsx` (монтаж колеса); `src/i18n/translations.js` (promo_* / wheel_*); `src/styles/index.css` (promo/admin/wheel).
-- **Не менялось по существу:** desktop-логика; колесо рендерится только на mobile (`useMediaQuery(max-width:900px)`); существующий 7-арг `place_order` не используется клиентом (перешли на 8-арг), но сохранён в БД.
+- **Файлы:** `supabase/wheel-spin-fix.sql` (new — фикс RPC + sectors + seed); `src/components/WheelOfFortune.jsx` (auto-open/dismissal/7-секторов/land/i18n); `src/lib/wheel.js` (без изменений контракта — использует sectors); `src/pages/AdminPage.jsx` (ACTIVE/LOCKED бейджи); `src/i18n/translations.js` (`wheel_closed`, `wheel_locked`); `src/styles/index.css` (CTA-отступ/z-index, метки 7 секторов, locked-стиль, grid admin).
+- **Не менялось:** promo checkout, place_order, orders, delivery, cart, auth, realtime, предыдущие mobile-фиксы — не тронуты.
 
 ## Last Verified Checks
 
-- `npm run build` — **успешно**.
-- **REST (anon-ключ):** `validate_promo`/`spin_wheel`/`place_order`(8) → `AUTH_REQUIRED`; `get_wheel_public_config` → `{enabled,rewards:[5,10,15],windows,Asia/Baku,tolerance 5,expiry 24}` (веса скрыты); `get_wheel_status` → `signed_in:false,in_window:false`; anon SELECT `promo_codes` → `[]`; anon INSERT `promo_codes` → RLS violation.
-- **Playwright (mobile 360):** home грузится, `get_wheel_public_config`+`get_wheel_status` → 200, приглашение колеса скрыто (сейчас вне окна — корректно), console 0 ошибок.
-- **NOT VERIFIED (ограничения эмуляции):** реальное применение промокода на checkout и spin колеса требуют Google-сессии и активного окна — за владельцем на устройстве. Playwright не авторизуется и не форсирует серверное окно.
+- **Root cause:** REST `generate_promo_code` → `42883 gen_random_bytes does not exist` (фактическое подтверждение).
+- `npm run build` — успешно.
+- **Playwright (mobile 360, стаб RPC для рендера):** auto-open в окне ✓; 7 секторов ✓ (5/10/15 ACTIVE, 20/30/40/50 🔒 LOCKED); FIRLAT → «10% endirim qazandınız» ✓; dismissal (X) → нет повторного popup ✓; modal в вьюпорте, без гориз. оверфлоу ✓; CTA поднят над таббаром ✓; console 0 ошибок ✓.
+- **Security regression (REST):** anon/authed-non-admin не создают промо, не меняют wheel_config (попытка 50%/weight100 → RLS 0 строк); spin вне окна → WHEEL_CLOSED. RLS не ослаблен.
+- **NOT VERIFIED (ограничения эмуляции + OWNER SQL):** реальный server-spin (после `wheel-spin-fix.sql`, под Google-auth, в активном окне) — Playwright не логинится в Google и не форсирует серверное окно; стаб проверяет только клиентский UI/анимацию.
 
 ## Current Architecture Notes
 
-- **Единый discount-движок (D-007):** и промо, и выигрыш колеса — записи в `promo_codes`; применение — только через `place_order`; учёт — `promo_redemptions`. Скидка на merchandise subtotal; доставка отдельно. Один промо на заказ (stacking запрещён — checkout хранит один `appliedPromo`, замена очищает предыдущий).
-- **Клиентские RPC-обёртки:** `src/lib/promo.js` (`validatePromo`, `promoErrorKey`, `previewDiscount`), `src/lib/wheel.js` (`getWheelConfig`, `getWheelStatus`, `spinWheel`).
-- **Wheel reward → checkout:** после выигрыша код кладётся в `sessionStorage['elva_wheel_reward']`; CheckoutPage авто-применяет его один раз (безопасно: reward account-bound + one-use в БД, фарм невозможен). Очищается после успешного заказа/Remove.
-- Прочее без изменений: Phase 1 (Realtime D-006, честные цвета, fallback поиска), LAV-BUG-052.
+- **Wheel trust:** окно/результат/один-спин — сервер (`spin_wheel`, `_wheel_current_window` Asia/Baku, `UNIQUE(account_id,window_key)`). Результат weighted через `random()` (server-side, не frontend). Клиент только анимирует к готовому результату.
+- **Sectors:** `wheel_config.rewards` хранит все 7; ACTIVE=weight>0, LOCKED=weight=0. `get_wheel_public_config.sectors` = все (с флагом active, без весов). Frontend: если `sectors` есть — рисует их; иначе fallback `[5,10,15,20,30,40,50]` (active = из `rewards`).
+- **Reward → promo:** individual account-bound, one-use, expiry `reward_expiry_hours`, `source=wheel`; применяется общим checkout promo-движком (единая система).
+- **Auto-open:** `WheelOfFortune` (mobile-only, useMediaQuery) — статус раз в 60с + на visibility; открывается при `enabled&&in_window&&signed_in&&!already_spun` и если окно не «dismissed» в этой сессии.
 
 ## Known Issues
 
-- Финальная авторизованная e2e-проверка promo/wheel — за владельцем (устройство + окно).
-- Ранее применённые/ожидающие миграции: `promo-and-wheel.sql` (применён, включает stock-guard); `realtime-catalog.sql` (Phase 1, если ещё не применён — для Realtime каталога); `product-featured.sql` (F-007, опционально).
+- **PENDING OWNER:** `supabase/wheel-spin-fix.sql` (иначе FIRLAT падает). Плюс из прошлого — `realtime-catalog.sql` (если ещё не применён), `product-featured.sql` (F-007, опц.).
 
 ## Risks
 
-- Wheel-приглашение появляется только внутри окна Asia/Baku (по серверному времени) — вне окна это ожидаемо «пусто», не баг.
-- `validate_promo` доступен любому авторизованному (нужно для preview); для individual-кодов чужим отдаёт `PROMO_ACCOUNT_MISMATCH` (скидка не раскрывается). Низкий риск enumeration для random-кодов — приемлемо.
+- До запуска `wheel-spin-fix.sql` спин не работает (клиент покажет generic-ошибку на реальный 42883). После запуска — заработает; клиент уже готов (7 секторов рисуются и через fallback, и через server sectors).
+- Auto-open реагирует в пределах 60с после начала окна (компромисс «без агрессивного polling»).
 
 ## Next Recommended Step
 
-1. **Владельцу:** на телефоне под Google — создать в админке campaign-код (напр. SUMMER2026, 20%, 1/аккаунт), применить на checkout, оформить заказ; проверить, что скидка в заказе и Telegram. Затем во временном окне крутнуть колесо и применить выигрыш.
-2. (Опц.) Настроить веса/проценты колеса и окна в админке под кампанию.
+1. **Владельцу:** выполнить `supabase/wheel-spin-fix.sql`. Проверка: `select public.generate_promo_code('WHEEL');` (вернёт код), `select public.get_wheel_public_config();` (7 sectors).
+2. **Владельцу (на телефоне):** в активном окне под Google — FIRLAT → выигрыш 5/10/15 → «использовать» → применяется на checkout. Второй спин в том же окне заблокирован; refresh не даёт reroll.
 
 ## Context For Next Session
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260815-153000
+Recovery ID: R-20260815-160500
 
-1. **Проект:** Elva LaVenta — React/Vite storefront (женская одежда), Supabase (Frankfurt), GitHub Pages (base `/elva-laventa/`).
-2. **Описание:** магазин: каталог, избранное, корзина, checkout (RPC `place_order` + Telegram), admin-панель, AZ/RU/EN.
-3. **Текущее состояние:** Phase 2 полностью реализована и запушена; SQL применён владельцем. Build OK; trusted-слой проверен по REST; Playwright wiring зелёный. Осталась авторизованная проверка на устройстве.
-4. **Что реализовано (Phase 2 клиент):** promo lib + wheel lib; checkout promo UI (mobile) + переход на 8-арг `place_order` + `validate_promo`; i18n promo_*/wheel_*; Admin PromoPanel (CRUD/Generate/привязка) + WheelPanel (конфиг); mobile WheelOfFortune (server-decided spin, one-per-window, reward через promo-движок); orders.js discount info; стили.
-5. **Последняя задача:** Phase 2 Stage 2–6.
-6. **Изменённые файлы:** `src/lib/promo.js`,`src/lib/wheel.js`,`src/components/WheelOfFortune.jsx` (new); `src/lib/orders.js`,`src/pages/CheckoutPage.jsx`,`src/pages/AdminPage.jsx`,`src/admin/db.js`,`src/App.jsx`,`src/i18n/translations.js`,`src/styles/index.css`; docs: HANDOFF/FEATURES(F-010)/TODO. SQL: `supabase/promo-and-wheel.sql` (уже был закоммичен в Stage 1).
-7. **Проверки:** build OK; REST trusted-RPC/RLS; Playwright wiring (RPC 200, консоль чистая). Авторизованный e2e — NOT VERIFIED (за владельцем).
-8. **Ограничения:** одна система скидок; discount только server-trusted; ограничения аккаунта — в БД/RPC/RLS; не ослаблять RLS; security-critical не в localStorage; desktop не переделывать; storefront scope mobile; без лишних зависимостей; не ломать cart/checkout/express delivery/order/Telegram/auth/Realtime/favorites/навигацию/сток/цены; нет `?forceWheel=`.
-9. **Обязательные документы:** `docs/HANDOFF.md`, `docs/ECOMMERCE_E2E_QA.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/*`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/DECISIONS.md`, `docs/TODO.md`.
-10. **Что осталось:** владельцу — авторизованная проверка promo/wheel на устройстве во временном окне; при желании настроить веса/окна колеса.
+1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (base `/elva-laventa/`).
+2. **Описание:** магазин: каталог, избранное, корзина, checkout (`place_order`+Telegram), admin, AZ/RU/EN, промокоды + Wheel of Fortune (единый discount-движок).
+3. **Текущее состояние:** Wheel-фикс готов и запушен. Root cause спина (gen_random_bytes/pgcrypto) устранён в `supabase/wheel-spin-fix.sql` (OWNER должен выполнить). Клиент: auto-open, 7 секторов active/locked, посадка на серверный результат, i18n ошибок, admin ACTIVE/LOCKED. Build + playwright(stub) + REST security — зелёные.
+4. **Что реализовано:** см. «Last Completed Task».
+5. **Последняя задача:** LAV-BUG-054 + доработка колеса (auto-open, 7 секторов, i18n).
+6. **Изменённые файлы:** `supabase/wheel-spin-fix.sql` (new); `src/components/WheelOfFortune.jsx`, `src/pages/AdminPage.jsx`, `src/i18n/translations.js`, `src/styles/index.css`; docs: HANDOFF/BUGS(054)/TODO.
+7. **Проверки:** root cause (REST 42883); build; playwright stub (auto-open/7 секторов/land/dismiss/layout, console 0); REST security (RLS не ослаблен). Реальный server-spin — NOT VERIFIED до OWNER SQL.
+8. **Ограничения:** mobile scope; desktop не трогать; одна система скидок; результат колеса только server-side; не ослаблять RLS; нет service_role во фронте; не `?forceWheel=`; не ломать promo/checkout/orders/delivery/auth/realtime/предыдущие фиксы.
+9. **Обязательные документы:** `docs/HANDOFF.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/*`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/DECISIONS.md`, `docs/TODO.md`.
+10. **Что осталось:** OWNER — `wheel-spin-fix.sql` + проверка реального спина на телефоне в окне.
 11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`.
-12. **После работы:** обновлять `docs/HANDOFF.md` и профильные доки; commit + push; deploy (Actions не ждать).
+12. **После работы:** обновить docs; commit + push; deploy (Actions не ждать).
 
 ### SESSION CHECKSUM
 
@@ -77,15 +78,14 @@ Recovery ID: R-20260815-153000
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: Phase 2 (promo codes + Wheel of Fortune) — реализована полностью, запушена; осталась авторизованная проверка владельцем на устройстве
+Current task: Wheel fix (spin bug root cause) + 7 sectors active/locked + auto-open + i18n — код готов и запушен; OWNER должен выполнить supabase/wheel-spin-fix.sql
 Expected modified files:
-  - src/lib/promo.js, src/lib/wheel.js, src/components/WheelOfFortune.jsx (new)
-  - src/lib/orders.js, src/pages/CheckoutPage.jsx, src/pages/AdminPage.jsx, src/admin/db.js, src/App.jsx
-  - src/i18n/translations.js, src/styles/index.css
-  - docs/HANDOFF.md, docs/FEATURES.md (F-010), docs/TODO.md
+  - supabase/wheel-spin-fix.sql (new)
+  - src/components/WheelOfFortune.jsx, src/pages/AdminPage.jsx, src/i18n/translations.js, src/styles/index.css
+  - docs/HANDOFF.md, docs/BUGS.md (LAV-BUG-054), docs/TODO.md
 Git status summary: изменения в рабочем дереве, не закоммичены на момент записи
 Documentation updated: YES
 Last verified build: vite build — успешно, 2026-08-15
-Last verified tests: REST trusted-RPC/RLS + Playwright wiring — зелёные. Авторизованный e2e promo/wheel — NOT VERIFIED (за владельцем: устройство + окно)
+Last verified tests: root cause REST(42883); playwright stub (auto-open/7 sectors/land/dismiss, console 0); REST security (RLS intact). Реальный server-spin — NOT VERIFIED до OWNER SQL
 Recovery confidence: HIGH
 ```

@@ -349,6 +349,12 @@ export const ui = {
     en: 'The code will apply automatically at checkout.',
   },
   wheel_error: { az: 'Xəta baş verdi. Yenidən cəhd edin.', ru: 'Произошла ошибка. Попробуйте ещё раз.', en: 'Something went wrong. Try again.' },
+  wheel_closed: {
+    az: 'Çarx bu anda əlçatan deyil. Növbəti vaxt aralığını gözləyin.',
+    ru: 'Колесо сейчас недоступно. Дождитесь следующего окна.',
+    en: 'The wheel is not available right now. Wait for the next window.',
+  },
+  wheel_locked: { az: 'Hələ əlçatan deyil', ru: 'Пока недоступно', en: 'Locked for now' },
   nothing_found: {
     az: 'Heç nə tapılmadı',
     ru: 'Ничего не найдено',

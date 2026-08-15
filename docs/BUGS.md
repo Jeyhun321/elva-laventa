@@ -1572,3 +1572,28 @@
   - [ ] Desktop-вид цветов — не менялся логически; owner может подтвердить визуально.
 - **Regression History:** 2026-08-15 — `vite build` успешно; проверка через playwright-mobile — зелёная.
 - **Notes:** Часть Phase 1 (F-009). Связано с F-003/D-002 (реальные цвет-варианты). Работает вместе с Realtime (D-006): при удалении/добавлении цвета админом storefront обновляется без ручного refresh.
+
+## LAV-BUG-054 — Wheel of Fortune: FIRLAT → «Xəta baş verdi» (spin_wheel падал: gen_random_bytes не резолвился)
+- **Module:** Wheel of Fortune — `spin_wheel` / `generate_promo_code` (`supabase/promo-and-wheel.sql`)
+- **Platform:** mobile (логика серверная, общая)
+- **Environment:** Production (внутри активного окна колеса)
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED (в коде/SQL) — требует запуска `supabase/wheel-spin-fix.sql` владельцем
+- **Found By:** Owner (mobile screenshot)
+- **Found Date:** 2026-08-15
+- **Developer:** Claude Code
+- **Description:** В активном окне колесо открывается, но при нажатии FIRLAT показывается «Xəta baş verdi. Yenidən cəhd edin.» — spin не работает.
+- **Steps to Reproduce:** В активном окне (Asia/Baku ±5м) под авторизованным пользователем нажать FIRLAT.
+- **Expected Result:** Сервер выбирает награду (5/10/15), создаёт account-bound промокод, колесо останавливается на секторе, показывается «Təbriklər! N% endirim qazandınız».
+- **Actual Result:** RPC `spin_wheel` бросал исключение → клиент показывал generic-ошибку.
+- **Root Cause (фактический, не догадка):** `spin_wheel` и `generate_promo_code` вызывали `gen_random_bytes` (расширение pgcrypto), но объявлены с `set search_path = public`. В Supabase pgcrypto установлен в схему `extensions`, поэтому в рантайме функция не находилась. Подтверждено вызовом `generate_promo_code` через REST: `42883 function gen_random_bytes(integer) does not exist`. (`get_wheel_status`/`get_wheel_public_config` работали, т.к. pgcrypto не используют.)
+- **Fix Summary:** Убрана зависимость от pgcrypto — взвешенный выбор и генерация суффикса кода переведены на встроенный `random()` (pg_catalog, всегда в search_path). Дополнительно: 7 секторов (5/10/15 ACTIVE, 20/30/40/50 LOCKED weight=0 — на сервере никогда не выпадают), `get_wheel_public_config` отдаёт `sectors:[{percent,active}]` без весов. Всё в `supabase/wheel-spin-fix.sql` (идемпотентно). Клиент: auto-open в окне, 7 секторов active/locked, посадка анимации на серверный результат, i18n бизнес-ошибок.
+- **Fix Verification checklist:**
+  - [x] Root cause подтверждён фактической ошибкой (REST 42883).
+  - [x] `vite build` — успешно.
+  - [x] Playwright (стаб RPC): auto-open в окне, 7 секторов (5/10/15 active, 20/30/40/50 🔒 locked), FIRLAT→win «10% endirim qazandınız», dismissal без повторного popup, modal в вьюпорте без оверфлоу, console 0 ошибок.
+  - [x] Security regression: anon/authed-non-admin не создают промо, не меняют wheel_config (попытка 50%/weight100 → RLS 0 строк), spin вне окна → WHEEL_CLOSED.
+  - [ ] **OWNER:** выполнить `supabase/wheel-spin-fix.sql`; затем в активном окне реальный FIRLAT (server spin) — не проверяется в эмуляции (нет Google-auth + нельзя форсировать серверное окно).
+- **Regression History:** 2026-08-15 — build + playwright(stub) + REST security — зелёные. Реальный server-spin — NOT VERIFIED до запуска SQL владельцем.
+- **Notes:** Не workaround (generic-ошибку не прятали) — устранена первопричина. Reward → account-bound one-use промокод через общий движок (без второй системы).

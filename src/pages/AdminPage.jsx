@@ -877,18 +877,27 @@ function WheelPanel({ onNotify }) {
           <span>Награды и веса</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={addReward}><IconPlus /> Добавить</button>
         </div>
-        <p className="admin-sub">Показываются только достижимые (вес &gt; 0) проценты. Вероятность = вес / сумма весов.</p>
-        {(cfg.rewards || []).map((r, i) => (
-          <div className="wheel-reward-row" key={i}>
-            <label className="fld"><span>Скидка %</span>
-              <input type="number" min="1" value={r.percent} onChange={(e) => setReward(i, { percent: e.target.value })} />
-            </label>
-            <label className="fld"><span>Вес</span>
-              <input type="number" min="0" value={r.weight} onChange={(e) => setReward(i, { weight: e.target.value })} />
-            </label>
-            <button type="button" className="cart-remove" onClick={() => removeReward(i)} aria-label="Убрать"><IconTrash /></button>
-          </div>
-        ))}
+        <p className="admin-sub">
+          <b>ACTIVE</b> (вес &gt; 0) — реально выпадает на колесе. Вероятность = вес / сумма активных весов.<br />
+          <b>LOCKED</b> (вес = 0) — сектор показан на колесе как заблокированный (🔒) и НИКОГДА не выпадает.
+        </p>
+        {(cfg.rewards || []).map((r, i) => {
+          const isActive = Number(r.weight) > 0
+          return (
+            <div className="wheel-reward-row" key={i}>
+              <label className="fld"><span>Скидка %</span>
+                <input type="number" min="1" value={r.percent} onChange={(e) => setReward(i, { percent: e.target.value })} />
+              </label>
+              <label className="fld"><span>Вес</span>
+                <input type="number" min="0" value={r.weight} onChange={(e) => setReward(i, { weight: e.target.value })} />
+              </label>
+              <span className={`promo-badge${isActive ? '' : ' wheel'}`} style={{ alignSelf: 'center', marginBottom: 10 }}>
+                {isActive ? 'ACTIVE' : 'LOCKED'}
+              </span>
+              <button type="button" className="cart-remove" onClick={() => removeReward(i)} aria-label="Убрать"><IconTrash /></button>
+            </div>
+          )
+        })}
       </div>
 
       <div className="admin-form-foot">

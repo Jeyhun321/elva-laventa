@@ -6,37 +6,51 @@ import useMediaQuery from '../hooks/useMediaQuery.js'
 import { getWheelConfig, getWheelStatus, spinWheel, wheelErrorCode } from '../lib/wheel.js'
 
 const WHEEL_REWARD_KEY = 'elva_wheel_reward'
-const SEGMENT_COLORS = ['#e5399a', '#f7b7d2', '#b3155f', '#f5c9de', '#cf2879', '#fbdcea']
+const WHEEL_DISMISS_KEY = 'elva_wheel_dismissed' // окно, которое пользователь закрыл крестиком
+// Полный отображаемый набор секторов (визуал). ACTIVE (реально выпадают) приходит
+// с сервера (get_wheel_public_config.sectors / rewards). Остальные — LOCKED (показ).
+const DISPLAY_SECTORS = [5, 10, 15, 20, 30, 40, 50]
+const ACTIVE_COLORS = ['#e5399a', '#b3155f', '#f7b7d2', '#cf2879', '#f5c9de']
+const LOCKED_COLOR = '#d8ccd3'
 
-// Mobile Wheel of Fortune. Весь trust на сервере: окно (Asia/Baku), результат
-// (weighted) и один спин на окно решает БД. Здесь только приглашение и анимация
-// колеса к УЖЕ определённому серверному результату. Reload/DevTools не дают
-// повторный спин: spin_wheel атомарно защищён UNIQUE(account_id, window_key).
+// Mobile Wheel of Fortune. Trust на сервере: окно (Asia/Baku), результат (weighted)
+// и один спин на окно решает БД (spin_wheel). Клиент только анимирует к готовому
+// серверному результату. Reload/DevTools не дают повторный спин (UNIQUE + status).
 export default function WheelOfFortune() {
   const isMobile = useMediaQuery('(max-width: 900px)')
   const { isSignedIn, loginWithGoogle } = useAuth()
   const { t } = useI18n()
   const navigate = useNavigate()
 
-  const [config, setConfig] = useState(null)     // { rewards: [percent...] }
-  const [status, setStatus] = useState(null)     // { enabled, in_window, already_spun, active_reward, signed_in }
+  const [config, setConfig] = useState(null)
+  const [status, setStatus] = useState(null)
   const [open, setOpen] = useState(false)
-  const [phase, setPhase] = useState('idle')     // idle | spinning | won | error
-  const [result, setResult] = useState(null)     // { percent, code }
+  const [phase, setPhase] = useState('idle')   // idle | spinning | won | error
+  const [result, setResult] = useState(null)   // { percent, code }
   const [errKey, setErrKey] = useState('')
   const [rotation, setRotation] = useState(0)
   const spinningRef = useRef(false)
+  const dismissedRef = useRef('')
 
-  const segments = useMemo(() => {
-    const list = (config?.rewards || []).map(Number).filter((n) => n > 0)
-    return list.length ? list : []
+  useEffect(() => {
+    try { dismissedRef.current = sessionStorage.getItem(WHEEL_DISMISS_KEY) || '' } catch { /* ignore */ }
+  }, [])
+
+  // Сектора для отрисовки: с сервера (sectors), иначе строим из rewards + locked.
+  const sectors = useMemo(() => {
+    if (Array.isArray(config?.sectors) && config.sectors.length) {
+      return [...config.sectors]
+        .map((s) => ({ percent: Number(s.percent), active: Boolean(s.active) }))
+        .sort((a, b) => a.percent - b.percent)
+    }
+    const active = new Set((config?.rewards || []).map(Number))
+    return DISPLAY_SECTORS.map((p) => ({ percent: p, active: active.has(p) }))
   }, [config])
 
   const refreshStatus = useCallback(async () => {
     try { setStatus(await getWheelStatus()) } catch { /* тихо */ }
   }, [])
 
-  // Конфиг один раз; статус — на монтировании, при возврате вкладки и раз в 60с.
   useEffect(() => {
     if (!isMobile) return undefined
     let alive = true
@@ -44,39 +58,62 @@ export default function WheelOfFortune() {
     refreshStatus()
     const onVis = () => { if (document.visibilityState === 'visible') refreshStatus() }
     document.addEventListener('visibilitychange', onVis)
-    const timer = window.setInterval(refreshStatus, 60000)
+    const timer = window.setInterval(refreshStatus, 60000) // без агрессивного polling
     return () => { alive = false; document.removeEventListener('visibilitychange', onVis); window.clearInterval(timer) }
   }, [isMobile, refreshStatus])
 
-  // Обновляем статус при входе/выходе (reward привязан к аккаунту)
   useEffect(() => { if (isMobile) refreshStatus() }, [isSignedIn, isMobile, refreshStatus])
+
+  // Право на spin прямо сейчас (server — source of truth)
+  const canSpinNow = Boolean(
+    status?.enabled && status?.in_window && status?.signed_in && !status?.already_spun
+  )
+  const activeReward = status?.active_reward || null
+  const windowKey = status?.window || ''
+
+  // AUTO-OPEN: как только наступило окно и есть право на spin — открываем сами
+  // (в т.ч. если пользователь уже был на сайте: сработает на следующем refreshStatus).
+  // Не открываем, если пользователь закрыл модал в этом же окне.
+  useEffect(() => {
+    if (!isMobile) return
+    if (open) return
+    if (canSpinNow && dismissedRef.current !== windowKey) {
+      setPhase('idle'); setResult(null); setErrKey(''); setRotation(0)
+      setOpen(true)
+    }
+  }, [isMobile, open, canSpinNow, windowKey])
 
   if (!isMobile || !config?.enabled || !status?.enabled) return null
 
-  const activeReward = status.active_reward || null
-  // Приглашение показываем, когда: сейчас окно (можно крутить) ИЛИ есть неиспользованная награда.
-  const canInvite = (status.in_window && !(isSignedIn && status.already_spun)) || Boolean(activeReward)
-  if (!canInvite && !open) return null
+  // CTA (вторичная точка входа): в окне (можно крутить) или есть неиспользованная награда
+  const showCta = (canSpinNow || Boolean(activeReward)) && !open
 
   const openModal = () => {
     setErrKey('')
-    setPhase(activeReward ? 'won' : 'idle')
-    setResult(activeReward ? { percent: Number(activeReward.percent), code: activeReward.code } : null)
+    if (activeReward) {
+      setPhase('won'); setResult({ percent: Number(activeReward.percent), code: activeReward.code })
+    } else {
+      setPhase('idle'); setResult(null); setRotation(0)
+    }
     setOpen(true)
-    refreshStatus()
   }
 
-  const close = () => { if (!spinningRef.current) setOpen(false) }
+  const close = () => {
+    if (spinningRef.current) return
+    // Запоминаем окно, чтобы не открывать модал повторно в этом же окне/сессии.
+    try { if (windowKey) { sessionStorage.setItem(WHEEL_DISMISS_KEY, windowKey); dismissedRef.current = windowKey } } catch { /* ignore */ }
+    setOpen(false)
+  }
 
   const landOn = (percent) => {
-    const n = segments.length
+    const n = sectors.length
     if (!n) return
-    const idx = Math.max(0, segments.indexOf(Number(percent)))
+    let idx = sectors.findIndex((s) => Number(s.percent) === Number(percent))
+    if (idx < 0) idx = 0
     const seg = 360 / n
-    // conic-gradient стартует сверху по часовой; центр сегмента idx = idx*seg + seg/2.
-    // Крутим на несколько оборотов и подводим центр сегмента к указателю (верх).
-    const target = 360 * 6 - (idx * seg + seg / 2)
-    setRotation(target)
+    // conic стартует сверху по часовой; центр сектора idx = idx*seg + seg/2.
+    // Несколько оборотов + подводим центр выигранного сектора к указателю (верх).
+    setRotation(360 * 6 - (idx * seg + seg / 2))
   }
 
   const doSpin = async () => {
@@ -88,11 +125,9 @@ export default function WheelOfFortune() {
     try {
       const res = await spinWheel() // сервер решает результат
       const percent = Number(res.percent)
-      const code = res.code
       landOn(percent)
-      // ждём завершения CSS-анимации, затем показываем результат
       window.setTimeout(() => {
-        setResult({ percent, code })
+        setResult({ percent, code: res.code })
         setPhase('won')
         spinningRef.current = false
         refreshStatus()
@@ -100,11 +135,13 @@ export default function WheelOfFortune() {
     } catch (e) {
       const code = wheelErrorCode(e)
       spinningRef.current = false
-      setPhase('error')
+      setPhase('idle')
       setErrKey(
         code === 'WHEEL_ALREADY_SPUN' ? 'wheel_already_spun'
-          : code === 'AUTH_REQUIRED' ? 'wheel_login_required'
-            : 'wheel_error'
+          : code === 'WHEEL_CLOSED' ? 'wheel_closed'
+            : code === 'AUTH_REQUIRED' ? 'wheel_login_required'
+              : code === 'WHEEL_DISABLED' ? 'wheel_closed'
+                : 'wheel_error'
       )
       refreshStatus()
     }
@@ -117,20 +154,22 @@ export default function WheelOfFortune() {
     navigate('/cart')
   }
 
+  const seg = 360 / sectors.length
   const wheelStyle = {
     transform: `rotate(${rotation}deg)`,
-    background: segments.length
-      ? `conic-gradient(${segments.map((_, i) => {
-          const seg = 100 / segments.length
-          const color = SEGMENT_COLORS[i % SEGMENT_COLORS.length]
-          return `${color} ${i * seg}% ${(i + 1) * seg}%`
+    background: sectors.length
+      ? `conic-gradient(${sectors.map((s, i) => {
+          const from = (100 / sectors.length) * i
+          const to = (100 / sectors.length) * (i + 1)
+          const color = s.active ? ACTIVE_COLORS[i % ACTIVE_COLORS.length] : LOCKED_COLOR
+          return `${color} ${from}% ${to}%`
         }).join(', ')})`
       : '#eee',
   }
 
   return (
     <>
-      {canInvite && !open && (
+      {showCta && (
         <button type="button" className="wheel-invite" onClick={openModal} aria-label={t('wheel_invite_title')}>
           <span className="wheel-invite-emoji" aria-hidden="true">🎡</span>
           <span className="wheel-invite-text">{t('wheel_invite_title')}</span>
@@ -157,18 +196,16 @@ export default function WheelOfFortune() {
                 <div className="wheel-stage">
                   <span className="wheel-pointer" aria-hidden="true" />
                   <div className="wheel-disc" style={wheelStyle}>
-                    {segments.map((p, i) => {
-                      const seg = 360 / segments.length
-                      return (
-                        <span
-                          key={i}
-                          className="wheel-label"
-                          style={{ transform: `rotate(${i * seg + seg / 2}deg)` }}
-                        >
-                          <b>{p}%</b>
-                        </span>
-                      )
-                    })}
+                    {sectors.map((s, i) => (
+                      <span
+                        key={s.percent}
+                        className={`wheel-label${s.active ? '' : ' locked'}`}
+                        style={{ transform: `rotate(${i * seg + seg / 2}deg)` }}
+                        title={s.active ? `${s.percent}%` : `${s.percent}% — ${t('wheel_locked')}`}
+                      >
+                        <b>{s.percent}%{s.active ? '' : ' 🔒'}</b>
+                      </span>
+                    ))}
                   </div>
                   <span className="wheel-hub" aria-hidden="true" />
                 </div>
@@ -179,7 +216,7 @@ export default function WheelOfFortune() {
                   <button
                     className="btn btn-primary btn-lg full"
                     onClick={doSpin}
-                    disabled={phase === 'spinning' || status.already_spun}
+                    disabled={phase === 'spinning' || Boolean(status?.already_spun)}
                   >
                     {phase === 'spinning' ? t('wheel_spinning') : t('wheel_spin')}
                   </button>

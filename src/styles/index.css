@@ -1690,7 +1690,7 @@ a.product-name::after {
 .promo-badge.wheel { background: rgba(120, 80, 200, 0.12); color: #6a3fb0; }
 .wheel-rewards { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
 .wheel-rewards-head { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
-.wheel-reward-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+.wheel-reward-row { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 10px; align-items: end; }
 
 /* ============================================================
    Mobile Wheel of Fortune (Phase 2) — только mobile (рендерится по useMediaQuery)
@@ -1698,8 +1698,9 @@ a.product-name::after {
 .wheel-invite {
   position: fixed;
   right: 14px;
-  bottom: calc(72px + env(safe-area-inset-bottom, 0px)); /* над таббаром */
-  z-index: 60;
+  /* Заметно выше таббара, чтобы CTA не перекрывал нижнюю навигацию */
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  z-index: 90;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1753,7 +1754,9 @@ a.product-name::after {
   transition: transform 4s cubic-bezier(0.17, 0.67, 0.2, 1);
 }
 .wheel-label { position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-start; pointer-events: none; }
-.wheel-label b { margin-top: 14px; color: #fff; font-size: 0.95rem; font-weight: 800; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.wheel-label b { margin-top: 12px; color: #fff; font-size: 0.82rem; font-weight: 800; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); white-space: nowrap; }
+/* Locked-сектора визуально приглушены: тёмный текст на светлом фоне + 🔒 */
+.wheel-label.locked b { color: #6b5f66; font-weight: 700; text-shadow: none; opacity: 0.9; }
 .wheel-pointer {
   position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
   z-index: 3; width: 0; height: 0;
