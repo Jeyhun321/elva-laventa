@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from './AuthContext.jsx'
 import { useCatalog } from './CatalogContext.jsx'
 import { supabase } from '../lib/supabase.js'
+import { logDiag, idHint } from '../lib/lifecycleDiag.js'
 
 const ShopContext = createContext(null)
 
@@ -146,6 +147,8 @@ export function ShopProvider({ children }) {
     const cartRequest = ++cartRequestRef.current
 
     if (loading) return undefined
+
+    logDiag('shop-sync', { acc: idHint(accountId) })
 
     // Girişsiz alıcının səbəti YOXDUR — hər şey boşdur.
     setCart([])

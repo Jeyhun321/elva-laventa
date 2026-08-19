@@ -32,6 +32,7 @@
 - [x] **Phase 2 / Stage 4:** Admin — «Колесо фортуны» (enabled, окна, timezone, проценты+веса, expiry, max spins).
 - [x] **Phase 2 / Stage 5:** Mobile Wheel UI (приглашение «Şansını sına», анимация к серверному результату, reward через общий promo-движок).
 - [x] **Phase 2 / Stage 6:** REST-верификация trusted-RPC/RLS + Playwright wiring + build + commit/push/deploy.
+- [ ] **LAV-BUG-056 (владелец, финальное подтверждение):** на реальном телефоне под Google-аккаунтом — после реального долгого фона/OS-suspension вернуться и сразу тапать по товару / продолжать checkout: товар должен открываться, checkout не должен уходить на home, корзина/аккаунт целы, без invisible overlay. Если повторится — снять `window.__lavDiag()` (timeline lifecycle-событий) и прислать. Фикс (grace транзиентного auth-null) уже в проде; Playwright не воспроизводит реальный OS-suspend + авторизацию.
 - [ ] **Phase 2 (владелец, финальная проверка):** на реальном телефоне под Google-аккаунтом — применение промокода на checkout и один спин колеса во временном окне (Asia/Baku 10:00/13:00/18:00/21:00 ±5м). Playwright не может авторизоваться и форсировать окно.
 - [ ] Применить `supabase/fix-order-any-auth.sql` в SQL Editor — иначе email-покупатель не оформит заказ (`place_order` требует `provider='google'`). Ручное действие владельца. (см. HANDOFF)
 - [ ] Выключить Confirm email в Supabase (`mailer_autoconfirm: false`) и подтвердить уже зарегистрированных. Ручное действие владельца.

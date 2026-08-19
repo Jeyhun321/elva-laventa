@@ -107,6 +107,18 @@ export default function WheelOfFortune() {
     }
   }, [isMobile, open, canSpinNow, windowKey])
 
+  // AUTO-CLOSE устаревшего модала (LAV-BUG-056): если окно колеса закончилось,
+  // пока модал был открыт (например долгий фон → возврат), и показывать больше
+  // нечего (нет выигрыша, не крутим) — закрываем сам, чтобы backdrop/overlay не
+  // висел поверх витрины и не «съедал» тапы после возврата из фона.
+  useEffect(() => {
+    if (!open) return
+    if (spinningRef.current) return
+    if (!canSpinNow && !activeReward && phase !== 'won' && phase !== 'spinning') {
+      setOpen(false)
+    }
+  }, [open, canSpinNow, activeReward, phase])
+
   if (!isMobile || !config?.enabled || !status?.enabled) return null
 
   // CTA (вторичная точка входа): в окне (можно крутить) или есть неиспользованная награда

@@ -7,6 +7,7 @@ import { useShop } from '../context/ShopContext.jsx'
 import { createOrder } from '../lib/orders.js'
 import { validatePromo, previewDiscount, promoErrorKey } from '../lib/promo.js'
 import { getWheelStatus } from '../lib/wheel.js'
+import { logDiag } from '../lib/lifecycleDiag.js'
 import useMediaQuery from '../hooks/useMediaQuery.js'
 import { CURRENCY } from '../config.js'
 import ProductImage from '../components/ProductImage.jsx'
@@ -190,8 +191,13 @@ export default function CheckoutPage() {
     // DİQQƏT: kataloq bazadan gec gəlir və o vaxta qədər getProduct boş qaytarır —
     // gözləməsək, dolu səbətlə gələn alıcı səhvən səbətə atılır.
     if (loading || catalogLoading) return
-    if (lines.length === 0 && !done) navigate('/cart', { replace: true })
-  }, [lines.length, done, navigate, loading, catalogLoading])
+    if (lines.length === 0 && !done) {
+      // Diagnostic: after LAV-BUG-056 this should NOT fire due to a transient
+      // auth-null cart clear (accountId now stays stable across the blip).
+      logDiag('checkout-redirect', { reason: 'empty-cart', signedIn: isSignedIn })
+      navigate('/cart', { replace: true })
+    }
+  }, [lines.length, done, navigate, loading, catalogLoading, isSignedIn])
 
   // Yalnız UĞURLU sifarişdən sonra (done set olanda) təsdiq blokunu görünən sahəyə qaldırırıq.
   // Problem: mobil-də istifadəçi uzun formanın sonunda (footer/tabbar yanında) qalırdı və

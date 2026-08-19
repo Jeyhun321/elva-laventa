@@ -1,5 +1,7 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { supabase, isConfigured } from '../lib/supabase.js'
+import { decideAuthAction, resolveDeferred, AUTH_RECOVERY_GRACE_MS } from '../lib/authRecovery.js'
+import { logDiag, idHint } from '../lib/lifecycleDiag.js'
 
 const AuthContext = createContext(null)
 const SAVED_ACCOUNTS_KEY = 'elva-laventa-saved-accounts'
@@ -56,6 +58,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(isConfigured)
   const [accounts, setAccounts] = useState(readSavedAccounts)
+  // LAV-BUG-056: distinguish a transient null (background token-refresh blip)
+  // from a real sign-out. `intentionalSignOutRef` is set by logout(); a pending
+  // grace timer defers clearing until getSession() confirms the session is gone.
+  const intentionalSignOutRef = useRef(false)
+  const clearTimerRef = useRef(0)
 
   const rememberAccount = useCallback((nextUser, session) => {
     if (!nextUser?.id) return
@@ -74,19 +81,58 @@ export function AuthProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    if (!isConfigured || !supabase) { setLoading(false); return }
+    if (!isConfigured || !supabase) { setLoading(false); return undefined }
+
+    const cancelPendingClear = () => {
+      if (clearTimerRef.current) { window.clearTimeout(clearTimerRef.current); clearTimerRef.current = 0 }
+    }
+
+    const adopt = (nextUser, session) => {
+      cancelPendingClear()
+      intentionalSignOutRef.current = false
+      setUser(nextUser)
+      rememberAccount(nextUser, session)
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null)
       rememberAccount(data.session?.user, data.session)
       setLoading(false)
+      logDiag('auth', { event: 'INIT', hasSession: Boolean(data.session), uid: idHint(data.session?.user?.id) })
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null)
-      rememberAccount(session?.user, session)
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUser = session?.user ?? null
+      logDiag('auth', { event, hasSession: Boolean(session), uid: idHint(nextUser?.id) })
+      const action = decideAuthAction({ hasUser: Boolean(nextUser), intentionalSignOut: intentionalSignOutRef.current })
+
+      if (action === 'adopt') { adopt(nextUser, session); return }
+
+      if (action === 'clear') {
+        // User-initiated logout — clear immediately.
+        cancelPendingClear()
+        intentionalSignOutRef.current = false
+        setUser(null)
+        return
+      }
+
+      // action === 'defer': null session that is NOT user-initiated. This is
+      // very likely a transient recovery blip on resume — do NOT drop the user
+      // yet. Wait a bounded grace, then confirm against the source of truth.
+      cancelPendingClear()
+      clearTimerRef.current = window.setTimeout(() => {
+        clearTimerRef.current = 0
+        supabase.auth.getSession().then(({ data }) => {
+          const sessionUser = data.session?.user ?? null
+          const outcome = resolveDeferred({ sessionHasUser: Boolean(sessionUser) })
+          logDiag('auth-resolve', { outcome, uid: idHint(sessionUser?.id) })
+          if (outcome === 'keep') { setUser(sessionUser); rememberAccount(sessionUser, data.session) }
+          else setUser(null)
+        }).catch(() => setUser(null))
+      }, AUTH_RECOVERY_GRACE_MS)
     })
-    return () => sub.subscription.unsubscribe()
+
+    return () => { sub.subscription.unsubscribe(); cancelPendingClear() }
   }, [rememberAccount])
 
 const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = '', returnTo = '' } = {}) => {
@@ -123,6 +169,10 @@ const loginWithGoogle = useCallback(async ({ selectAccount = false, loginHint = 
   }, [rememberAccount])
 
   const logout = useCallback(async () => {
+    // Mark this sign-out as user-initiated so the resulting SIGNED_OUT clears the
+    // user immediately (bypasses the transient-null grace window, LAV-BUG-056).
+    intentionalSignOutRef.current = true
+    logDiag('auth', { event: 'LOGOUT_INTENT' })
     if (supabase) await supabase.auth.signOut({ scope: 'local' })
   }, [])
 

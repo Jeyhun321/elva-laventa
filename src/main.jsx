@@ -7,9 +7,11 @@ import { ShopProvider } from './context/ShopContext.jsx'
 import { CatalogProvider } from './context/CatalogContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { installGlobalRecovery } from './lib/recovery.js'
+import { installLifecycleDiag } from './lib/lifecycleDiag.js'
 import './styles/index.css'
 
 installGlobalRecovery()
+installLifecycleDiag() // bounded lifecycle timeline for long-idle diagnosis (LAV-BUG-056)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

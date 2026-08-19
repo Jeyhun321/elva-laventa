@@ -2,13 +2,14 @@
 
 ## Current Status
 
-**Wheel coupon на checkout — выигрыш стал самостоятельной наградой аккаунта (F-012).** Купон живёт до `expires_at`/использования независимо от окна колеса; на mobile checkout показывается карточка с кодом/процентом/сроком и тумблером «Использовать» (без авто-применения). SQL не требуется — используется существующий `get_wheel_status.active_reward` + promo-движок; security/RLS не тронуты.
+**LAV-BUG-056 — long-idle mobile freeze — FIXED (client-only).** Найден корень «no-token → redirect race», оставшийся после LAV-BUG-052: транзиентный auth-null при восстановлении сессии на resume опустошал корзину и ронял checkout-редирект. Исправлено в источнике (`AuthContext`), без изменения RLS/RPC/security.
 
-- **Реализовано (client-only):** server-driven `wheelReward` (source of truth — сервер, не sessionStorage), `toggleCoupon`, expiry-guard, карточка купона; удалён старый sessionStorage-автоаппл. i18n AZ/RU/EN `wheel_coupon_*`. CSS `.wheel-coupon-card`.
-- **Проверено:** build OK; детерминированный тест логики карточки — **14/14** (показ/скрытие по валидности и expiry, hoursLeft, toggle ON/OFF пересчёт, no-stack замена ручного промо, expiry-guard); storefront (playwright-mobile 390) — checkout-модуль монтируется, console 0 errors; главная 360/390/430 без overflow.
-- **NOT VERIFIED (нет автоматизации):** видимая карточка + apply/redeem под реальной авторизованной mobile-сессией — блокировано OAuth (+ корзина требует логина). Серверные one-use/expiry/redemption/RLS не менялись и LIVE-подтверждены ранее.
+- **Root cause:** `onAuthStateChange` ставил `user=null` на транзиентном `SIGNED_OUT` (resume token-refresh blip) → `accountId A→null→A` → `ShopContext` чистил корзину, `CheckoutPage` редиректил на `/cart`, тапы add-to-cart «съедались». 052 закрыл только `AccountHomeRedirect`, не источник.
+- **Fix (минимальный, client-only):** `src/lib/authRecovery.js` (pure, tested) — adopt/clear/**defer** + bounded grace 2000мс; `AuthContext` игнорирует транзиентный null (defer→подтверждение через `getSession`), но мгновенно чистит реальный `logout()` (флаг намерения) и адаптирует смену аккаунта A→B; `WheelOfFortune` авто-закрывает устаревший модал (нет зависшего backdrop); `src/lib/lifecycleDiag.js` — ограниченный ring buffer lifecycle-событий (без секретов) для разбора след. реального инцидента (`window.__lavDiag()`).
+- **Проверено:** `vite build` OK; `npm test` regression **13/13** (A→null→A стабилен, реальный logout чистит, expiry→clear, A→B, A→null→B); Playwright mobile long-idle эмуляция (hidden→offline→online→visible→pageshow) — route стабилен, тап достигает карточки (`tapReachesCard=true`, нет invisible overlay/`.wheel-backdrop`), навигация в товар после resume работает, console 0 errors/0 unhandled rejections, 360/390/430 без overflow.
+- **NOT VERIFIED:** реальный OS tab-suspension + авторизованная Supabase-сессия — за владельцем (Playwright это не воспроизводит). При следующем реальном инциденте `window.__lavDiag()` даст точный timeline.
 
-Предыдущее (актуально): **Wheel admin config (F-011)** — SQL `wheel-config-status-lock.sql` применён и LIVE-верифицирован (контракт 10/10, security 4/4).
+Предыдущее (актуально): **Wheel coupon на checkout (F-012)** — client-only, SQL не нужен; **Wheel admin config (F-011)** — SQL применён, LIVE-верифицирован.
 
 ## Current Branch
 
@@ -16,7 +17,14 @@
 
 ## Last Completed Task
 
-### Wheel coupon на checkout — самостоятельная награда, независимая от окна колеса (F-012)
+### LAV-BUG-056 — long-idle mobile freeze / broken navigation (root fix of transient auth-null race)
+
+- **Симптом:** после долгого фона тапы по товару не открывают Product Page, checkout уходит на /cart/home, тапы «съедаются»; refresh/активность лечит; свежая сессия не воспроизводит.
+- **Root cause:** транзиентный `SIGNED_OUT`→`SIGNED_IN` на resume делал `user` null на миг → `accountId A→null→A` → `ShopContext` опустошал корзину, `CheckoutPage` empty-cart-guard редиректил. Источник в `AuthContext` (052 закрыл только home-redirect половину).
+- **Fix (client-only, RLS/RPC/security не тронуты):** grace для транзиентного null в `AuthContext` (pure `src/lib/authRecovery.js` + тесты); реальный logout/смена аккаунта работают; Wheel auto-close устаревшего модала; диагностический ring buffer `src/lib/lifecycleDiag.js`.
+- **Файлы:** `src/lib/authRecovery.js` (new), `src/lib/lifecycleDiag.js` (new), `src/context/AuthContext.jsx`, `src/context/ShopContext.jsx`, `src/pages/CheckoutPage.jsx`, `src/components/WheelOfFortune.jsx`, `src/main.jsx`, `tests/auth-recovery.test.mjs` (new), `package.json` (`npm test`). **SQL не требуется.**
+
+### (пред.) Wheel coupon на checkout — самостоятельная награда, независимая от окна колеса (F-012)
 
 - **Проблема:** раньше выигранный купон всплывал только через sessionStorage и авто-применялся; после закрытия окна колеса пользователь не понимал, где купон и действует ли он.
 - **Решение (client-only):** на mobile checkout `get_wheel_status.active_reward` (server source of truth) даёт `{code, percent, expires_at}` для account-bound, active, не истёкшего, не погашенного купона — независимо от окна. Карточка показывает код/процент/остаток срока + тумблер «Использовать» (пользователь решает сам, авто-применения нет). ON → `validate_promo` → скидка в Order Summary; OFF → снимается. Стек запрещён (единый `appliedPromo`) — включение купона заменяет ручной промокод. Истёкший не показывается; expiry-guard снимает скидку и показывает сообщение; сервер тоже отклонит. После заказа redemption фиксируется server-side → купон больше не предлагается.
@@ -33,8 +41,9 @@
 
 ## Last Verified Checks
 
-- **Build:** `npm run build` — успешно (0 ошибок).
-- **Логика купон-карточки (детерминированный тест, реальный `previewDiscount`) — 14/14:** показ при валидном купоне / скрытие при отсутствии и при expiry; `hoursLeft` (24ч и 2ч); toggle ON→couponApplied+скидка (5% от 49 = 2.45, total 46.55); toggle OFF→скидка 0, total 49; no-stack (ручной промо → включение купона заменяет, скидка = купон); expiry-guard (истёк+применён → снятие + `wheel_coupon_expired`).
+- **Build:** `npm run build` — успешно (0 ошибок). **`npm test`** (regression `tests/auth-recovery.test.mjs`) — **13/13**.
+- **LAV-BUG-056 (Playwright mobile, эмуляция long-idle):** цикл `hidden→offline→online→visible→pageshow` + rapid double-resume на /catalog и /product → route стабилен; `elementFromPoint` над карточкой = `A.product-name`, `tapReachesCard=true` (нет invisible overlay); клик по товару после resume → `/product/34`; нет `.wheel-backdrop`; console **0 errors**, **0 unhandled rejections**; diag ring пишет timeline (`window.__lavDiag`), без секретов; 360/390/430 без overflow.
+- **(пред.) Логика купон-карточки (детерминированный тест, реальный `previewDiscount`) — 14/14:** показ при валидном купоне / скрытие при отсутствии и при expiry; `hoursLeft` (24ч и 2ч); toggle ON→couponApplied+скидка (5% от 49 = 2.45, total 46.55); toggle OFF→скидка 0, total 49; no-stack (ручной промо → включение купона заменяет, скидка = купон); expiry-guard (истёк+применён → снятие + `wheel_coupon_expired`).
 - **Storefront (playwright-mobile 390):** checkout-модуль монтируется, console **0 errors**; главная 360/390/430 — без горизонтального overflow, 0 errors. Для гостя карточка не показывается (нет `active_reward`), ручное поле промо не тронуто.
 - **NOT VERIFIED (нет автоматизации):** видимая карточка + apply/toggle/redeem под реальной авторизованной mobile-сессией — блокировано OAuth (+ корзина требует логина). Серверные account-binding/one-use/expiry/redemption/RLS не менялись и LIVE-подтверждены ранее (F-010/F-011).
 - **(пред. LIVE, актуально):** контракт колеса 10/10, security/RLS 4/4.
@@ -65,18 +74,18 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260820-021402
+Recovery ID: R-20260820-024107
 
 1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (`/elva-laventa/`).
 2. **Описание:** магазин: каталог, корзина, checkout (`place_order`+Telegram), admin-панель, AZ/RU/EN, промокоды + Wheel of Fortune на едином discount-движке.
-3. **Текущее состояние:** wheel-купон на checkout стал самостоятельной наградой (F-012) — client-only, SQL не требуется. Ранее: admin-конфиг секторов (F-011) реализован, SQL применён, LIVE-верифицирован.
-4. **Что реализовано (эта сессия):** на mobile checkout карточка выигранного купона из `get_wheel_status.active_reward` (server source of truth, не sessionStorage), независимая от окна колеса; тумблер применения (без авто-аппл); no-stack (замена ручного промо); expiry-guard; после заказа redemption фиксируется → купон не предлагается. i18n `wheel_coupon_*`, CSS `.wheel-coupon-card`.
-5. **Последняя задача:** UX выигранного wheel-купона на checkout.
-6. **Изменённые файлы (этой сессии):** `src/pages/CheckoutPage.jsx`, `src/i18n/translations.js`, `src/styles/index.css`, docs. SQL не менялся.
-7. **Проверки:** build OK; логика купон-карточки 14/14 (show/hide, expiry, hoursLeft, toggle пересчёт, no-stack, expiry-guard); checkout монтируется, console 0 errors; главная 360/390/430 без overflow. NOT VERIFIED: видимая карточка + apply/redeem под авторизацией (OAuth недоступен; корзина требует логина).
-8. **Ограничения:** mobile scope; desktop не ломать; одна система скидок; результат колеса только server-side; frontend не выбирает reward и не считает итоговую скидку; купон account-bound/one-use/expiry — сервер; не ослаблять RLS; нет service_role во фронте.
+3. **Текущее состояние:** LAV-BUG-056 (long-idle mobile freeze) исправлен в корне — client-only, SQL не требуется. Ранее: F-012 (wheel-купон на checkout), F-011 (admin-конфиг секторов, SQL применён).
+4. **Что реализовано (эта сессия):** grace для транзиентного auth-null в `AuthContext` (pure `src/lib/authRecovery.js` + regression-тест) — транзиентный `SIGNED_OUT` на resume больше не роняет `user` → корзина/checkout не ломаются; реальный `logout()`/смена аккаунта A→B работают; `WheelOfFortune` авто-закрывает устаревший модал; `src/lib/lifecycleDiag.js` — bounded ring buffer lifecycle-событий (без секретов, `window.__lavDiag()`).
+5. **Последняя задача:** LAV-BUG-056 — long-idle mobile freeze / broken navigation, root fix.
+6. **Изменённые файлы (этой сессии):** `src/lib/authRecovery.js` (new), `src/lib/lifecycleDiag.js` (new), `src/context/AuthContext.jsx`, `src/context/ShopContext.jsx`, `src/pages/CheckoutPage.jsx`, `src/components/WheelOfFortune.jsx`, `src/main.jsx`, `tests/auth-recovery.test.mjs` (new), `package.json`, docs. SQL не менялся.
+7. **Проверки:** build OK; `npm test` 13/13; Playwright mobile long-idle эмуляция — route стабилен, tapReachesCard=true (нет overlay), навигация в товар после resume OK, нет `.wheel-backdrop`, console 0 errors/0 unhandled rejections, 360/390/430 без overflow. NOT VERIFIED: реальный OS-suspend + авторизованная сессия (за владельцем; timeline даст `window.__lavDiag()`).
+8. **Ограничения:** mobile scope; desktop не ломать; НЕ ослаблять auth/RLS/RPC/security; реальный logout и смена аккаунта A→B должны работать; frontend не выбирает reward; нет service_role во фронте; grace-окно bounded (не создавать бесконечный лимбо).
 9. **Обязательные документы:** `docs/HANDOFF.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/*`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/DECISIONS.md`, `docs/TODO.md`.
-10. **Что осталось:** опц. — владельцу проверить карточку купона на mobile под своей сессией (выиграть купон → закрыть окно → checkout → тумблер применить); решить судьбу тестового окна `16:55`.
+10. **Что осталось:** финальное подтверждение LAV-BUG-056 на реальном устройстве (авторизованный, реальный OS-suspend → возврат → тап по товару/checkout); при инциденте снять `window.__lavDiag()`. Опц.: карточка купона F-012 под mobile-сессией; судьба тестового окна `16:55`.
 11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`.
 12. **После работы:** обновить docs; commit+push; deploy (GitHub Actions не ждать и не pollить).
 
@@ -86,15 +95,16 @@ Recovery ID: R-20260820-021402
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: Wheel coupon на checkout — самостоятельная награда (server-driven get_wheel_status.active_reward), тумблер применения, no-stack, expiry-guard. Client-only, SQL не нужен.
+Current task: LAV-BUG-056 long-idle mobile freeze — root fix транзиентного auth-null race (grace в AuthContext) + Wheel stale-modal auto-close + lifecycle diagnostics. Client-only, SQL не нужен.
 Expected modified files:
-  - src/pages/CheckoutPage.jsx
-  - src/i18n/translations.js
-  - src/styles/index.css
-  - docs/HANDOFF.md, docs/DAILY.md, docs/FEATURES.md
-Git status summary: 3 файла кода + docs изменены; будет закоммичено и запушено этой сессией
+  - src/lib/authRecovery.js (new), src/lib/lifecycleDiag.js (new)
+  - src/context/AuthContext.jsx, src/context/ShopContext.jsx
+  - src/pages/CheckoutPage.jsx, src/components/WheelOfFortune.jsx, src/main.jsx
+  - tests/auth-recovery.test.mjs (new), package.json
+  - docs/HANDOFF.md, docs/BUGS.md, docs/DAILY.md, docs/TODO.md
+Git status summary: код + тесты + docs изменены; будет закоммичено и запушено этой сессией
 Documentation updated: YES
 Last verified build: vite build — успешно (0 ошибок)
-Last verified tests: логика купон-карточки — 14/14 (show/hide, expiry, hoursLeft, toggle ON/OFF пересчёт, no-stack замена, expiry-guard); checkout-модуль монтируется, console 0 errors (playwright-mobile 390); главная 360/390/430 без overflow. Видимая карточка + apply/redeem под авторизацией — NOT VERIFIED (OAuth недоступен).
+Last verified tests: npm test 13/13 (transient A→null→A стабилен, real logout clears, expiry→clear, A→B, A→null→B); Playwright mobile long-idle эмуляция — route стабилен, tapReachesCard=true (нет overlay), навигация в товар после resume OK, нет .wheel-backdrop, console 0 errors/0 unhandled rejections, 360/390/430 без overflow. Реальный OS-suspend+авторизация — NOT VERIFIED (за владельцем; window.__lavDiag() даст timeline).
 Recovery confidence: HIGH
 ```

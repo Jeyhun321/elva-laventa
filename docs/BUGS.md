@@ -1618,3 +1618,30 @@
   - [ ] **OWNER:** выполнить `supabase/promo-validate-fix.sql`; затем LIVE-проверка checkout с wheel-наградой (окно не требуется — награда уже выдана).
 - **Regression History:** 2026-08-15 — fix готов; LIVE checkout — NOT VERIFIED до запуска SQL владельцем.
 - **Notes:** Найден именно LIVE-тестом (стаб бы это скрыл). Активные wheel-награды (`WHEEL-*`) остаются валидны 24ч — можно использовать для проверки checkout после применения фикса.
+
+## LAV-BUG-056 — Mobile long-idle: транзиентный auth-null при восстановлении сессии опустошает корзину и роняет checkout-редирект (остаток «no-token → redirect race» после LAV-BUG-052)
+- **Module:** `src/context/AuthContext.jsx` (источник); каскад в `src/context/ShopContext.jsx` и `src/pages/CheckoutPage.jsx`
+- **Platform:** mobile (после background→foreground / долгого фона / tab suspension)
+- **Environment:** Production (авторизованный покупатель, реальное устройство)
+- **Priority:** P1
+- **Severity:** S2
+- **Status:** FIXED (client-only) — build+regression зелёные; финальное подтверждение на реальном устройстве за владельцем
+- **Found By:** Owner (report) + Claude Code (static race analysis)
+- **Found Date:** 2026-08-20
+- **Developer:** Claude Code
+- **Related:** продолжение [LAV-BUG-052]; закрывает смежный риск, отмеченный в Notes 052 («ShopContext кратковременно опустошает корзину → checkout → /cart»).
+- **Description:** После длительного простоя на mobile интерфейс визуально загружен, но: тапы по товару «не открывают» Product Page, переходы выглядят «съеденными», checkout внезапно уходит на /cart (и далее home). После некоторого времени активной работы/refresh — проходит. Свежая сессия баг НЕ воспроизводит.
+- **Steps to Reproduce (авторизованный):** Войти (Google) → открыть товар/корзину/checkout → надолго свернуть вкладку/заблокировать телефон (истечение access-token) → вернуться и сразу тапать/продолжать checkout.
+- **Root Cause (static analysis):** `AuthContext.onAuthStateChange` ставил `user = session?.user ?? null` на КАЖДОМ событии. На resume `autoRefreshToken` при кратком сбое recovery выдаёт транзиентный `SIGNED_OUT` (user→null), затем `SIGNED_IN`/`TOKEN_REFRESHED` (тот же id). Транзиентный null каскадит: `accountId A→null→A` → `ShopContext` реагирует на `null`, делает `setCart([])`+`loadedAccountId=null` (`visibleCart=[]`, `canChangeShop=false`) → тапы add-to-cart «съедаются», а на `/checkout` guard `lines.length===0` делает `navigate('/cart')`. LAV-BUG-052 закрыл только `AccountHomeRedirect` (A→B), но НЕ сам источник (транзиентный null в AuthContext) — это и есть оставшийся «no-token → redirect race».
+- **Fix Summary (минимальный, client-only, без изменения RLS/RPC/security):**
+  1. `src/lib/authRecovery.js` (new, pure+tested): `decideAuthAction` (adopt/clear/defer) + `resolveDeferred` + bounded `AUTH_RECOVERY_GRACE_MS=2000`.
+  2. `AuthContext`: событие с юзером → мгновенно adopt (и отмена pending-clear); user-initiated `logout()` (флаг) → мгновенный clear; НЕ user-initiated null → defer на grace-окно, затем подтверждение через `getSession()` (recovered→keep, gone→clear). Реальный logout и смена аккаунта A→B работают как прежде; бесконечного лимбо нет.
+  3. `WheelOfFortune`: auto-close устаревшего модала, если окно колеса закончилось пока модал открыт (нет выигрыша/не крутим) — чтобы backdrop не висел поверх витрины после возврата из фона.
+  4. Диагностика: `src/lib/lifecycleDiag.js` (new) — ограниченный ring buffer (60, sessionStorage) lifecycle-событий (visibility/online/auth/shop-sync/auth-resolve/checkout-redirect), без токенов/секретов; timeline читается через `window.__lavDiag()`; консоль молчит, если `localStorage.elva_diag!=='1'`. Для точного разбора СЛЕДУЮЩЕГО реального инцидента.
+- **Fix Verification checklist:**
+  - [x] `vite build` — успешно; `npm test` (regression `tests/auth-recovery.test.mjs`) — 13/13 (A→null→A остаётся A; ранний SIGNED_IN отменяет clear; реальный logout чистит сразу; истечение → defer→clear; A→B; A→null→B).
+  - [x] Playwright mobile (эмуляция long-idle: hidden→offline→online→visible→pageshow, rapid double-resume): route стабилен на /catalog и /product; тап достигает карточки товара (`elementFromPoint` → `A.product-name`, `tapReachesCard=true`); навигация в товар после resume работает; НЕТ `.wheel-backdrop`/invisible overlay; console 0 errors, 0 unhandled rejections; diag ring пишет timeline (`window.__lavDiag`).
+  - [x] Нет горизонтального overflow на 360/390/430.
+  - [ ] **Real device (за владельцем):** авторизованный Google-покупатель, реальный OS tab-suspension → возврат → тап по товару открывает товар; checkout не уходит на home; корзина/аккаунт целы. Playwright не воспроизводит настоящий OS-suspend + авторизованную Supabase-сессию.
+- **Regression History:** 2026-08-20 — build + `npm test` (13/13) + guest playwright long-idle эмуляция — зелёные. Авторизованный resume-путь на реальном устройстве — NOT VERIFIED (за владельцем); при следующем реальном инциденте `window.__lavDiag()` даст точный timeline.
+- **Remaining Risks:** реальный OS-suspend невозможно воспроизвести без владельца; grace 2s держит `user` на 2с дольше при настоящем истечении (write'ы всё равно защищены RLS). Диагностика ограничена (60 событий, sessionStorage) и не логирует секреты.
