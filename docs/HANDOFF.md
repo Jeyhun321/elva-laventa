@@ -2,14 +2,13 @@
 
 ## Current Status
 
-**Wheel of Fortune — финальная админ-конфигурация секторов: реализовано, SQL применён, LIVE-верифицировано (серверный контракт + security + client).** Admin полностью управляет колесом: проценты, веса, статус (ACTIVE / DISPLAY ONLY), видимость и **явный** показ замка.
+**Wheel coupon на checkout — выигрыш стал самостоятельной наградой аккаунта (F-012).** Купон живёт до `expires_at`/использования независимо от окна колеса; на mobile checkout показывается карточка с кодом/процентом/сроком и тумблером «Использовать» (без авто-применения). SQL не требуется — используется существующий `get_wheel_status.active_reward` + promo-движок; security/RLS не тронуты.
 
-- **Миграция `supabase/wheel-config-status-lock.sql` — ПРИМЕНЕНА владельцем и активна.** `get_wheel_public_config()` возвращает `sectors:[{percent,active,show_lock}]` (7 секторов: 5/10/15 active, 20/30/40/50 display_only с `show_lock:true`), achievable `rewards=[5,10,15]`.
-- **LIVE-проверено (anon, боевой Supabase):** контракт 10/10 (show_lock присутствует, dynamic count=7, display_only исключён из achievable, веса скрыты); security 4/4 (anon не может spin/select/update wheel_config/insert promo).
-- **Клиент:** build OK; storefront boot playwright-mobile на 360/390/430 — console 0 errors, все RPC 200, горизонтального overflow нет; `get_wheel_public_config` фетчится на загрузке + 60с-poll (config update без ручного refresh).
-- **Валидация (детерминированный тест логики WheelPanel.save):** дубли процентов, percent≤0/>100, отрицательный вес, ACTIVE с невалидным весом, конфиг без ACTIVE — все отклоняются.
+- **Реализовано (client-only):** server-driven `wheelReward` (source of truth — сервер, не sessionStorage), `toggleCoupon`, expiry-guard, карточка купона; удалён старый sessionStorage-автоаппл. i18n AZ/RU/EN `wheel_coupon_*`. CSS `.wheel-coupon-card`.
+- **Проверено:** build OK; детерминированный тест логики карточки — **14/14** (показ/скрытие по валидности и expiry, hoursLeft, toggle ON/OFF пересчёт, no-stack замена ручного промо, expiry-guard); storefront (playwright-mobile 390) — checkout-модуль монтируется, console 0 errors; главная 360/390/430 без overflow.
+- **NOT VERIFIED (нет автоматизации):** видимая карточка + apply/redeem под реальной авторизованной mobile-сессией — блокировано OAuth (+ корзина требует логина). Серверные one-use/expiry/redemption/RLS не менялись и LIVE-подтверждены ранее.
 
-**Кода не менял — реализация корректна. Осталось только UI-driven (нужна admin-сессия) и живой spin (окно закрыто).** См. «Known Issues».
+Предыдущее (актуально): **Wheel admin config (F-011)** — SQL `wheel-config-status-lock.sql` применён и LIVE-верифицирован (контракт 10/10, security 4/4).
 
 ## Current Branch
 
@@ -17,7 +16,13 @@
 
 ## Last Completed Task
 
-### Wheel: полная админ-конфигурация секторов (status ACTIVE/DISPLAY ONLY + явный показ замка)
+### Wheel coupon на checkout — самостоятельная награда, независимая от окна колеса (F-012)
+
+- **Проблема:** раньше выигранный купон всплывал только через sessionStorage и авто-применялся; после закрытия окна колеса пользователь не понимал, где купон и действует ли он.
+- **Решение (client-only):** на mobile checkout `get_wheel_status.active_reward` (server source of truth) даёт `{code, percent, expires_at}` для account-bound, active, не истёкшего, не погашенного купона — независимо от окна. Карточка показывает код/процент/остаток срока + тумблер «Использовать» (пользователь решает сам, авто-применения нет). ON → `validate_promo` → скидка в Order Summary; OFF → снимается. Стек запрещён (единый `appliedPromo`) — включение купона заменяет ручной промокод. Истёкший не показывается; expiry-guard снимает скидку и показывает сообщение; сервер тоже отклонит. После заказа redemption фиксируется server-side → купон больше не предлагается.
+- **Файлы:** `src/pages/CheckoutPage.jsx`, `src/i18n/translations.js`, `src/styles/index.css`. **SQL не требуется.**
+
+### (пред.) Wheel: полная админ-конфигурация секторов (status ACTIVE/DISPLAY ONLY + явный показ замка)
 
 - **Data model:** каждый reward = `{ percent, weight, status, show_lock }`. `status='active'` (участвует, нужен weight>0) или `display_only` (виден, сервер не выбирает). `show_lock` — Admin явно управляет иконкой замка (не из weight).
 - **Admin (WheelPanel):** строка сектора = Скидка % / Вес / Статус (select ACTIVE·DISPLAY ONLY) / Замок (toggle, скрыт=disabled для ACTIVE) / удалить. Кнопка «Добавить скидку». Валидация перед сохранением (percent 1..100, вес ≥0, без дублей, ACTIVE→weight>0, ≥1 ACTIVE).
@@ -26,14 +31,13 @@
 - **UX-доработка (client-only):** в WheelPanel вес сам управляет статусом — ввод `0` → авто DISPLAY ONLY, ввод `> 0` → авто ACTIVE (замок снимается); поле «Вес» всегда редактируемо; убрано «Save не проходит» при ACTIVE+weight0; отрицательный вес отклоняется валидацией (`setWeight` в `src/pages/AdminPage.jsx`).
 - **Файлы:** `supabase/wheel-config-status-lock.sql` (new), `src/pages/AdminPage.jsx`, `src/components/WheelOfFortune.jsx`, `src/components/Icons.jsx`, `src/styles/index.css`.
 
-## Last Verified Checks (LIVE, боевой Supabase, SQL применён)
+## Last Verified Checks
 
-- **Серверный контракт (anon RPC) — 10/10:** `get_wheel_public_config.sectors` = `{percent,active,show_lock}`; 7 секторов; active=5/10/15, display_only=20/30/40/50 (`show_lock:true`); achievable `rewards=[5,10,15]` (display_only исключён тем же предикатом, что и `spin_wheel`); веса скрыты.
-- **Security/RLS — 4/4:** anon `spin_wheel`→AUTH_REQUIRED; anon SELECT `wheel_config`→0 строк; anon UPDATE `wheel_config`→0 строк; anon INSERT `promo_codes`→RLS-запрет.
-- **Storefront (playwright-mobile 360/390/430):** console **0 errors**; все RPC 200 (`get_wheel_public_config`, `get_wheel_status`, products/categories); горизонтального overflow нет; config фетчится на загрузке + 60с-poll.
-- **Валидация (тест логики WheelPanel.save):** дубли percent, percent≤0/>100, отрицательный вес, ACTIVE с невалидным весом, конфиг без ACTIVE — все отклонены.
-- **Build:** `npm run build` — успешно (прошлая сессия). Lint — скрипта нет.
-- **NOT VERIFIED (нет автоматизации):** UI-driven admin add/delete/status/weight/showLock round-trip (нужна OAuth admin-сессия; claude-in-chrome не подключён); живой `spin_wheel` (все окна закрыты, Баку 21:26). Живой admin-write в `wheel_config` косвенно подтверждён: владелец добавил окно `16:55`, оно видно в live-конфиге.
+- **Build:** `npm run build` — успешно (0 ошибок).
+- **Логика купон-карточки (детерминированный тест, реальный `previewDiscount`) — 14/14:** показ при валидном купоне / скрытие при отсутствии и при expiry; `hoursLeft` (24ч и 2ч); toggle ON→couponApplied+скидка (5% от 49 = 2.45, total 46.55); toggle OFF→скидка 0, total 49; no-stack (ручной промо → включение купона заменяет, скидка = купон); expiry-guard (истёк+применён → снятие + `wheel_coupon_expired`).
+- **Storefront (playwright-mobile 390):** checkout-модуль монтируется, console **0 errors**; главная 360/390/430 — без горизонтального overflow, 0 errors. Для гостя карточка не показывается (нет `active_reward`), ручное поле промо не тронуто.
+- **NOT VERIFIED (нет автоматизации):** видимая карточка + apply/toggle/redeem под реальной авторизованной mobile-сессией — блокировано OAuth (+ корзина требует логина). Серверные account-binding/one-use/expiry/redemption/RLS не менялись и LIVE-подтверждены ранее (F-010/F-011).
+- **(пред. LIVE, актуально):** контракт колеса 10/10, security/RLS 4/4.
 
 ## Current Architecture Notes
 
@@ -61,18 +65,18 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260820-015240
+Recovery ID: R-20260820-021402
 
 1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (`/elva-laventa/`).
 2. **Описание:** магазин: каталог, корзина, checkout (`place_order`+Telegram), admin-панель, AZ/RU/EN, промокоды + Wheel of Fortune на едином discount-движке.
-3. **Текущее состояние:** полная админ-конфигурация секторов колеса РЕАЛИЗОВАНА, SQL ПРИМЕНЁН, серверный контракт + security + client LIVE-верифицированы. Кода в этой сессии не менял.
-4. **Что реализовано:** data model reward = `{percent,weight,status,show_lock}`; Admin WheelPanel (status-select, lock-toggle, валидация, «Добавить скидку»); `spin_wheel` выбирает только active+weight>0 (display_only исключён даже при weight>0); `get_wheel_public_config.sectors` c `show_lock`; витрина строит сектора из конфига, замок = SVG IconLock, live-конфиг (60с+visibility).
-5. **Последняя задача:** LIVE-верификация конфигурации колеса (контракт 10/10, security 4/4, валидация, mobile 360/390/430, console/network чисто).
-6. **Изменённые файлы (этой сессии):** только docs (HANDOFF/DAILY). Код — без изменений (реализация корректна). Предыдущий feature-коммит `88b99aa`.
-7. **Проверки:** get_wheel_public_config — sectors с show_lock, 7 секторов, achievable=[5,10,15]; anon не может spin/select/update/insert (RLS); storefront 360/390/430 — 0 console errors, RPC 200, нет overflow; валидация отклоняет дубли/percent≤0/>100/neg weight/ACTIVE-без-веса/без-ACTIVE. NOT VERIFIED (нет автоматизации): UI-driven admin add/delete/status/showLock round-trip и живой spin (окна закрыты).
-8. **Ограничения:** mobile scope; desktop не ломать; одна система скидок; результат колеса только server-side; frontend не выбирает reward; display_only никогда не выигрывает; не ослаблять RLS; нет service_role во фронте; не `?forceWheel=`.
+3. **Текущее состояние:** wheel-купон на checkout стал самостоятельной наградой (F-012) — client-only, SQL не требуется. Ранее: admin-конфиг секторов (F-011) реализован, SQL применён, LIVE-верифицирован.
+4. **Что реализовано (эта сессия):** на mobile checkout карточка выигранного купона из `get_wheel_status.active_reward` (server source of truth, не sessionStorage), независимая от окна колеса; тумблер применения (без авто-аппл); no-stack (замена ручного промо); expiry-guard; после заказа redemption фиксируется → купон не предлагается. i18n `wheel_coupon_*`, CSS `.wheel-coupon-card`.
+5. **Последняя задача:** UX выигранного wheel-купона на checkout.
+6. **Изменённые файлы (этой сессии):** `src/pages/CheckoutPage.jsx`, `src/i18n/translations.js`, `src/styles/index.css`, docs. SQL не менялся.
+7. **Проверки:** build OK; логика купон-карточки 14/14 (show/hide, expiry, hoursLeft, toggle пересчёт, no-stack, expiry-guard); checkout монтируется, console 0 errors; главная 360/390/430 без overflow. NOT VERIFIED: видимая карточка + apply/redeem под авторизацией (OAuth недоступен; корзина требует логина).
+8. **Ограничения:** mobile scope; desktop не ломать; одна система скидок; результат колеса только server-side; frontend не выбирает reward и не считает итоговую скидку; купон account-bound/one-use/expiry — сервер; не ослаблять RLS; нет service_role во фронте.
 9. **Обязательные документы:** `docs/HANDOFF.md`, `START.md`, `CLAUDE.md`, `AGENTS.md`, `AI_WORKFLOW.md`, `.claude/*`, `docs/BUGS.md`, `docs/FEATURES.md`, `docs/DECISIONS.md`, `docs/TODO.md`.
-10. **Что осталось:** опц. UI-driven live-проверка владельцем в Admin; решить судьбу тестового окна `16:55`.
+10. **Что осталось:** опц. — владельцу проверить карточку купона на mobile под своей сессией (выиграть купон → закрыть окно → checkout → тумблер применить); решить судьбу тестового окна `16:55`.
 11. **Первый шаг:** прочитать `docs/HANDOFF.md`, `git status`, `git log -3`.
 12. **После работы:** обновить docs; commit+push; deploy (GitHub Actions не ждать и не pollить).
 
@@ -82,13 +86,15 @@ Recovery ID: R-20260820-015240
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: Wheel admin UX — weight drives status (0→DISPLAY ONLY, >0→ACTIVE), no more "Save fails" on ACTIVE+weight0. Client-only fix in AdminPage.jsx.
+Current task: Wheel coupon на checkout — самостоятельная награда (server-driven get_wheel_status.active_reward), тумблер применения, no-stack, expiry-guard. Client-only, SQL не нужен.
 Expected modified files:
-  - src/pages/AdminPage.jsx (WheelPanel setWeight + always-editable weight)
+  - src/pages/CheckoutPage.jsx
+  - src/i18n/translations.js
+  - src/styles/index.css
   - docs/HANDOFF.md, docs/DAILY.md, docs/FEATURES.md
-Git status summary: AdminPage.jsx + docs изменены; будет закоммичено и запушено этой сессией
+Git status summary: 3 файла кода + docs изменены; будет закоммичено и запушено этой сессией
 Documentation updated: YES
 Last verified build: vite build — успешно (0 ошибок)
-Last verified tests: логика setWeight/setStatus/validate — 12/12 (сценарий 30%→weight0→DISPLAY ONLY→обратно ACTIVE, negative→reject, empty→clear err); /admin монтируется без ошибок (playwright-mobile). Ранее LIVE: contract 10/10, security 4/4, mobile 360-430 чисто.
+Last verified tests: логика купон-карточки — 14/14 (show/hide, expiry, hoursLeft, toggle ON/OFF пересчёт, no-stack замена, expiry-guard); checkout-модуль монтируется, console 0 errors (playwright-mobile 390); главная 360/390/430 без overflow. Видимая карточка + apply/redeem под авторизацией — NOT VERIFIED (OAuth недоступен).
 Recovery confidence: HIGH
 ```

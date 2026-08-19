@@ -1665,6 +1665,23 @@ a.product-name::after {
   background: var(--lavender-mist, rgba(229, 57, 154, 0.08));
   border: 1px solid rgba(229, 57, 154, 0.25);
 }
+
+/* Выигранный купон колеса — компактная карточка-подсказка на mobile checkout */
+.wheel-coupon-card {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 14px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(229, 57, 154, 0.10), rgba(179, 21, 95, 0.06));
+  border: 1px solid rgba(229, 57, 154, 0.28);
+}
+.wheel-coupon-card.applied { border-color: rgba(179, 21, 95, 0.55); background: linear-gradient(135deg, rgba(229, 57, 154, 0.16), rgba(179, 21, 95, 0.10)); }
+.wheel-coupon-head { display: flex; align-items: center; gap: 10px; }
+.wheel-coupon-gift { font-size: 1.4rem; line-height: 1; flex: 0 0 auto; }
+.wheel-coupon-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wheel-coupon-title { font-size: 0.92rem; color: var(--ink, #2b1f27); }
+.wheel-coupon-code { font-weight: 800; color: var(--plum); letter-spacing: 0.05em; font-size: 0.98rem; }
+.wheel-coupon-meta { font-size: 0.8rem; color: var(--muted, #7a6c74); }
+.wheel-coupon-amount { margin-left: auto; align-self: flex-start; font-weight: 800; color: var(--plum); white-space: nowrap; }
+.wheel-coupon-toggle { gap: 8px; margin: 0; }
 .promo-applied-code { font-weight: 700; color: var(--plum); letter-spacing: 0.03em; }
 .promo-applied-amount { margin-left: auto; font-weight: 700; color: var(--plum); }
 .promo-remove-btn {

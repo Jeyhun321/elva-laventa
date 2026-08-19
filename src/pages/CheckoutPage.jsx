@@ -6,12 +6,12 @@ import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { createOrder } from '../lib/orders.js'
 import { validatePromo, previewDiscount, promoErrorKey } from '../lib/promo.js'
+import { getWheelStatus } from '../lib/wheel.js'
+import useMediaQuery from '../hooks/useMediaQuery.js'
 import { CURRENCY } from '../config.js'
 import ProductImage from '../components/ProductImage.jsx'
 
 const BUYER_KEY = 'elva_buyer'
-// Wheel reward: код кладётся сюда после выигрыша, checkout его подхватывает.
-const WHEEL_REWARD_KEY = 'elva_wheel_reward'
 const ORDER_REDIRECT_SECONDS = 10
 // Çatdırılma üsulları (TASK 6). Ekspress üçün əlavə haqq.
 const EXPRESS_FEE = 5
@@ -65,6 +65,7 @@ export default function CheckoutPage() {
   const { cart, clearCart, markOrderCompleted } = useShop()
   const navigate = useNavigate()
   const formRef = useRef(null)
+  const isMobile = useMediaQuery('(max-width: 900px)')
 
   const [buyer, setBuyer] = useState(() => {
     // Bütün sahələr həmişə mövcud olsun — köhnə yaddaşda phoneCall olmaya bilər
@@ -90,7 +91,10 @@ export default function CheckoutPage() {
   const [appliedPromo, setAppliedPromo] = useState(null) // {code, discountType, discountValue}
   const [promoBusy, setPromoBusy] = useState(false)
   const [promoErr, setPromoErr] = useState('') // i18n-ключ
-  const promoAutoTried = useRef(false)
+  // Выигранный купон колеса — САМОСТОЯТЕЛЬНАЯ награда аккаунта, живёт до expiry/использования
+  // НЕЗАВИСИМО от окна колеса. Source of truth — сервер (get_wheel_status.active_reward),
+  // не sessionStorage. {code, percent, expires_at}. null — активной награды нет.
+  const [wheelReward, setWheelReward] = useState(null)
 
   const lines = cart
     .map((item) => ({ item, product: getProduct(item.id) }))
@@ -107,6 +111,20 @@ export default function CheckoutPage() {
   // Çatdırılma haqqı və yekun (avtomatik yenilənir)
   const deliveryFee = delivery === 'express' ? EXPRESS_FEE : 0
   const grandTotal = Math.max(0, total - discount) + deliveryFee
+
+  // Купон колеса доступен, только если он ещё не истёк (сервер уже отдаёт лишь
+  // active/не-погашенные, но подстрахуемся на случай истечения прямо на странице).
+  const rewardExpired = wheelReward?.expires_at
+    ? new Date(wheelReward.expires_at).getTime() <= Date.now()
+    : false
+  const availableReward = wheelReward && !rewardExpired ? wheelReward : null
+  const hoursLeft = availableReward?.expires_at
+    ? Math.max(0, Math.ceil((new Date(availableReward.expires_at).getTime() - Date.now()) / 3600000))
+    : null
+  // Купон применён именно как награда колеса (а не ручной промокод с тем же кодом)
+  const couponApplied = Boolean(
+    availableReward && appliedPromo && appliedPromo.code === availableReward.code,
+  )
 
   const applyPromo = async (rawCode) => {
     const code = String(rawCode ?? promoInput).trim()
@@ -130,18 +148,42 @@ export default function CheckoutPage() {
     setAppliedPromo(null)
     setPromoErr('')
     setPromoInput('')
-    try { sessionStorage.removeItem(WHEEL_REWARD_KEY) } catch { /* ignore */ }
   }
 
-  // Выигрыш колеса: код лежит в sessionStorage — подхватываем и авто-применяем один раз.
+  // Включатель купона колеса: пользователь САМ решает применять или нет.
+  // ON → trusted-валидация и применение (заменяет ручной промокод, т.к. стек запрещён);
+  // OFF → снимаем скидку. Никакого авто-применения без выбора пользователя.
+  const toggleCoupon = (on) => {
+    if (on) {
+      if (availableReward?.code) applyPromo(availableReward.code)
+    } else {
+      removePromo()
+    }
+  }
+
+  // Активная награда колеса — с сервера (source of truth), НЕ из sessionStorage.
+  // Не зависит от текущего окна колеса: показываем, пока купон валиден и не погашен.
+  // Перечитываем при входе/логине и возврате на вкладку (после refresh/relogin купон
+  // снова появится). place_order фиксирует redemption → на следующем checkout не вернётся.
   useEffect(() => {
-    if (promoAutoTried.current || loading || catalogLoading || lines.length === 0) return
-    let code = ''
-    try { code = sessionStorage.getItem(WHEEL_REWARD_KEY) || '' } catch { /* ignore */ }
-    promoAutoTried.current = true
-    if (code) applyPromo(code)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, catalogLoading, lines.length])
+    if (loading || !isSignedIn || !isMobile) { setWheelReward(null); return undefined }
+    let alive = true
+    const refresh = () => { getWheelStatus().then((s) => { if (alive) setWheelReward(s?.active_reward || null) }).catch(() => {}) }
+    refresh()
+    const onVis = () => { if (document.visibilityState === 'visible') refresh() }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { alive = false; document.removeEventListener('visibilitychange', onVis) }
+  }, [isSignedIn, loading, isMobile])
+
+  // Если купон истёк прямо на странице, а он был применён — снимаем скидку и
+  // показываем понятное сообщение (сервер тоже отклонит его при заказе).
+  useEffect(() => {
+    if (rewardExpired && wheelReward && appliedPromo?.code === wheelReward.code) {
+      setAppliedPromo(null)
+      setPromoInput('')
+      setPromoErr('wheel_coupon_expired')
+    }
+  }, [rewardExpired, wheelReward, appliedPromo])
 
   useEffect(() => {
     // Səbət boşdursa, həm qonaq, həm girişli alıcı səbətə qaytarılır.
@@ -262,9 +304,6 @@ export default function CheckoutPage() {
 
       if (remember) localStorage.setItem(BUYER_KEY, JSON.stringify(buyer))
       else localStorage.removeItem(BUYER_KEY)
-
-      // Успех: выигрыш колеса больше не нужен в сессии.
-      try { sessionStorage.removeItem(WHEEL_REWARD_KEY) } catch { /* ignore */ }
 
       setDone(order)
       await clearCart()
@@ -431,8 +470,43 @@ export default function CheckoutPage() {
 
           {/* Promokod — единый discount-движок. Скидку считает сервер; здесь preview. */}
           <div className="promo-box">
+            {/* Выигранный купон колеса: самостоятельная награда аккаунта. Живёт до
+                expiry/использования независимо от окна колеса. Пользователь сам решает
+                применять (toggle) — авто-применения нет. */}
+            {isMobile && availableReward && (
+              <div className={`wheel-coupon-card${couponApplied ? ' applied' : ''}`}>
+                <div className="wheel-coupon-head">
+                  <span className="wheel-coupon-gift" aria-hidden="true">🎁</span>
+                  <div className="wheel-coupon-info">
+                    <b className="wheel-coupon-title">{t('wheel_coupon_title')}</b>
+                    <span className="wheel-coupon-code">{availableReward.code}</span>
+                    <span className="wheel-coupon-meta">
+                      {t('wheel_coupon_discount').replace('{percent}', availableReward.percent)}
+                      {hoursLeft != null && (
+                        <> · {hoursLeft > 0
+                          ? t('wheel_coupon_expires_hours').replace('{hours}', hoursLeft)
+                          : t('wheel_coupon_expires_soon')}</>
+                      )}
+                    </span>
+                  </div>
+                  {couponApplied && (
+                    <span className="wheel-coupon-amount">−{discount} {CURRENCY}</span>
+                  )}
+                </div>
+                <label className="checkbox-row wheel-coupon-toggle">
+                  <input
+                    type="checkbox"
+                    checked={couponApplied}
+                    disabled={promoBusy}
+                    onChange={(e) => toggleCoupon(e.target.checked)}
+                  />
+                  <span>{t('wheel_coupon_use')}</span>
+                </label>
+              </div>
+            )}
+
             <span className="checkout-h3 promo-box-title">{t('promo_title')}</span>
-            {appliedPromo ? (
+            {appliedPromo && !couponApplied ? (
               <div className="promo-applied">
                 <span className="promo-applied-code">✓ {appliedPromo.code}</span>
                 <span className="promo-applied-amount">−{discount} {CURRENCY}</span>
@@ -440,7 +514,7 @@ export default function CheckoutPage() {
                   {t('promo_remove')}
                 </button>
               </div>
-            ) : (
+            ) : !couponApplied ? (
               <div className="promo-row">
                 <input
                   className="promo-input"
@@ -461,7 +535,7 @@ export default function CheckoutPage() {
                   {promoBusy ? '…' : t('promo_apply')}
                 </button>
               </div>
-            )}
+            ) : null}
             {promoErr && <em className="fld-err">{t(promoErr)}</em>}
             {appliedPromo && <em className="fld-note">{t('promo_only_one')}</em>}
           </div>

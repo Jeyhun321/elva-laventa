@@ -344,9 +344,9 @@ export const ui = {
   },
   wheel_use_reward: { az: 'Endirimi istifadə et', ru: 'Использовать скидку', en: 'Use discount' },
   wheel_reward_hint: {
-    az: 'Kod ödənişdə avtomatik tətbiq olunacaq.',
-    ru: 'Код автоматически применится при оформлении.',
-    en: 'The code will apply automatically at checkout.',
+    az: 'Kupon hesabınıza bağlandı — ödənişdə istifadə edə bilərsiniz.',
+    ru: 'Купон привязан к аккаунту — примените его при оформлении.',
+    en: 'The coupon is saved to your account — apply it at checkout.',
   },
   wheel_error: { az: 'Xəta baş verdi. Yenidən cəhd edin.', ru: 'Произошла ошибка. Попробуйте ещё раз.', en: 'Something went wrong. Try again.' },
   wheel_closed: {
@@ -355,6 +355,30 @@ export const ui = {
     en: 'The wheel is not available right now. Wait for the next window.',
   },
   wheel_locked: { az: 'Hələ əlçatan deyil', ru: 'Пока недоступно', en: 'Locked for now' },
+
+  // --- Wheel купон на checkout (выигранная награда, независимо от окна колеса) ---
+  wheel_coupon_title: {
+    az: 'Sizin endirim kuponunuz var',
+    ru: 'У вас есть купон на скидку',
+    en: 'You have a discount coupon',
+  },
+  wheel_coupon_use: { az: 'Kupondan istifadə et', ru: 'Использовать купон', en: 'Use coupon' },
+  wheel_coupon_discount: { az: '{percent}% endirim', ru: 'скидка {percent}%', en: '{percent}% off' },
+  wheel_coupon_expires_hours: {
+    az: '{hours} saat ərzində istifadə edə bilərsiniz',
+    ru: 'Можно использовать ещё {hours} ч',
+    en: 'Valid for {hours} more hours',
+  },
+  wheel_coupon_expires_soon: {
+    az: 'Bu gün müddəti bitir',
+    ru: 'Истекает сегодня',
+    en: 'Expires today',
+  },
+  wheel_coupon_expired: {
+    az: 'Kuponun istifadə müddəti bitib.',
+    ru: 'Срок действия купона истёк.',
+    en: 'The coupon has expired.',
+  },
   nothing_found: {
     az: 'Heç nə tapılmadı',
     ru: 'Ничего не найдено',
