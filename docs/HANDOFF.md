@@ -23,6 +23,7 @@
 - **Admin (WheelPanel):** строка сектора = Скидка % / Вес / Статус (select ACTIVE·DISPLAY ONLY) / Замок (toggle, скрыт=disabled для ACTIVE) / удалить. Кнопка «Добавить скидку». Валидация перед сохранением (percent 1..100, вес ≥0, без дублей, ACTIVE→weight>0, ≥1 ACTIVE).
 - **Server:** `spin_wheel` суммирует/выбирает только active+weight>0 (display_only исключён всегда, даже при weight>0). `get_wheel_public_config` отдаёт `sectors:[{percent,active,show_lock}]` без весов. Обратная совместимость для старых наград без полей.
 - **Storefront (mobile):** сектора строятся полностью из серверного конфига; замок = аккуратная SVG `IconLock` (не emoji); конфиг перечитывается 60с + on visibility (правки Admin без manual refresh, без `location.reload()`).
+- **UX-доработка (client-only):** в WheelPanel вес сам управляет статусом — ввод `0` → авто DISPLAY ONLY, ввод `> 0` → авто ACTIVE (замок снимается); поле «Вес» всегда редактируемо; убрано «Save не проходит» при ACTIVE+weight0; отрицательный вес отклоняется валидацией (`setWeight` в `src/pages/AdminPage.jsx`).
 - **Файлы:** `supabase/wheel-config-status-lock.sql` (new), `src/pages/AdminPage.jsx`, `src/components/WheelOfFortune.jsx`, `src/components/Icons.jsx`, `src/styles/index.css`.
 
 ## Last Verified Checks (LIVE, боевой Supabase, SQL применён)
@@ -60,7 +61,7 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260820-013127
+Recovery ID: R-20260820-015240
 
 1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (`/elva-laventa/`).
 2. **Описание:** магазин: каталог, корзина, checkout (`place_order`+Telegram), admin-панель, AZ/RU/EN, промокоды + Wheel of Fortune на едином discount-движке.
@@ -81,12 +82,13 @@ Recovery ID: R-20260820-013127
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: Wheel full admin config — SQL applied & LIVE verified (contract 10/10, security 4/4, validation, mobile 360-430). No code changes this session.
+Current task: Wheel admin UX — weight drives status (0→DISPLAY ONLY, >0→ACTIVE), no more "Save fails" on ACTIVE+weight0. Client-only fix in AdminPage.jsx.
 Expected modified files:
-  - docs/HANDOFF.md, docs/DAILY.md (docs only; code unchanged)
-Git status summary: только docs изменены; код без изменений, будет закоммичено этой сессией
+  - src/pages/AdminPage.jsx (WheelPanel setWeight + always-editable weight)
+  - docs/HANDOFF.md, docs/DAILY.md, docs/FEATURES.md
+Git status summary: AdminPage.jsx + docs изменены; будет закоммичено и запушено этой сессией
 Documentation updated: YES
-Last verified build: vite build — успешно (0 ошибок) [прошлая сессия]
-Last verified tests: LIVE anon contract 10/10 + security 4/4; storefront 360/390/430 console 0 errors, RPC 200, no overflow; validation logic 10/10. UI-driven admin writes + живой spin — NOT VERIFIED (нет автоматизации/окно закрыто).
+Last verified build: vite build — успешно (0 ошибок)
+Last verified tests: логика setWeight/setStatus/validate — 12/12 (сценарий 30%→weight0→DISPLAY ONLY→обратно ACTIVE, negative→reject, empty→clear err); /admin монтируется без ошибок (playwright-mobile). Ранее LIVE: contract 10/10, security 4/4, mobile 360-430 чисто.
 Recovery confidence: HIGH
 ```

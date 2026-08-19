@@ -822,6 +822,24 @@ function WheelPanel({ onNotify }) {
       return { ...r, status: 'display_only', weight: 0 }
     }),
   }))
+  // Ввод веса сам управляет статусом (удобное поведение, без «Save не проходит»):
+  //  вес = 0  → сектор автоматически DISPLAY ONLY (виден, но сервер его не выбирает);
+  //  вес > 0  → сектор автоматически ACTIVE (участвует), замок снимается;
+  //  пусто / «-» / отрицательный ввод — сохраняем как есть, статус не трогаем;
+  //  отрицательный вес отклонит валидация при сохранении.
+  const setWeight = (i, raw) => setCfg((c) => ({
+    ...c,
+    rewards: c.rewards.map((r, j) => {
+      if (j !== i) return r
+      const s = String(raw)
+      if (s === '' || s === '-') return { ...r, weight: s }
+      const n = Number(s)
+      if (!Number.isFinite(n)) return { ...r, weight: s }
+      if (n === 0) return { ...r, weight: 0, status: 'display_only' }
+      if (n > 0) return { ...r, weight: s, status: 'active', show_lock: false }
+      return { ...r, weight: s }
+    }),
+  }))
   const addReward = () => setCfg((c) => ({
     ...c, rewards: [...(c.rewards || []), { percent: 10, weight: 0, status: 'display_only', show_lock: false }],
   }))
@@ -927,6 +945,7 @@ function WheelPanel({ onNotify }) {
         <p className="admin-sub">
           <b>ACTIVE</b> — сектор виден и участвует в розыгрыше (нужен вес &gt; 0). Вероятность = вес / сумма активных весов.<br />
           <b>DISPLAY ONLY</b> — сектор виден на колесе, но сервер его НИКОГДА не выбирает.<br />
+          Вес <b>0</b> автоматически делает сектор DISPLAY ONLY; вес <b>&gt; 0</b> — ACTIVE. Статус можно переключить и вручную.<br />
           <b>Показывать замок</b> — управляет иконкой замка у сектора (только для DISPLAY ONLY).
         </p>
         {(cfg.rewards || []).map((r, i) => {
@@ -939,8 +958,8 @@ function WheelPanel({ onNotify }) {
                   onChange={(e) => setReward(i, { percent: e.target.value })} />
               </label>
               <label className="fld"><span>Вес</span>
-                <input type="number" min="0" value={r.weight} disabled={!isActive}
-                  onChange={(e) => setReward(i, { weight: e.target.value })} />
+                <input type="number" min="0" value={r.weight}
+                  onChange={(e) => setWeight(i, e.target.value)} />
               </label>
               <label className="fld"><span>Статус</span>
                 <select value={status} onChange={(e) => setStatus(i, e.target.value)}>

@@ -19,6 +19,7 @@
 - **Дата:** 2026-08-20
 - **Изменённые файлы:** `supabase/wheel-config-status-lock.sql` (new, idempotent), `src/pages/AdminPage.jsx` (WheelPanel: status/lock/валидация), `src/components/WheelOfFortune.jsx` (sectors show_lock + live-конфиг + IconLock), `src/components/Icons.jsx` (IconLock), `src/styles/index.css` (сетка строки + `.wheel-lock-ico`).
 - **Связанные задачи:** продолжение F-010; OWNER должен выполнить `supabase/wheel-config-status-lock.sql`.
+- **UX-доработка (2026-08-20):** вес сам управляет статусом сектора — ввод веса `0` автоматически переводит сектор в DISPLAY ONLY (виден, но сервер не выбирает), ввод веса `> 0` — в ACTIVE (замок снимается). Убрано «Save не проходит» при ACTIVE+weight0. Поле «Вес» всегда редактируемо; статус по-прежнему можно переключить вручную (ACTIVE ставит дефолтный вес 10). Отрицательный вес отклоняется валидацией. Файл: `src/pages/AdminPage.jsx` (WheelPanel `setWeight`).
 
 ## [F-010] Промокоды + Wheel of Fortune на едином discount-движке (Phase 2)
 - **Описание:** система скидок с единой trusted-моделью (DECISIONS #D-007).
