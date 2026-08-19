@@ -3,13 +3,23 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import useMediaQuery from '../hooks/useMediaQuery.js'
+import { IconLock } from './Icons.jsx'
 import { getWheelConfig, getWheelStatus, spinWheel, wheelErrorCode } from '../lib/wheel.js'
 
 const WHEEL_REWARD_KEY = 'elva_wheel_reward'
 const WHEEL_DISMISS_KEY = 'elva_wheel_dismissed' // окно, которое пользователь закрыл крестиком
-// Полный отображаемый набор секторов (визуал). ACTIVE (реально выпадают) приходит
-// с сервера (get_wheel_public_config.sectors / rewards). Остальные — LOCKED (показ).
-const DISPLAY_SECTORS = [5, 10, 15, 20, 30, 40, 50]
+// Fallback-набор секторов (визуал), только если сервер недоступен. Реальные
+// сектора (проценты, active, показ замка) приходят из get_wheel_public_config.sectors.
+// active=true → участвует в розыгрыше; show_lock → показывать иконку замка.
+const DISPLAY_SECTORS = [
+  { percent: 5, active: true, showLock: false },
+  { percent: 10, active: true, showLock: false },
+  { percent: 15, active: true, showLock: false },
+  { percent: 20, active: false, showLock: true },
+  { percent: 30, active: false, showLock: true },
+  { percent: 40, active: false, showLock: true },
+  { percent: 50, active: false, showLock: true },
+]
 const ACTIVE_COLORS = ['#e5399a', '#b3155f', '#f7b7d2', '#cf2879', '#f5c9de']
 const LOCKED_COLOR = '#d8ccd3'
 
@@ -36,31 +46,45 @@ export default function WheelOfFortune() {
     try { dismissedRef.current = sessionStorage.getItem(WHEEL_DISMISS_KEY) || '' } catch { /* ignore */ }
   }, [])
 
-  // Сектора для отрисовки: с сервера (sectors), иначе строим из rewards + locked.
+  // Сектора для отрисовки: полностью из серверного конфига (percent/active/show_lock).
+  // Замок управляется Admin явно (show_lock), а не выводится из active.
   const sectors = useMemo(() => {
     if (Array.isArray(config?.sectors) && config.sectors.length) {
       return [...config.sectors]
-        .map((s) => ({ percent: Number(s.percent), active: Boolean(s.active) }))
+        .map((s) => ({
+          percent: Number(s.percent),
+          active: Boolean(s.active),
+          // show_lock приходит с сервера явно (Admin). Пока SQL не применён и поля
+          // нет — сохраняем прежнее поведение: замок у неактивных секторов.
+          showLock: s.show_lock === undefined ? !s.active : Boolean(s.show_lock),
+        }))
         .sort((a, b) => a.percent - b.percent)
     }
-    const active = new Set((config?.rewards || []).map(Number))
-    return DISPLAY_SECTORS.map((p) => ({ percent: p, active: active.has(p) }))
+    if (Array.isArray(config?.rewards) && config.rewards.length) {
+      const active = new Set((config.rewards || []).map(Number))
+      return DISPLAY_SECTORS.map((s) => ({ ...s, active: active.has(s.percent), showLock: !active.has(s.percent) }))
+    }
+    return DISPLAY_SECTORS
   }, [config])
 
   const refreshStatus = useCallback(async () => {
     try { setStatus(await getWheelStatus()) } catch { /* тихо */ }
   }, [])
+  // Конфиг колеса тоже перечитываем периодически: изменения в Admin (сектора,
+  // проценты, статусы, замок) появляются на витрине без ручного refresh.
+  const refreshConfig = useCallback(async () => {
+    try { setConfig(await getWheelConfig()) } catch { /* тихо */ }
+  }, [])
 
   useEffect(() => {
     if (!isMobile) return undefined
-    let alive = true
-    getWheelConfig().then((c) => { if (alive) setConfig(c) }).catch(() => {})
+    refreshConfig()
     refreshStatus()
-    const onVis = () => { if (document.visibilityState === 'visible') refreshStatus() }
+    const onVis = () => { if (document.visibilityState === 'visible') { refreshConfig(); refreshStatus() } }
     document.addEventListener('visibilitychange', onVis)
-    const timer = window.setInterval(refreshStatus, 60000) // без агрессивного polling
-    return () => { alive = false; document.removeEventListener('visibilitychange', onVis); window.clearInterval(timer) }
-  }, [isMobile, refreshStatus])
+    const timer = window.setInterval(() => { refreshConfig(); refreshStatus() }, 60000) // без агрессивного polling
+    return () => { document.removeEventListener('visibilitychange', onVis); window.clearInterval(timer) }
+  }, [isMobile, refreshStatus, refreshConfig])
 
   useEffect(() => { if (isMobile) refreshStatus() }, [isSignedIn, isMobile, refreshStatus])
 
@@ -196,16 +220,19 @@ export default function WheelOfFortune() {
                 <div className="wheel-stage">
                   <span className="wheel-pointer" aria-hidden="true" />
                   <div className="wheel-disc" style={wheelStyle}>
-                    {sectors.map((s, i) => (
-                      <span
-                        key={s.percent}
-                        className={`wheel-label${s.active ? '' : ' locked'}`}
-                        style={{ transform: `rotate(${i * seg + seg / 2}deg)` }}
-                        title={s.active ? `${s.percent}%` : `${s.percent}% — ${t('wheel_locked')}`}
-                      >
-                        <b>{s.percent}%{s.active ? '' : ' 🔒'}</b>
-                      </span>
-                    ))}
+                    {sectors.map((s, i) => {
+                      const showLock = s.showLock && !s.active
+                      return (
+                        <span
+                          key={s.percent}
+                          className={`wheel-label${s.active ? '' : ' locked'}`}
+                          style={{ transform: `rotate(${i * seg + seg / 2}deg)` }}
+                          title={showLock ? `${s.percent}% — ${t('wheel_locked')}` : `${s.percent}%`}
+                        >
+                          <b>{s.percent}%{showLock && <IconLock className="wheel-lock-ico" aria-hidden="true" />}</b>
+                        </span>
+                      )
+                    })}
                   </div>
                   <span className="wheel-hub" aria-hidden="true" />
                 </div>

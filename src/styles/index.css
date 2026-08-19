@@ -1690,7 +1690,14 @@ a.product-name::after {
 .promo-badge.wheel { background: rgba(120, 80, 200, 0.12); color: #6a3fb0; }
 .wheel-rewards { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
 .wheel-rewards-head { display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
-.wheel-reward-row { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 10px; align-items: end; }
+.wheel-reward-row { display: grid; grid-template-columns: 1fr 1fr 1.1fr auto auto; gap: 10px; align-items: end; }
+.wheel-lock-fld { min-width: 0; }
+.wheel-lock-toggle { gap: 6px; padding: 8px 0; }
+.wheel-lock-toggle input:disabled { opacity: 0.4; }
+@media (max-width: 640px) {
+  .wheel-reward-row { grid-template-columns: 1fr 1fr; }
+  .wheel-reward-row .cart-remove { grid-column: 2; justify-self: end; }
+}
 
 /* ============================================================
    Mobile Wheel of Fortune (Phase 2) — только mobile (рендерится по useMediaQuery)
@@ -1754,9 +1761,10 @@ a.product-name::after {
   transition: transform 4s cubic-bezier(0.17, 0.67, 0.2, 1);
 }
 .wheel-label { position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-start; pointer-events: none; }
-.wheel-label b { margin-top: 12px; color: #fff; font-size: 0.82rem; font-weight: 800; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); white-space: nowrap; }
-/* Locked-сектора визуально приглушены: тёмный текст на светлом фоне + 🔒 */
+.wheel-label b { margin-top: 12px; color: #fff; font-size: 0.82rem; font-weight: 800; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); white-space: nowrap; display: inline-flex; align-items: center; gap: 2px; }
+/* Locked-сектора визуально приглушены: тёмный текст на светлом фоне + замок */
 .wheel-label.locked b { color: #6b5f66; font-weight: 700; text-shadow: none; opacity: 0.9; }
+.wheel-lock-ico { width: 11px; height: 11px; flex: 0 0 auto; vertical-align: middle; }
 .wheel-pointer {
   position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
   z-index: 3; width: 0; height: 0;

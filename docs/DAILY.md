@@ -19,6 +19,11 @@
 
 ---
 
+## 2026-08-20
+
+**Что сделано** — Wheel of Fortune: полная админ-конфигурация секторов. Каждый reward расширен явными полями `status` (ACTIVE/DISPLAY ONLY) и `show_lock`. Admin WheelPanel: select статуса, toggle замка (disabled для ACTIVE), кнопка «Добавить скидку», валидация (percent 1..100, вес ≥0, без дублей, ACTIVE→weight>0, ≥1 ACTIVE). Витрина строит сектора из серверного конфига, замок = SVG `IconLock` (не emoji), конфиг перечитывается 60с+visibility (правки Admin без ручного refresh). Новая idempotent-миграция `supabase/wheel-config-status-lock.sql`: `spin_wheel` выбирает только active+weight>0 (display_only исключён всегда), `get_wheel_public_config.sectors` отдаёт `{percent,active,show_lock}`. Build OK; storefront boot (playwright-mobile 390px) — console 0 errors. См. FEATURES [F-011].
+**Что осталось** — OWNER: выполнить `supabase/wheel-config-status-lock.sql`; затем live-проверка status/замок/динамики секторов на mobile в активном окне.
+
 ## 2026-08-01
 
 _(исторический хронологический лог задачи; новые дни — по формату выше)_

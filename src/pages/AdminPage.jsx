@@ -9,7 +9,7 @@ import {
 import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { extractColors } from '../admin/colors.js'
-import { IconTrash, IconPlus, IconClose, IconArrow } from '../components/Icons.jsx'
+import { IconTrash, IconPlus, IconClose, IconArrow, IconLock } from '../components/Icons.jsx'
 import SystemLogsPanel from '../components/SystemLogsPanel.jsx'
 
 const ORDER_STATUSES = [
@@ -810,19 +810,66 @@ function WheelPanel({ onNotify }) {
   const setReward = (i, patch) => setCfg((c) => ({
     ...c, rewards: c.rewards.map((r, j) => j === i ? { ...r, ...patch } : r),
   }))
-  const addReward = () => setCfg((c) => ({ ...c, rewards: [...(c.rewards || []), { percent: 5, weight: 10 }] }))
+  // Смена статуса: DISPLAY ONLY обнуляет вес (в розыгрыше не участвует),
+  // ACTIVE — если веса нет, ставит разумный дефолт; замок для ACTIVE снимается.
+  const setStatus = (i, status) => setCfg((c) => ({
+    ...c,
+    rewards: c.rewards.map((r, j) => {
+      if (j !== i) return r
+      if (status === 'active') {
+        return { ...r, status: 'active', weight: Number(r.weight) > 0 ? Number(r.weight) : 10, show_lock: false }
+      }
+      return { ...r, status: 'display_only', weight: 0 }
+    }),
+  }))
+  const addReward = () => setCfg((c) => ({
+    ...c, rewards: [...(c.rewards || []), { percent: 10, weight: 0, status: 'display_only', show_lock: false }],
+  }))
   const removeReward = (i) => setCfg((c) => ({ ...c, rewards: c.rewards.filter((_, j) => j !== i) }))
 
   const save = async () => {
+    // ---- Валидация конфигурации наград ----
+    const rewards = (cfg.rewards || []).map((r) => ({
+      percent: Number(r.percent),
+      weight: Number(r.weight) || 0,
+      status: r.status === 'active' ? 'active' : 'display_only',
+      show_lock: Boolean(r.show_lock),
+    }))
+    if (rewards.length === 0) {
+      onNotify('err', 'Добавьте хотя бы один сектор')
+      return
+    }
+    const seen = new Set()
+    for (const r of rewards) {
+      if (!Number.isFinite(r.percent) || r.percent <= 0) {
+        onNotify('err', 'Скидка % должна быть больше 0'); return
+      }
+      if (r.percent > 100) {
+        onNotify('err', `Скидка ${r.percent}% недопустима (максимум 100%)`); return
+      }
+      if (r.weight < 0) {
+        onNotify('err', 'Вес не может быть отрицательным'); return
+      }
+      if (seen.has(r.percent)) {
+        onNotify('err', `Повторяющаяся скидка: ${r.percent}%. Проценты должны быть уникальны.`); return
+      }
+      seen.add(r.percent)
+      if (r.status === 'active' && r.weight <= 0) {
+        onNotify('err', `ACTIVE-сектор ${r.percent}% должен иметь вес больше 0`); return
+      }
+    }
+    if (!rewards.some((r) => r.status === 'active' && r.weight > 0)) {
+      onNotify('err', 'Нужен хотя бы один ACTIVE-сектор с весом > 0 (иначе колесо не сможет выдать награду)')
+      return
+    }
+
     setBusy(true)
     try {
       const clean = {
         ...cfg,
         windows: (Array.isArray(cfg.windows) ? cfg.windows : String(cfg.windows || '').split(','))
           .map((w) => String(w).trim()).filter(Boolean),
-        rewards: (cfg.rewards || [])
-          .map((r) => ({ percent: Number(r.percent) || 0, weight: Number(r.weight) || 0 }))
-          .filter((r) => r.percent > 0),
+        rewards,
       }
       const saved = await saveWheelConfig(clean)
       setCfg(saved)
@@ -874,26 +921,41 @@ function WheelPanel({ onNotify }) {
 
       <div className="wheel-rewards">
         <div className="wheel-rewards-head">
-          <span>Награды и веса</span>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={addReward}><IconPlus /> Добавить</button>
+          <span>Сектора колеса</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={addReward}><IconPlus /> Добавить скидку</button>
         </div>
         <p className="admin-sub">
-          <b>ACTIVE</b> (вес &gt; 0) — реально выпадает на колесе. Вероятность = вес / сумма активных весов.<br />
-          <b>LOCKED</b> (вес = 0) — сектор показан на колесе как заблокированный (🔒) и НИКОГДА не выпадает.
+          <b>ACTIVE</b> — сектор виден и участвует в розыгрыше (нужен вес &gt; 0). Вероятность = вес / сумма активных весов.<br />
+          <b>DISPLAY ONLY</b> — сектор виден на колесе, но сервер его НИКОГДА не выбирает.<br />
+          <b>Показывать замок</b> — управляет иконкой замка у сектора (только для DISPLAY ONLY).
         </p>
         {(cfg.rewards || []).map((r, i) => {
-          const isActive = Number(r.weight) > 0
+          const status = r.status === 'active' ? 'active' : 'display_only'
+          const isActive = status === 'active'
           return (
             <div className="wheel-reward-row" key={i}>
               <label className="fld"><span>Скидка %</span>
-                <input type="number" min="1" value={r.percent} onChange={(e) => setReward(i, { percent: e.target.value })} />
+                <input type="number" min="1" max="100" value={r.percent}
+                  onChange={(e) => setReward(i, { percent: e.target.value })} />
               </label>
               <label className="fld"><span>Вес</span>
-                <input type="number" min="0" value={r.weight} onChange={(e) => setReward(i, { weight: e.target.value })} />
+                <input type="number" min="0" value={r.weight} disabled={!isActive}
+                  onChange={(e) => setReward(i, { weight: e.target.value })} />
               </label>
-              <span className={`promo-badge${isActive ? '' : ' wheel'}`} style={{ alignSelf: 'center', marginBottom: 10 }}>
-                {isActive ? 'ACTIVE' : 'LOCKED'}
-              </span>
+              <label className="fld"><span>Статус</span>
+                <select value={status} onChange={(e) => setStatus(i, e.target.value)}>
+                  <option value="active">ACTIVE</option>
+                  <option value="display_only">DISPLAY ONLY</option>
+                </select>
+              </label>
+              <label className="fld wheel-lock-fld">
+                <span>Замок</span>
+                <label className="checkbox-row wheel-lock-toggle">
+                  <input type="checkbox" checked={Boolean(r.show_lock)} disabled={isActive}
+                    onChange={(e) => setReward(i, { show_lock: e.target.checked })} />
+                  <IconLock aria-hidden="true" />
+                </label>
+              </label>
               <button type="button" className="cart-remove" onClick={() => removeReward(i)} aria-label="Убрать"><IconTrash /></button>
             </div>
           )
