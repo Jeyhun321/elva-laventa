@@ -2,7 +2,11 @@
 
 ## Current Status
 
-**LAV-BUG-056 — long-idle mobile freeze — FIXED (client-only).** Найден корень «no-token → redirect race», оставшийся после LAV-BUG-052: транзиентный auth-null при восстановлении сессии на resume опустошал корзину и ронял checkout-редирект. Исправлено в источнике (`AuthContext`), без изменения RLS/RPC/security.
+**LAV-BUG-056 — long-idle mobile freeze — ВСЁ ЕЩЁ ОТКРЫТ на реальном устройстве (симптом повторился после `e0efea1`).** Проведено 2-е независимое расследование (playwright-mobile): **в эмуляции НЕ воспроизводится** — стресс 60 циклов навигации 60/60, 0 net-утечек listener'ов, 0 таймер-leak; все navigate-guards ведут себя корректно; ProductPage не роняет маршрут; CatalogContext resume-safe. **Второго code-level root cause в SPA не найдено** — остаток это реально-девайсовый фактор (настоящий OS-suspend + авторизация + возможный редеплой + first-tap-wake), недоступный эмулятору.
+
+- **Действие (per §13):** усилена персистентная диагностика (только инструментация, поведение auth/nav/cart НЕ менялось) — capture тапов (`tap {onProductLink, topReachesCard, overlay, pointerEvents}`), `route`, `nav-redirect {reason}` (account-switch/idle-30m/empty-cart), `catalog-apply {products}`, `shop-loaded {cart}`; новый **`window.__lavDiagDetailed()`** (events + live DOM-снапшот: overlay/wheel-modal/backdrop/overflow/pointer-events). Без секретов, консоль молчит без `localStorage.elva_diag='1'`.
+- **Следующий реальный сбой:** владелец открывает DevTools/консоль и присылает `window.__lavDiagDetailed()` — timeline покажет точного виновника (guard-reason / overlay / tap-not-reached / stale state).
+- Ранее (056 fix, остаётся в силе): grace для транзиентного auth-null в `AuthContext` (закрыл auth-null половину; на реальном устройстве не подтверждён).
 
 - **Root cause:** `onAuthStateChange` ставил `user=null` на транзиентном `SIGNED_OUT` (resume token-refresh blip) → `accountId A→null→A` → `ShopContext` чистил корзину, `CheckoutPage` редиректил на `/cart`, тапы add-to-cart «съедались». 052 закрыл только `AccountHomeRedirect`, не источник.
 - **Fix (минимальный, client-only):** `src/lib/authRecovery.js` (pure, tested) — adopt/clear/**defer** + bounded grace 2000мс; `AuthContext` игнорирует транзиентный null (defer→подтверждение через `getSession`), но мгновенно чистит реальный `logout()` (флаг намерения) и адаптирует смену аккаунта A→B; `WheelOfFortune` авто-закрывает устаревший модал (нет зависшего backdrop); `src/lib/lifecycleDiag.js` — ограниченный ring buffer lifecycle-событий (без секретов) для разбора след. реального инцидента (`window.__lavDiag()`).
@@ -17,7 +21,14 @@
 
 ## Last Completed Task
 
-### LAV-BUG-056 — long-idle mobile freeze / broken navigation (root fix of transient auth-null race)
+### LAV-BUG-056 — 2-е расследование (симптом повторился на устройстве): не воспроизведено в эмуляции → усилена диагностика
+
+- **Что сделано:** новое независимое playwright-mobile расследование. Стресс 60 циклов (product↔back + visibility + offline/online) → нав 60/60, 0 net listener-leaks, 0 interval-leaks. Проверены все navigate-guards, ProductPage (не роняет маршрут), CatalogContext (resume-safe silent revalidate), stale-chunk (уже покрыт recovery.js). Второго code-level root cause не найдено.
+- **Deliverable:** усиленная персистентная диагностика (tap-capture с overlay-детекцией, route, nav-redirect reason, catalog/cart state, `window.__lavDiagDetailed()` со снапшотом DOM). Только инструментация — поведение не менялось.
+- **Файлы:** `src/lib/lifecycleDiag.js`, `src/App.jsx`, `src/hooks/useInactivityRedirect.js`, `src/context/CatalogContext.jsx`, `src/context/ShopContext.jsx`. build+`npm test` 13/13.
+- **Статус:** на реальном устройстве НЕ подтверждён исправленным; ждём `window.__lavDiagDetailed()` с реального сбоя.
+
+### (пред.) LAV-BUG-056 — long-idle mobile freeze / broken navigation (root fix of transient auth-null race)
 
 - **Симптом:** после долгого фона тапы по товару не открывают Product Page, checkout уходит на /cart/home, тапы «съедаются»; refresh/активность лечит; свежая сессия не воспроизводит.
 - **Root cause:** транзиентный `SIGNED_OUT`→`SIGNED_IN` на resume делал `user` null на миг → `accountId A→null→A` → `ShopContext` опустошал корзину, `CheckoutPage` empty-cart-guard редиректил. Источник в `AuthContext` (052 закрыл только home-redirect половину).
@@ -74,7 +85,7 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260820-024107
+Recovery ID: R-20260820-110528
 
 1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (`/elva-laventa/`).
 2. **Описание:** магазин: каталог, корзина, checkout (`place_order`+Telegram), admin-панель, AZ/RU/EN, промокоды + Wheel of Fortune на едином discount-движке.
@@ -95,16 +106,14 @@ Recovery ID: R-20260820-024107
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: LAV-BUG-056 long-idle mobile freeze — root fix транзиентного auth-null race (grace в AuthContext) + Wheel stale-modal auto-close + lifecycle diagnostics. Client-only, SQL не нужен.
+Current task: LAV-BUG-056 2-е расследование — симптом повторился на устройстве; в эмуляции НЕ воспроизведено (60/60 нав, 0 leaks); второго code-level root cause нет → усилена диагностика (tap-capture/overlay, nav-redirect reason, __lavDiagDetailed). Только инструментация.
 Expected modified files:
-  - src/lib/authRecovery.js (new), src/lib/lifecycleDiag.js (new)
-  - src/context/AuthContext.jsx, src/context/ShopContext.jsx
-  - src/pages/CheckoutPage.jsx, src/components/WheelOfFortune.jsx, src/main.jsx
-  - tests/auth-recovery.test.mjs (new), package.json
+  - src/lib/lifecycleDiag.js (расширен), src/App.jsx, src/hooks/useInactivityRedirect.js
+  - src/context/CatalogContext.jsx, src/context/ShopContext.jsx
   - docs/HANDOFF.md, docs/BUGS.md, docs/DAILY.md, docs/TODO.md
-Git status summary: код + тесты + docs изменены; будет закоммичено и запушено этой сессией
+Git status summary: инструментация + docs; будет закоммичено и запушено этой сессией
 Documentation updated: YES
 Last verified build: vite build — успешно (0 ошибок)
-Last verified tests: npm test 13/13 (transient A→null→A стабилен, real logout clears, expiry→clear, A→B, A→null→B); Playwright mobile long-idle эмуляция — route стабилен, tapReachesCard=true (нет overlay), навигация в товар после resume OK, нет .wheel-backdrop, console 0 errors/0 unhandled rejections, 360/390/430 без overflow. Реальный OS-suspend+авторизация — NOT VERIFIED (за владельцем; window.__lavDiag() даст timeline).
-Recovery confidence: HIGH
+Last verified tests: npm test 13/13; Playwright mobile — стресс 60 циклов навигации 60/60, 0 net listener-leaks, 0 interval-leaks; tap-capture пишет onProductLink/topReachesCard; __lavDiagDetailed() отдаёт снапшот (нет overlay/wheel-backdrop, pointer-events auto, нет overflow); console 0 errors. Реальный OS-suspend + авторизация НЕ воспроизводится в эмуляции — ждём window.__lavDiagDetailed() с устройства.
+Recovery confidence: MEDIUM
 ```

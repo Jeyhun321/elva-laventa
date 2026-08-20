@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { supabase, isConfigured, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase.js'
 import { logSystemEvent } from '../lib/systemLogs.js'
+import { logDiag } from '../lib/lifecycleDiag.js'
 import localCatalog from '../data/catalog.json'
 
 const CatalogContext = createContext(null)
@@ -119,6 +120,7 @@ export function CatalogProvider({ children }) {
     if (prods) setProducts(prods.map(fromRow))
     if (cats) setCategories([ALL, ...cats.map((c) => ({ id: c.id, label: c.label }))])
     setSource('supabase')
+    logDiag('catalog-apply', { products: prods ? prods.length : null })
     return true
   }, [])
 

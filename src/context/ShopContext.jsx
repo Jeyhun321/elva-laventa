@@ -205,6 +205,7 @@ export function ShopProvider({ children }) {
       cacheCart(nextCart, accountId)
 
       setLoadedAccountId(accountId)
+      logDiag('shop-loaded', { acc: idHint(accountId), cart: nextCart.length, fav: nextFavorites.length })
     }
 
     void syncAccount()

@@ -11,6 +11,7 @@ import { useCatalog } from './context/CatalogContext.jsx'
 import { useAuth } from './context/AuthContext.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { lazyWithRetry } from './lib/recovery.js'
+import { logDiag, idHint } from './lib/lifecycleDiag.js'
 import useInactivityRedirect from './hooks/useInactivityRedirect.js'
 
 // Ana səhifə dərhal lazımdır — ayrıca yüklənmir.
@@ -97,6 +98,7 @@ function AccountHomeRedirect() {
     // qısamüddətli "çıxış → giriş" sıçrayışıdır (token refresh). Əvvəllər bu sıçrayış
     // məhsul/səbət/checkout səhifəsində olan istifadəçini səhvən ana səhifəyə atırdı.
     if (previous && nextAccountId && previous !== nextAccountId) {
+      logDiag('nav-redirect', { reason: 'account-switch', from: idHint(previous), to: idHint(nextAccountId) })
       navigate('/', { replace: true })
     }
     previousAccountId.current = nextAccountId
@@ -123,6 +125,10 @@ export default function App() {
 
   // 30 dəqiqə+ arxa plandan qayıdanda ana səhifəyə (səbət/sessiya toxunulmur)
   useInactivityRedirect()
+
+  // Диагностика: фиксируем каждую смену маршрута (timeline для разбора реального
+  // long-idle инцидента — видно, открылся ли product route и не откатился ли он).
+  useEffect(() => { logDiag('route', { to: location.pathname }) }, [location.pathname])
 
   // Brauzerin öz sürüşmə bərpası bizim idarəmizlə yarışmasın (LAV-BUG-031)
   useEffect(() => {

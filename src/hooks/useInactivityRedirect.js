@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { logDiag } from '../lib/lifecycleDiag.js'
 
 // İstifadəçi 30 dəqiqə və ya daha çox saytdan uzaq qalıbsa (brauzer bağlı,
 // telefon kilidli, tab arxa planda), geri qayıdanda onu avtomatik ana səhifəyə
@@ -59,6 +60,7 @@ export default function useInactivityRedirect() {
     if (last && now - last >= TIMEOUT_MS && pathRef.current !== '/') {
       redirectingRef.current = true
       writeNow() // dövrə düşməmək üçün əvvəlcə timestamp-i yeniləyirik
+      logDiag('nav-redirect', { reason: 'idle-30m', from: pathRef.current, idleMin: Math.round((now - last) / 60000) })
       navigate('/', { replace: true })
       window.setTimeout(() => { redirectingRef.current = false }, 1000)
     } else {
