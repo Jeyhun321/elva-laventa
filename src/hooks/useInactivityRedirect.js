@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { logDiag } from '../lib/lifecycleDiag.js'
+import { shouldRedirectHome, INACTIVITY_TIMEOUT_MS } from '../lib/inactivity.js'
 
 // İstifadəçi 30 dəqiqə və ya daha çox saytdan uzaq qalıbsa (brauzer bağlı,
 // telefon kilidli, tab arxa planda), geri qayıdanda onu avtomatik ana səhifəyə
@@ -10,7 +11,7 @@ import { logDiag } from '../lib/lifecycleDiag.js'
 // yalnız cari marşrut dəyişir (navigate, reload yox).
 
 const KEY = 'lv_last_activity'
-const TIMEOUT_MS = 30 * 60 * 1000 // 30 dəqiqə
+const TIMEOUT_MS = INACTIVITY_TIMEOUT_MS // 30 dəqiqə (общий с src/lib/inactivity.js)
 const WRITE_THROTTLE_MS = 30 * 1000 // storage-a ən çox 30 saniyədə bir yazırıq
 
 const readLast = () => {
@@ -57,16 +58,24 @@ export default function useInactivityRedirect() {
   const maybeRedirect = useCallback((last) => {
     if (redirectingRef.current) return
     const now = Date.now()
-    if (last && now - last >= TIMEOUT_MS && pathRef.current !== '/') {
+    if (shouldRedirectHome({ last, now, path: pathRef.current, timeoutMs: TIMEOUT_MS })) {
       redirectingRef.current = true
       writeNow() // dövrə düşməmək üçün əvvəlcə timestamp-i yeniləyirik
-      logDiag('nav-redirect', { reason: 'idle-30m', from: pathRef.current, idleMin: Math.round((now - last) / 60000) })
+      logDiag('nav-redirect', {
+        reason: 'idle-30m', from: pathRef.current, to: '/', replace: true,
+        idleMin: Math.round((now - last) / 60000),
+        visibilityState: typeof document !== 'undefined' ? document.visibilityState : '?',
+      })
       navigate('/', { replace: true })
       window.setTimeout(() => { redirectingRef.current = false }, 1000)
     } else {
       stampThrottled()
     }
   }, [navigate, writeNow, stampThrottled])
+  // Ссылка на актуальный maybeRedirect — чтобы эффект ниже НЕ пересоздавался при
+  // смене идентичности navigate/maybeRedirect (иначе он повторно вызывал boot-проверку).
+  const maybeRedirectRef = useRef(maybeRedirect)
+  useEffect(() => { maybeRedirectRef.current = maybeRedirect }, [maybeRedirect])
 
   // Marşrut dəyişməsi = mənalı aktivlik (boot-dan sonra)
   useEffect(() => {
@@ -84,18 +93,27 @@ export default function useInactivityRedirect() {
 
   // Qayıdış nöqtələri: ilk yüklənmə (render-də tutulan dəyər), tab yenidən
   // görünəndə və bfcache-dən bərpa (canlı dəyər — arxa planda yazılmır).
+  //
+  // LAV-BUG-057: этот эффект должен выполниться РОВНО ОДИН РАЗ (mount). Раньше в
+  // deps был `maybeRedirect`, чья идентичность менялась при каждой навигации
+  // (через `navigate`), из-за чего эффект пересоздавался и ПОВТОРНО вызывал
+  // boot-проверку `maybeRedirect(bootLastRef.current)` со STALE `bootLastRef`.
+  // При открытии товара после долгого idle это давало PUSH /product → REPLACE /.
+  // Теперь boot-проверка одноразовая, а слушатели зовут актуальный maybeRedirect
+  // через ref (свежий readLast()), поведение «30 мин → home» сохранено.
   useEffect(() => {
-    maybeRedirect(bootLastRef.current)
+    maybeRedirectRef.current(bootLastRef.current)
     bootedRef.current = true
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') maybeRedirect(readLast())
+      if (document.visibilityState === 'visible') maybeRedirectRef.current(readLast())
     }
-    const onPageShow = () => maybeRedirect(readLast())
+    const onPageShow = () => maybeRedirectRef.current(readLast())
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('pageshow', onPageShow)
     return () => {
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pageshow', onPageShow)
     }
-  }, [maybeRedirect])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 }

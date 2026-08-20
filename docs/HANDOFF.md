@@ -2,7 +2,13 @@
 
 ## Current Status
 
-**LAV-BUG-056 — long-idle mobile freeze — ВСЁ ЕЩЁ ОТКРЫТ на реальном устройстве (симптом повторился после `e0efea1`).** Проведено 2-е независимое расследование (playwright-mobile): **в эмуляции НЕ воспроизводится** — стресс 60 циклов навигации 60/60, 0 net-утечек listener'ов, 0 таймер-leak; все navigate-guards ведут себя корректно; ProductPage не роняет маршрут; CatalogContext resume-safe. **Второго code-level root cause в SPA не найдено** — остаток это реально-девайсовый фактор (настоящий OS-suspend + авторизация + возможный редеплой + first-tap-wake), недоступный эмулятору.
+**LAV-BUG-057 — long-idle mobile freeze: НАЙДЕН И ИСПРАВЛЕН настоящий источник (PUSH /product → REPLACE /).** По live-инструментации владельца (PUSH /product/21 → REPLACE /) воспроизведена точная сигнатура и найден корень: `useInactivityRedirect` boot-эффект **пере-выполнялся при каждой навигации** (deps содержали `maybeRedirect`, зависящий от `navigate`, чья идентичность меняется на смене маршрута) и повторно стрелял boot-проверку со **stale `bootLastRef`** → при открытии товара после долгого idle мгновенный `replace('/')`. Это НЕ auth (052/056) и НЕ overlay.
+
+- **Fix (client-only, минимальный):** boot-эффект теперь mount-once (`[]`), актуальный `maybeRedirect` через ref; условие вынесено в чистый `shouldRedirectHome()` (`src/lib/inactivity.js`) + unit-тест. Навигация больше не пере-запускает boot-проверку. Намеренное «30 мин idle → home» сохранено (listeners + live `readLast()`).
+- **Проверено (playwright-mobile, production build):** ДО — `PUSH /product/20 → REPLACE /` (reason idle-30m); ПОСЛЕ — тап со stale bootLast → только `PUSH /product/20`, **REPLACE нет**, route остаётся `/product/20`; genuine long-idle resume на `/product` → home (сохранено). `npm test`: auth 13/13 + inactivity 8/8; build OK; console 0 errors.
+- **NOT VERIFIED:** реальный OS-suspend + авторизация на устройстве (за владельцем).
+
+Предыдущее (в силе): HEALTHY BASELINE и comparison-checklist в `docs/BUGS.md` (LAV-BUG-056); 056-grace транзиентного auth-null. Симптом повторялся после `e0efea1` — теперь корень (LAV-BUG-057) устранён. Проведено 2-е независимое расследование (playwright-mobile): **в эмуляции НЕ воспроизводится** — стресс 60 циклов навигации 60/60, 0 net-утечек listener'ов, 0 таймер-leak; все navigate-guards ведут себя корректно; ProductPage не роняет маршрут; CatalogContext resume-safe. **Второго code-level root cause в SPA не найдено** — остаток это реально-девайсовый фактор (настоящий OS-suspend + авторизация + возможный редеплой + first-tap-wake), недоступный эмулятору.
 
 - **Действие (per §13):** усилена персистентная диагностика (только инструментация, поведение auth/nav/cart НЕ менялось) — capture тапов (`tap {onProductLink, topReachesCard, overlay, pointerEvents}`), `route`, `nav-redirect {reason}` (account-switch/idle-30m/empty-cart), `catalog-apply {products}`, `shop-loaded {cart}`; новый **`window.__lavDiagDetailed()`** (events + live DOM-снапшот: overlay/wheel-modal/backdrop/overflow/pointer-events). Без секретов, консоль молчит без `localStorage.elva_diag='1'`.
 - **Следующий реальный сбой:** владелец открывает DevTools/консоль и присылает `window.__lavDiagDetailed()` — timeline покажет точного виновника (guard-reason / overlay / tap-not-reached / stale state).
@@ -85,7 +91,7 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260820-110528
+Recovery ID: R-20260820-184530
 
 1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (`/elva-laventa/`).
 2. **Описание:** магазин: каталог, корзина, checkout (`place_order`+Telegram), admin-панель, AZ/RU/EN, промокоды + Wheel of Fortune на едином discount-движке.
@@ -106,14 +112,14 @@ Recovery ID: R-20260820-110528
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: LAV-BUG-056 2-е расследование — симптом повторился на устройстве; в эмуляции НЕ воспроизведено (60/60 нав, 0 leaks); второго code-level root cause нет → усилена диагностика (tap-capture/overlay, nav-redirect reason, __lavDiagDetailed). Только инструментация.
+Current task: LAV-BUG-057 — найден и исправлен настоящий источник long-idle freeze: useInactivityRedirect boot-эффект пере-выполнялся на навигации со stale bootLastRef → PUSH /product → REPLACE /. Fix: boot-эффект mount-once + maybeRedirect через ref + чистый shouldRedirectHome(). Client-only.
 Expected modified files:
-  - src/lib/lifecycleDiag.js (расширен), src/App.jsx, src/hooks/useInactivityRedirect.js
-  - src/context/CatalogContext.jsx, src/context/ShopContext.jsx
-  - docs/HANDOFF.md, docs/BUGS.md, docs/DAILY.md, docs/TODO.md
-Git status summary: инструментация + docs; будет закоммичено и запушено этой сессией
+  - src/hooks/useInactivityRedirect.js, src/lib/inactivity.js (new)
+  - tests/inactivity.test.mjs (new), package.json
+  - docs/HANDOFF.md, docs/BUGS.md (LAV-BUG-057 + healthy baseline из прошлого шага)
+Git status summary: fix + тесты + docs; будет закоммичено и запушено этой сессией
 Documentation updated: YES
 Last verified build: vite build — успешно (0 ошибок)
-Last verified tests: npm test 13/13; Playwright mobile — стресс 60 циклов навигации 60/60, 0 net listener-leaks, 0 interval-leaks; tap-capture пишет onProductLink/topReachesCard; __lavDiagDetailed() отдаёт снапшот (нет overlay/wheel-backdrop, pointer-events auto, нет overflow); console 0 errors. Реальный OS-suspend + авторизация НЕ воспроизводится в эмуляции — ждём window.__lavDiagDetailed() с устройства.
-Recovery confidence: MEDIUM
+Last verified tests: npm test — auth 13/13 + inactivity 8/8 (вкл. «home mount (stale) → tap product → stays /product, no REPLACE»); Playwright mobile — ДО: PUSH /product/20 → REPLACE / (reason idle-30m); ПОСЛЕ: только PUSH /product/20, REPLACE нет, route остаётся /product/20; genuine long-idle resume → home сохранён; console 0 errors. Реальный OS-suspend + авторизация — за владельцем.
+Recovery confidence: HIGH
 ```
