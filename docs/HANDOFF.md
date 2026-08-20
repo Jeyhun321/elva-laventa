@@ -2,7 +2,9 @@
 
 ## Current Status
 
-**LAV-BUG-057 — long-idle mobile freeze: НАЙДЕН И ИСПРАВЛЕН настоящий источник (PUSH /product → REPLACE /).** По live-инструментации владельца (PUSH /product/21 → REPLACE /) воспроизведена точная сигнатура и найден корень: `useInactivityRedirect` boot-эффект **пере-выполнялся при каждой навигации** (deps содержали `maybeRedirect`, зависящий от `navigate`, чья идентичность меняется на смене маршрута) и повторно стрелял boot-проверку со **stale `bootLastRef`** → при открытии товара после долгого idle мгновенный `replace('/')`. Это НЕ auth (052/056) и НЕ overlay.
+**Admin → Пользователи + безопасный сброс пароля + hardening (F-013) — реализовано.** Новый раздел Admin со списком пользователей из security-definer RPC `admin_list_users()` (is_admin gate, whitelist полей, `auth.users` из браузера не читается, паролей/токенов нет); сброс пароля через стандартный recovery-email (`resetPasswordForEmail`, service_role не используется); гейт `/admin` server-trusted (RLS + 404 для не-owner + OTP). **OWNER ACTION REQUIRED:** выполнить `supabase/admin-users-module.sql` (иначе таб «Пользователи» → `AUTH_REQUIRED`/функция не найдена). Build OK; `npm test` 21/21 (13+8); guest `/admin` → login, admin-данные не утекают, 0 console errors; `service_role` в бандле НЕТ.
+
+Предыдущее (в силе): **LAV-BUG-057** — long-idle mobile freeze: НАЙДЕН И ИСПРАВЛЕН настоящий источник (PUSH /product → REPLACE /). По live-инструментации владельца (PUSH /product/21 → REPLACE /) воспроизведена точная сигнатура и найден корень: `useInactivityRedirect` boot-эффект **пере-выполнялся при каждой навигации** (deps содержали `maybeRedirect`, зависящий от `navigate`, чья идентичность меняется на смене маршрута) и повторно стрелял boot-проверку со **stale `bootLastRef`** → при открытии товара после долгого idle мгновенный `replace('/')`. Это НЕ auth (052/056) и НЕ overlay.
 
 - **Fix (client-only, минимальный):** boot-эффект теперь mount-once (`[]`), актуальный `maybeRedirect` через ref; условие вынесено в чистый `shouldRedirectHome()` (`src/lib/inactivity.js`) + unit-тест. Навигация больше не пере-запускает boot-проверку. Намеренное «30 мин idle → home» сохранено (listeners + live `readLast()`).
 - **Проверено (playwright-mobile, production build):** ДО — `PUSH /product/20 → REPLACE /` (reason idle-30m); ПОСЛЕ — тап со stale bootLast → только `PUSH /product/20`, **REPLACE нет**, route остаётся `/product/20`; genuine long-idle resume на `/product` → home (сохранено). `npm test`: auth 13/13 + inactivity 8/8; build OK; console 0 errors.
@@ -91,7 +93,7 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260820-184530
+Recovery ID: R-20260821-002332
 
 1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (`/elva-laventa/`).
 2. **Описание:** магазин: каталог, корзина, checkout (`place_order`+Telegram), admin-панель, AZ/RU/EN, промокоды + Wheel of Fortune на едином discount-движке.
@@ -112,14 +114,15 @@ Recovery ID: R-20260820-184530
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: LAV-BUG-057 — найден и исправлен настоящий источник long-idle freeze: useInactivityRedirect boot-эффект пере-выполнялся на навигации со stale bootLastRef → PUSH /product → REPLACE /. Fix: boot-эффект mount-once + maybeRedirect через ref + чистый shouldRedirectHome(). Client-only.
+Current task: Admin → Пользователи (F-013) — security-definer RPC admin_list_users() (is_admin gate, whitelist), UsersPanel, безопасный сброс пароля через recovery-email (без service_role/без показа пароля), hardening /admin (404 для не-owner). OWNER: выполнить supabase/admin-users-module.sql.
 Expected modified files:
-  - src/hooks/useInactivityRedirect.js, src/lib/inactivity.js (new)
-  - tests/inactivity.test.mjs (new), package.json
-  - docs/HANDOFF.md, docs/BUGS.md (LAV-BUG-057 + healthy baseline из прошлого шага)
-Git status summary: fix + тесты + docs; будет закоммичено и запушено этой сессией
+  - supabase/admin-users-module.sql (new)
+  - src/admin/db.js (listUsers, sendUserPasswordReset)
+  - src/pages/AdminPage.jsx (таб + UsersPanel), src/styles/index.css
+  - docs/FEATURES.md, docs/HANDOFF.md, docs/TODO.md
+Git status summary: код + SQL + docs; будет закоммичено и запушено этой сессией
 Documentation updated: YES
 Last verified build: vite build — успешно (0 ошибок)
-Last verified tests: npm test — auth 13/13 + inactivity 8/8 (вкл. «home mount (stale) → tap product → stays /product, no REPLACE»); Playwright mobile — ДО: PUSH /product/20 → REPLACE / (reason idle-30m); ПОСЛЕ: только PUSH /product/20, REPLACE нет, route остаётся /product/20; genuine long-idle resume → home сохранён; console 0 errors. Реальный OS-suspend + авторизация — за владельцем.
-Recovery confidence: HIGH
+Last verified tests: npm test — auth 13/13 + inactivity 8/8; build OK; guest /admin → login (нет admin-табов/данных, нет утечки RPC/service_role в DOM), 0 console errors; service_role в бандле НЕТ. Users-панель под реальным admin (OAuth+OTP) и RPC после применения SQL — за владельцем.
+Recovery confidence: HIGH — код проверен; admin_list_users требует применения SQL владельцем (OWNER ACTION REQUIRED)
 ```

@@ -302,3 +302,40 @@ export const saveWheelConfig = async (cfg) => {
   if (error) throw error
   return data
 }
+
+// ============================================================
+//  Пользователи (Admin Users module)
+//  Список пользователей приходит ТОЛЬКО из security-definer RPC admin_list_users(),
+//  которая на сервере проверяет is_admin() и возвращает whitelist безопасных полей.
+//  auth.users напрямую из браузера НЕ читается; паролей/токенов здесь нет.
+// ============================================================
+
+export const listUsers = async () => {
+  const sb = need()
+  const { data, error } = await sb.rpc('admin_list_users')
+  if (error) throw error
+  return (data || []).map((u) => ({
+    id: u.id,
+    email: u.email || '',
+    name: u.full_name || '',
+    role: u.role || 'customer',
+    emailVerified: Boolean(u.email_verified),
+    createdAt: u.created_at,
+    lastSignInAt: u.last_sign_in_at,
+    ordersCount: Number(u.orders_count) || 0,
+    promoCount: Number(u.promo_count) || 0,
+  }))
+}
+
+// Безопасный сброс пароля: НЕ показывает и НЕ задаёт пароль. Отправляет
+// стандартное Supabase recovery-письмо на email пользователя — он сам ставит
+// новый пароль по ссылке (страница /reset). service_role НЕ используется.
+export const sendUserPasswordReset = async (email) => {
+  const sb = need()
+  const clean = String(email || '').trim()
+  if (!clean) throw new Error('EMAIL_REQUIRED')
+  const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'reset'
+  const { error } = await sb.auth.resetPasswordForEmail(clean, { redirectTo })
+  if (error) throw error
+  return true
+}

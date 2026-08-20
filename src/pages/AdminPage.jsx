@@ -4,7 +4,7 @@ import { adminSupabase, isConfigured } from '../lib/supabase.js'
 import {
   loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin,
   listPromos, savePromo, deletePromo, generatePromoCode, listOrderCustomers, promoUsageCounts,
-  getWheelConfig, saveWheelConfig,
+  getWheelConfig, saveWheelConfig, listUsers, sendUserPasswordReset,
 } from '../admin/db.js'
 import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
@@ -499,6 +499,9 @@ function Dashboard({ session, onExit }) {
   <button className={`admin-tab${tab === 'wheel' ? ' active' : ''}`} onClick={() => setTab('wheel')}>
     Колесо фортуны
   </button>
+  <button className={`admin-tab${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>
+    Пользователи
+  </button>
   <button className={`admin-tab${tab === 'logs' ? ' active' : ''}`} onClick={() => setTab('logs')}>
     Системные логи
   </button>
@@ -514,6 +517,8 @@ function Dashboard({ session, onExit }) {
   <PromoPanel onNotify={say} />
 ) : tab === 'wheel' ? (
   <WheelPanel onNotify={say} />
+) : tab === 'users' ? (
+  <UsersPanel onNotify={say} />
 ) : (
       <>
       {busy === 'load' && <p className="admin-sub">Загружаю…</p>}
@@ -984,6 +989,123 @@ function WheelPanel({ onNotify }) {
       <div className="admin-form-foot">
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? 'Сохраняю…' : 'Сохранить'}</button>
       </div>
+    </div>
+  )
+}
+
+/* ---------------- Пользователи ---------------- */
+function UsersPanel({ onNotify }) {
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [confirmId, setConfirmId] = useState(null) // id пользователя в режиме подтверждения сброса
+  const [resetBusy, setResetBusy] = useState(null) // id пользователя, которому сейчас отправляем письмо
+  const [resetSent, setResetSent] = useState(() => new Set())
+
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    try {
+      setUsers(await listUsers())
+    } catch (e) {
+      // Не-админ (или прямой вызов) получает AUTH_REQUIRED — данные не раскрываются.
+      onNotify('err', e?.message?.includes('AUTH_REQUIRED')
+        ? 'Нет доступа к списку пользователей.'
+        : `Не удалось загрузить пользователей: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }, [onNotify])
+
+  useEffect(() => { refresh() }, [refresh])
+
+  const fmt = (v) => (v ? new Date(v).toLocaleString('ru-RU') : '—')
+
+  const doReset = async (u) => {
+    setResetBusy(u.id)
+    try {
+      // Безопасно: отправляем recovery-письмо, пароль НЕ показываем и НЕ задаём.
+      await sendUserPasswordReset(u.email)
+      setResetSent((prev) => new Set(prev).add(u.id))
+      onNotify('ok', `Ссылка для сброса пароля отправлена на ${u.email}`)
+    } catch (e) {
+      onNotify('err', `Не удалось отправить сброс: ${e.message}`)
+    } finally {
+      setResetBusy(null)
+      setConfirmId(null)
+    }
+  }
+
+  const q = query.trim().toLowerCase()
+  const shown = q
+    ? users.filter((u) => u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))
+    : users
+
+  if (loading) return <p className="admin-sub">Загружаю пользователей…</p>
+
+  return (
+    <div className="admin-users">
+      <div className="admin-users-head">
+        <input
+          className="promo-input"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Поиск по имени или email"
+          aria-label="Поиск пользователей"
+        />
+        <span className="admin-sub">{shown.length} из {users.length}</span>
+      </div>
+
+      {users.length === 0 ? (
+        <p className="admin-sub">Пользователей пока нет.</p>
+      ) : (
+        <div className="admin-users-list">
+          {shown.map((u) => (
+            <div className="admin-user-row" key={u.id}>
+              <div className="admin-user-main">
+                <b className="admin-user-name">
+                  {u.name || '(без имени)'}
+                  {u.role === 'admin' && <span className="promo-badge" style={{ marginLeft: 8 }}>ADMIN</span>}
+                  {!u.emailVerified && <span className="promo-badge wheel" style={{ marginLeft: 8 }}>email не подтверждён</span>}
+                </b>
+                <span className="admin-user-email">{u.email}</span>
+                <span className="admin-row-meta">
+                  ID {String(u.id).slice(0, 8)}… · регистрация {fmt(u.createdAt)} · вход {fmt(u.lastSignInAt)}
+                </span>
+                <span className="admin-row-meta">
+                  заказов: {u.ordersCount} · промо: {u.promoCount}
+                </span>
+              </div>
+              <div className="admin-user-actions">
+                {confirmId === u.id ? (
+                  <div className="admin-user-confirm">
+                    <span className="admin-sub">Отправить ссылку для сброса пароля на {u.email}?</span>
+                    <div className="admin-user-confirm-btns">
+                      <button className="btn btn-primary btn-sm" onClick={() => doReset(u)} disabled={resetBusy === u.id}>
+                        {resetBusy === u.id ? 'Отправляю…' : 'Отправить'}
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setConfirmId(null)} disabled={resetBusy === u.id}>
+                        Отмена
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setConfirmId(u.id)}
+                    disabled={!u.email}
+                    title={u.email ? 'Отправить письмо для сброса пароля' : 'У пользователя нет email'}
+                  >
+                    {resetSent.has(u.id) ? 'Отправить снова' : 'Сбросить пароль'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="admin-sub" style={{ marginTop: 12 }}>
+        Пароли не хранятся и не отображаются. Сброс отправляет пользователю ссылку — новый пароль он задаёт сам.
+      </p>
     </div>
   )
 }

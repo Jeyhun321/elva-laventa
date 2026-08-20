@@ -3338,6 +3338,28 @@ a.product-media {
 }
 .auth-switch .link-btn { color: var(--lavender-text); font-weight: 700; }
 
+/* Admin → Пользователи */
+.admin-users { display: flex; flex-direction: column; gap: 12px; }
+.admin-users-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.admin-users-head .promo-input { flex: 1 1 220px; }
+.admin-users-list { display: flex; flex-direction: column; gap: 10px; }
+.admin-user-row {
+  display: flex; gap: 14px; align-items: flex-start; justify-content: space-between;
+  background: var(--white); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+}
+.admin-user-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.admin-user-name { display: flex; align-items: center; flex-wrap: wrap; }
+.admin-user-email { color: var(--plum); font-weight: 600; word-break: break-all; }
+.admin-user-actions { flex: 0 0 auto; }
+.admin-user-confirm { display: flex; flex-direction: column; gap: 6px; max-width: 240px; text-align: right; }
+.admin-user-confirm-btns { display: flex; gap: 8px; justify-content: flex-end; }
+@media (max-width: 640px) {
+  .admin-user-row { flex-direction: column; }
+  .admin-user-actions { align-self: stretch; }
+  .admin-user-confirm { max-width: none; text-align: left; }
+  .admin-user-confirm-btns { justify-content: flex-start; }
+}
+
 .admin-list { display: flex; flex-direction: column; gap: 10px; }
 .admin-row {
   display: grid;
