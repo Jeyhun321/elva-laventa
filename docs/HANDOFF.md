@@ -2,6 +2,8 @@
 
 ## Current Status
 
+**🔴 LAV-BUG-058 (SECURITY, P0) — /admin был доступен чужому аккаунту. Исправлено в коде/SQL, СРОЧНО применить владельцу.** Прежняя `is_admin()` была захардкожена на `alekberov.ceyhun2002@gmail.com` (+ ему выставлен `profiles.role='admin'`), поэтому обычный аккаунт открывал админку. Настоящий владелец — `olegperov2002@gmail.com`. Фикс: `supabase/fix-admin-owner.sql` (снять admin у всех кроме owner; назначить olegperov; пересоздать `is_admin()` с вшитым immutable owner UUID + role + email). Frontend `ADMIN_OTP_EMAIL`→olegperov (в бандле alekberov нет). **OWNER ACTION REQUIRED (безотлагательно):** выполнить `supabase/fix-admin-owner.sql` — до этого alekberov сохраняет серверный доступ. Build+`npm test` 21/21. Живое подтверждение (olegperov=admin / alekberov=404+RPC denied) — после применения SQL, за владельцем (окружение блокирует service_role/SQL-write).
+
 **Admin → Пользователи + безопасный сброс пароля + hardening (F-013) — реализовано.** Новый раздел Admin со списком пользователей из security-definer RPC `admin_list_users()` (is_admin gate, whitelist полей, `auth.users` из браузера не читается, паролей/токенов нет); сброс пароля через стандартный recovery-email (`resetPasswordForEmail`, service_role не используется); гейт `/admin` server-trusted (RLS + 404 для не-owner + OTP). **OWNER ACTION REQUIRED:** выполнить `supabase/admin-users-module.sql` (иначе таб «Пользователи» → `AUTH_REQUIRED`/функция не найдена). Build OK; `npm test` 21/21 (13+8); guest `/admin` → login, admin-данные не утекают, 0 console errors; `service_role` в бандле НЕТ.
 
 Предыдущее (в силе): **LAV-BUG-057** — long-idle mobile freeze: НАЙДЕН И ИСПРАВЛЕН настоящий источник (PUSH /product → REPLACE /). По live-инструментации владельца (PUSH /product/21 → REPLACE /) воспроизведена точная сигнатура и найден корень: `useInactivityRedirect` boot-эффект **пере-выполнялся при каждой навигации** (deps содержали `maybeRedirect`, зависящий от `navigate`, чья идентичность меняется на смене маршрута) и повторно стрелял boot-проверку со **stale `bootLastRef`** → при открытии товара после долгого idle мгновенный `replace('/')`. Это НЕ auth (052/056) и НЕ overlay.
@@ -93,7 +95,7 @@
 
 ### RECOVERY PROMPT FOR CODEX
 
-Recovery ID: R-20260821-002332
+Recovery ID: R-20260821-003820
 
 1. **Проект:** Elva LaVenta — React/Vite storefront, Supabase (Frankfurt), GitHub Pages (`/elva-laventa/`).
 2. **Описание:** магазин: каталог, корзина, checkout (`place_order`+Telegram), admin-панель, AZ/RU/EN, промокоды + Wheel of Fortune на едином discount-движке.
@@ -114,7 +116,7 @@ Recovery ID: R-20260821-002332
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: Admin → Пользователи (F-013) — security-definer RPC admin_list_users() (is_admin gate, whitelist), UsersPanel, безопасный сброс пароля через recovery-email (без service_role/без показа пароля), hardening /admin (404 для не-owner). OWNER: выполнить supabase/admin-users-module.sql.
+Current task: 🔴 LAV-BUG-058 (SECURITY P0) — /admin был доступен чужому аккаунту (is_admin() захардкожен на alekberov). Fix: supabase/fix-admin-owner.sql (единственный owner olegperov2002@gmail.com, вшитый UUID + role + email) + frontend ADMIN_OTP_EMAIL→olegperov. OWNER: выполнить fix-admin-owner.sql БЕЗОТЛАГАТЕЛЬНО. Также ранее: admin-users-module.sql (F-013).
 Expected modified files:
   - supabase/admin-users-module.sql (new)
   - src/admin/db.js (listUsers, sendUserPasswordReset)

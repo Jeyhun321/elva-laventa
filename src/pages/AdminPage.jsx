@@ -30,7 +30,9 @@ const TAGS = [
 ]
 
 const ADMIN_OTP_TTL = 15 * 60 * 1000
-const ADMIN_OTP_EMAIL = 'alekberov.ceyhun2002@gmail.com'
+// Единственный владелец админки. Это лишь UX-гейт: настоящая проверка — серверная
+// is_admin() (RLS/RPC), которая пинит immutable owner UUID + role + этот email.
+const ADMIN_OTP_EMAIL = 'olegperov2002@gmail.com'
 const adminOtpStorageKey = (userId) => `elva-admin-otp-verified:${userId}`
 const isOwnerEmail = (email = '') => email.trim().toLowerCase() === ADMIN_OTP_EMAIL
 
