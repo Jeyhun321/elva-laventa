@@ -18,6 +18,8 @@
 
 Блокирует релиз, ломает продакшн, теряет данные или деньги, дыра в безопасности.
 
+- [ ] **Password reset — Supabase config (владелец):** Dashboard → Authentication → URL Configuration → Site URL = `https://jeyhun321.github.io/elva-laventa/`; в Redirect URLs добавить `https://jeyhun321.github.io/elva-laventa/reset`. Для надёжной доставки писем настроить custom SMTP (встроенный лимитирован). Код recovery уже устойчив ко всем форматам ссылок. (Task 2)
+- [ ] **Task 3 — «Войти как пользователь» (owner impersonation реальных данных):** отдельный этап. Реализация: is_admin-gated security-definer RPC (`admin_impersonation_*`) с target UUID для чтения/записи данных выбранного юзера (без ослабления RLS, без service_role во фронте); центральный `effectiveAccount`-контекст (actor=owner, effective=target); баннер «Вы вошли в аккаунт …» + «Вернуться в админку»; sessionStorage + backend-expiry 30–60 мин; аудит `USER_IMPERSONATION_STARTED/ENDED` в system_logs. Требует тестов под owner-OAuth + тест-юзерами A/B (не пушить в live checkout без теста). Дизайн — в отчёте сессии.
 - [ ] **Admin owner hardening (владелец):** выполнить `supabase/fix-admin-owner.sql` — делает единственным админом владельца `alekberov.ceyhun2002@gmail.com` (вшитый immutable owner UUID + role + email) и снимает admin у всех прочих. Проверка после: `select u.email,p.role from profiles p join auth.users u on u.id=p.id where p.role='admin'` → одна строка alekberov. (см. BUGS #LAV-BUG-058). Примечание: ранняя версия ошибочно указывала olegperov — исправлено.
 
 ## High

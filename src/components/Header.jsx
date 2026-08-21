@@ -97,6 +97,9 @@ export default function Header() {
   // Məhsul səhifəsi (mobil): 1-ci sətir iri LOQO + Profil/Sevimli/Səbət;
   // 2-ci sətirdə solda "Geri" oxu, sonra axtarış. Desktop dəyişmir.
   const isProduct = location.pathname.startsWith('/product/')
+  // Admin səhifəsində storefront istifadəçi kontrolları (profil, sevimlilər,
+  // səbət) göstərilmir — onlar mağaza üçündür, admin panelinə aid deyil.
+  const isAdminRoute = location.pathname.startsWith('/admin')
 
   return (
     <header className={`header${scrolled ? ' scrolled' : ''}${isProduct ? ' header-product' : ''}`}>
@@ -187,19 +190,23 @@ export default function Header() {
             ))}
           </div>
 
-          <UserMenu />
+          {!isAdminRoute && (
+            <>
+              <UserMenu />
 
-          <Link to="/favorites" className="header-icon" aria-label={t('favorites')}>
-            <IconHeart />
-            {favCount > 0 && <span className="count-badge">{favCount}</span>}
-            <em>{t('favorites')}</em>
-          </Link>
+              <Link to="/favorites" className="header-icon" aria-label={t('favorites')}>
+                <IconHeart />
+                {favCount > 0 && <span className="count-badge">{favCount}</span>}
+                <em>{t('favorites')}</em>
+              </Link>
 
-          <Link to="/cart" className="header-icon" aria-label={t('cart')}>
-            <IconBag />
-            {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
-            <em>{t('cart')}</em>
-          </Link>
+              <Link to="/cart" className="header-icon" aria-label={t('cart')}>
+                <IconBag />
+                {cartCount > 0 && <span className="count-badge">{cartCount}</span>}
+                <em>{t('cart')}</em>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

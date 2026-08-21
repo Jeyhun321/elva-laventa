@@ -10,27 +10,47 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate()
 
   const [ready, setReady] = useState(false)   // recovery sessiyası hazırdırmı
+  const [checking, setChecking] = useState(true) // linki yoxlayırıq (yalançı "vaxtı bitib" göstərməyək)
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [done, setDone] = useState(false)
 
-  // Linkdən gələn recovery sessiyasını gözləyirik
+  // Linkdən gələn recovery sessiyasını qururuq. Supabase üç formatda göndərə bilər:
+  //  1) PKCE:        ?code=...                 → exchangeCodeForSession
+  //  2) token_hash:  ?token_hash=...&type=recovery → verifyOtp
+  //  3) hash/implicit: #access_token=...&type=recovery → detectSessionInUrl (main client)
+  //     onAuthStateChange 'PASSWORD_RECOVERY' hadisəsi ilə yaxalanır.
   useEffect(() => {
-    if (!supabase) return
+    if (!supabase) { setChecking(false); return undefined }
+    let cancelled = false
     const url = new URL(window.location.href)
-    const restore = url.searchParams.get('code')
-      ? supabase.auth.exchangeCodeForSession(url.href).then(({ error }) => {
-          if (!error) window.history.replaceState({}, document.title, `${url.pathname}${url.hash}`)
-        })
-      : Promise.resolve()
-    restore.then(() => supabase.auth.getSession()).then(({ data }) => {
-      if (data.session) setReady(true)
-    })
+    const code = url.searchParams.get('code')
+    const tokenHash = url.searchParams.get('token_hash')
+    const type = url.searchParams.get('type') || ''
+    const cleanUrl = () => { try { window.history.replaceState({}, document.title, url.pathname) } catch { /* ignore */ } }
+
+    const restore = async () => {
+      try {
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(url.href)
+          if (!error) cleanUrl()
+        } else if (tokenHash && (type === 'recovery' || type === 'email')) {
+          const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
+          if (!error) cleanUrl()
+        }
+      } catch { /* aşağıda getSession ilə yoxlayırıq */ }
+    }
+
+    restore()
+      .then(() => supabase.auth.getSession())
+      .then(({ data }) => { if (!cancelled) { if (data.session) setReady(true); setChecking(false) } })
+      .catch(() => { if (!cancelled) setChecking(false) })
+
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || session) setReady(true)
+      if (event === 'PASSWORD_RECOVERY' || session) { setReady(true); setChecking(false) }
     })
-    return () => sub.subscription.unsubscribe()
+    return () => { cancelled = true; sub.subscription.unsubscribe() }
   }, [])
 
   const submit = async (e) => {
@@ -66,7 +86,9 @@ export default function ResetPasswordPage() {
       <div className="auth-box">
         <h1 className="page-title" style={{ fontSize: '1.8rem' }}>{t('set_new_password')}</h1>
 
-        {!ready ? (
+        {checking ? (
+          <p className="admin-sub" style={{ marginTop: 14 }}>{t('loading')}…</p>
+        ) : !ready ? (
           <p className="admin-sub" style={{ marginTop: 14 }}>{t('reset_link_expired')}</p>
         ) : (
           <form onSubmit={submit} className="login-form" noValidate style={{ marginTop: 14 }}>
