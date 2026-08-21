@@ -289,11 +289,20 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
     return () => clearInterval(id)
   }, [cooldown])
 
+  // Server-guard: перед ЛЮБЫМ OTP-действием сервер подтверждает, что текущая
+  // сессия — owner (is_admin). Даже прямой вызов из DevTools не-owner'ом
+  // отклоняется: код не отправится и не подтвердится.
+  const assertOwner = async () => {
+    const { data, error } = await adminSupabase.rpc('is_admin')
+    if (error || data !== true) throw new Error('NOT_OWNER')
+  }
+
   // Отправка кода — ТОЛЬКО по явному действию пользователя (клик по кнопке).
   const sendCode = useCallback(async () => {
     if (busy || cooldown > 0) return // защита от повторных писем (быстрые клики / до истечения 30 с)
     setBusy(true); setErr('')
     try {
+      await assertOwner() // не-owner не может инициировать отправку кода
       const { error } = await adminSupabase.auth.signInWithOtp({
         email,
         options: { shouldCreateUser: false, emailRedirectTo: window.location.origin + import.meta.env.BASE_URL + 'admin' },
@@ -302,7 +311,7 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
       setSent(true)
       setCooldown(OTP_RESEND_COOLDOWN)
     } catch (e) {
-      setErr(e.message)
+      setErr(e.message === 'NOT_OWNER' ? '404 — страница не найдена.' : e.message)
     } finally {
       setBusy(false)
     }
@@ -317,12 +326,15 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
     }
     setBusy(true); setErr('')
     try {
+      await assertOwner() // не-owner не может подтвердить OTP / получить unlock
       const { error } = await adminSupabase.auth.verifyOtp({ email, token, type: 'email' })
       if (error) throw error
       saveAdminOtpVerification(session.user.id)
       onVerified()
-    } catch {
-      setErr('Код неверный, устарел или уже использован. Запросите новый код.')
+    } catch (e2) {
+      setErr(e2.message === 'NOT_OWNER'
+        ? '404 — страница не найдена.'
+        : 'Код неверный, устарел или уже использован. Запросите новый код.')
     } finally {
       setBusy(false)
     }
