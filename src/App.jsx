@@ -123,6 +123,9 @@ export default function App() {
   const { loading: catalogLoading } = useCatalog()
   const location = useLocation()
   const showHomeWhileCatalogLoads = location.pathname === '/'
+  // Админка — самостоятельный SaaS-дашборд с собственным sidebar/topbar: витринные
+  // Header/Footer/TabBar на /admin не показываем (не дублируем навигацию магазина).
+  const isAdminRoute = location.pathname.startsWith('/admin')
 
   // 30 dəqiqə+ arxa plandan qayıdanda ana səhifəyə (səbət/sessiya toxunulmur)
   useInactivityRedirect()
@@ -145,7 +148,7 @@ export default function App() {
       <AccountHomeRedirect />
       <SystemLogReporter />
       <ImpersonationBanner />
-      <Header />
+      {!isAdminRoute && <Header />}
       <main>
         {catalogLoading && !showHomeWhileCatalogLoads ? <RouteLoading /> : (
           <Suspense fallback={<RouteLoading />}>
@@ -168,8 +171,8 @@ export default function App() {
           </Suspense>
         )}
       </main>
-      <Footer />
-      <TabBar />
+      {!isAdminRoute && <Footer />}
+      {!isAdminRoute && <TabBar />}
       <ShopAuthGate />
       <WheelOfFortune />
     </>

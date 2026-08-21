@@ -11,9 +11,29 @@ import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { logDiag, idHint } from '../lib/lifecycleDiag.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { extractColors } from '../admin/colors.js'
-import { IconTrash, IconPlus, IconClose, IconArrow, IconLock } from '../components/Icons.jsx'
+import {
+  IconTrash, IconPlus, IconClose, IconArrow, IconLock,
+  IconGrid, IconBox, IconPercent, IconSparkle, IconUser, IconTruck, IconTag,
+  IconSliders, IconLayers, IconSettings, IconMenu,
+} from '../components/Icons.jsx'
 import SystemLogsPanel from '../components/SystemLogsPanel.jsx'
 import NotFoundPage from '../components/NotFoundPage.jsx'
+import ProcurementPanel from '../components/admin/ProcurementPanel.jsx'
+import SuppliersPanel from '../components/admin/SuppliersPanel.jsx'
+import AnalyticsPanel from '../components/admin/AnalyticsPanel.jsx'
+
+// Вертикальный sidebar: модули в заданном порядке + метаданные для заголовка секции.
+const ADMIN_MODULES = [
+  { id: 'products', label: 'Товары', sub: 'Каталог магазина', Icon: IconGrid },
+  { id: 'orders', label: 'Заказы', sub: 'Заказы покупателей', Icon: IconBox },
+  { id: 'promo', label: 'Промокоды', sub: 'Скидки и купоны', Icon: IconPercent },
+  { id: 'wheel', label: 'Колесо фортуны', sub: 'Награды и окна', Icon: IconSparkle },
+  { id: 'users', label: 'Пользователи', sub: 'Аккаунты и доступ', Icon: IconUser },
+  { id: 'procurement', label: 'Закупки', sub: 'Управление закупками товаров у поставщиков и торговых точек', Icon: IconTruck },
+  { id: 'suppliers', label: 'Поставщики', sub: 'Поставщики и торговые точки', Icon: IconTag },
+  { id: 'analytics', label: 'Аналитика', sub: 'Закупки, прибыль, маржа', Icon: IconSliders },
+  { id: 'logs', label: 'Системные логи', sub: 'События системы', Icon: IconLayers },
+]
 
 const ORDER_STATUSES = [
   { value: 'new', label: 'Новый' },
@@ -380,6 +400,7 @@ function EmailOtpScreen({ session, onVerified, onExit }) {
 function Dashboard({ session, onExit }) {
   const { reload: reloadSite } = useCatalog()
   const [tab, setTab] = useState('products')
+  const [navOpen, setNavOpen] = useState(false) // мобильный drawer sidebar
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [form, setForm] = useState(null)
@@ -459,114 +480,160 @@ function Dashboard({ session, onExit }) {
     return out
   }, [products])
 
+  const current = ADMIN_MODULES.find((m) => m.id === tab) || ADMIN_MODULES[0]
+  const go = (id) => { setTab(id); setNavOpen(false) }
+
   return (
-    <div className="container admin">
-      <div className="admin-head">
-        <div>
-          <h1 className="page-title">Панель управления</h1>
-          <p className="admin-sub">
-            {products.length} товаров · вошли как {session.user.email}
-          </p>
-        </div>
-        <div className="admin-head-actions">
-          <Link to="/" className="btn btn-ghost btn-sm">На сайт</Link>
-          <button className="btn btn-ghost btn-sm" onClick={onExit}>Выйти</button>
-          {tab === 'products' && (
-            <button className="btn btn-primary" onClick={() => setForm(emptyProduct(categories[0]?.id))}>
-              <IconPlus /> Добавить товар
-            </button>
+    <div className="admin admin-shell">
+      <AdminSidebar current={tab} onGo={go} open={navOpen} onExit={onExit} email={session.user.email} />
+      {navOpen && <div className="admin-drawer-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />}
+
+      <div className="admin-main">
+        <header className="admin-topbar">
+          <button
+            className="admin-burger" onClick={() => setNavOpen((o) => !o)}
+            aria-label="Меню" aria-expanded={navOpen}
+          >
+            <IconMenu />
+          </button>
+          <span className="admin-brand">La<span>Venta</span></span>
+          <div className="admin-topbar-actions">
+            <span className="admin-whoami" title={session.user.email}>Администратор</span>
+            <Link to="/" className="btn btn-ghost btn-sm">На сайт</Link>
+            <button className="btn btn-ghost btn-sm" onClick={onExit}>Выйти</button>
+          </div>
+        </header>
+
+        <div className="admin-content">
+          <div className="admin-section-head">
+            <div>
+              <h1 className="page-title">{current.label}</h1>
+              <p className="admin-sub">{current.sub}</p>
+            </div>
+            {tab === 'products' && (
+              <button className="btn btn-primary" onClick={() => setForm(emptyProduct(categories[0]?.id))}>
+                <IconPlus /> Добавить товар
+              </button>
+            )}
+          </div>
+
+          {msg && <div className={`admin-msg ${msg.type}`}>{msg.text}</div>}
+
+          {tab === 'orders' ? (
+            <OrdersPanel onNotify={say} />
+          ) : tab === 'logs' ? (
+            <SystemLogsPanel />
+          ) : tab === 'promo' ? (
+            <PromoPanel onNotify={say} />
+          ) : tab === 'wheel' ? (
+            <WheelPanel onNotify={say} />
+          ) : tab === 'users' ? (
+            <UsersPanel onNotify={say} />
+          ) : tab === 'procurement' ? (
+            <ProcurementPanel onNotify={say} products={products} categories={categories} />
+          ) : tab === 'suppliers' ? (
+            <SuppliersPanel onNotify={say} />
+          ) : tab === 'analytics' ? (
+            <AnalyticsPanel onNotify={say} />
+          ) : (
+            <>
+              {busy === 'load' && <p className="admin-sub">Загружаю…</p>}
+
+              <div className="admin-list">
+                {groupedProducts.map((p) => (
+                  <div className={`admin-row${p.isActive ? '' : ' inactive'}${p.isVariantChild ? ' variant-child' : ''}`} key={p.id}>
+                    <div className="admin-thumb">
+                      {p.image ? <img src={p.image} alt="" /> : <span className="no-photo">нет фото</span>}
+                    </div>
+                    <div className="admin-row-main">
+                      <b>{p.name.az || '(без названия)'}</b>
+                      <span className="admin-row-meta">
+                        код {p.code || '—'} · {p.brand} · {catLabel(p.category)}
+                        {!p.isActive && ' · скрыт'}
+                        {!p.inStock && ' · нет в наличии'}
+                      </span>
+                      {p.colorName && (
+                        <span className="admin-row-variant">
+                          <i className="variant-dot" style={{ background: p.colorHex || p.colors?.[0] || '#ccc' }} />
+                          {p.colorName}
+                          {p.isDefaultColor && <em className="variant-main">основной</em>}
+                        </span>
+                      )}
+                    </div>
+                    <div className="admin-row-price">
+                      {p.oldPrice ? <s>{p.oldPrice} ₼</s> : null}
+                      <b>{p.price} ₼</b>
+                    </div>
+                    <div className="admin-row-actions">
+                      <button className="btn-ghost btn-sm" onClick={() => setForm(structuredClone(p))}>
+                        Изменить
+                      </button>
+                      <button className="cart-remove" onClick={() => onDelete(p)} aria-label="Удалить">
+                        <IconTrash />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {form && (
+                <ProductForm
+                  value={form}
+                  categories={categories}
+                  allProducts={products}
+                  saving={busy === 'save'}
+                  onCancel={() => setForm(null)}
+                  onSave={onSave}
+                  onNotify={say}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
-
-      <div className="admin-tabs">
-        <button className={`admin-tab${tab === 'products' ? ' active' : ''}`} onClick={() => setTab('products')}>
-          Товары
-        </button>
-  <button className={`admin-tab${tab === 'orders' ? ' active' : ''}`} onClick={() => setTab('orders')}>
-    Заказы
-  </button>
-  <button className={`admin-tab${tab === 'promo' ? ' active' : ''}`} onClick={() => setTab('promo')}>
-    Промокоды
-  </button>
-  <button className={`admin-tab${tab === 'wheel' ? ' active' : ''}`} onClick={() => setTab('wheel')}>
-    Колесо фортуны
-  </button>
-  <button className={`admin-tab${tab === 'users' ? ' active' : ''}`} onClick={() => setTab('users')}>
-    Пользователи
-  </button>
-  <button className={`admin-tab${tab === 'logs' ? ' active' : ''}`} onClick={() => setTab('logs')}>
-    Системные логи
-  </button>
-      </div>
-
-      {msg && <div className={`admin-msg ${msg.type}`}>{msg.text}</div>}
-
-{tab === 'orders' ? (
-  <OrdersPanel onNotify={say} />
-) : tab === 'logs' ? (
-  <SystemLogsPanel />
-) : tab === 'promo' ? (
-  <PromoPanel onNotify={say} />
-) : tab === 'wheel' ? (
-  <WheelPanel onNotify={say} />
-) : tab === 'users' ? (
-  <UsersPanel onNotify={say} />
-) : (
-      <>
-      {busy === 'load' && <p className="admin-sub">Загружаю…</p>}
-
-      <div className="admin-list">
-        {groupedProducts.map((p) => (
-          <div className={`admin-row${p.isActive ? '' : ' inactive'}${p.isVariantChild ? ' variant-child' : ''}`} key={p.id}>
-            <div className="admin-thumb">
-              {p.image ? <img src={p.image} alt="" /> : <span className="no-photo">нет фото</span>}
-            </div>
-            <div className="admin-row-main">
-              <b>{p.name.az || '(без названия)'}</b>
-              <span className="admin-row-meta">
-                код {p.code || '—'} · {p.brand} · {catLabel(p.category)}
-                {!p.isActive && ' · скрыт'}
-                {!p.inStock && ' · нет в наличии'}
-              </span>
-              {p.colorName && (
-                <span className="admin-row-variant">
-                  <i className="variant-dot" style={{ background: p.colorHex || p.colors?.[0] || '#ccc' }} />
-                  {p.colorName}
-                  {p.isDefaultColor && <em className="variant-main">основной</em>}
-                </span>
-              )}
-            </div>
-            <div className="admin-row-price">
-              {p.oldPrice ? <s>{p.oldPrice} ₼</s> : null}
-              <b>{p.price} ₼</b>
-            </div>
-            <div className="admin-row-actions">
-              <button className="btn-ghost btn-sm" onClick={() => setForm(structuredClone(p))}>
-                Изменить
-              </button>
-              <button className="cart-remove" onClick={() => onDelete(p)} aria-label="Удалить">
-                <IconTrash />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {form && (
-        <ProductForm
-          value={form}
-          categories={categories}
-          allProducts={products}
-          saving={busy === 'save'}
-          onCancel={() => setForm(null)}
-          onSave={onSave}
-          onNotify={say}
-        />
-      )}
-      </>
-      )}
     </div>
+  )
+}
+
+/* ---------------- Vertical sidebar navigation ---------------- */
+function AdminSidebar({ current, onGo, open, onExit, email }) {
+  return (
+    <aside className={`admin-sidebar${open ? ' open' : ''}`}>
+      <div className="admin-sidebar-brand">
+        <span className="admin-brand">La<span>Venta</span></span>
+        <small>женская одежда</small>
+      </div>
+
+      <nav className="admin-nav">
+        {ADMIN_MODULES.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            className={`admin-nav-item${current === m.id ? ' active' : ''}`}
+            onClick={() => onGo(m.id)}
+            aria-current={current === m.id ? 'page' : undefined}
+          >
+            <span className="admin-nav-icon"><m.Icon /></span>
+            <span>{m.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <div className="admin-sidebar-foot">
+        <Link to="/settings" className="admin-nav-item admin-nav-settings">
+          <span className="admin-nav-icon"><IconSettings /></span>
+          <span>Настройки</span>
+        </Link>
+        <div className="admin-sidebar-user">
+          <span className="admin-sidebar-avatar" aria-hidden="true"><IconUser /></span>
+          <div className="admin-sidebar-user-id">
+            <b>LaVenta Store</b>
+            <small title={email}>Администратор</small>
+          </div>
+          <button className="icon-btn" onClick={onExit} aria-label="Выйти" title="Выйти"><IconLock /></button>
+        </div>
+      </div>
+    </aside>
   )
 }
 
