@@ -8,7 +8,7 @@ import { logSystemEvent } from './systemLogs.js'
 //  Sifarişlər — bazaya yazılır, WhatsApp-a yönləndirmə yoxdur
 // ============================================================
 
-export const createOrder = async ({ buyer, lines, email = null, promoCode = null }) => {
+export const createOrder = async ({ buyer, lines, email = null, promoCode = null, deliveryType = 'standard' }) => {
   if (!supabase) throw new Error('NO_DB')
 
   const { data: authData, error: authError } = await supabase.auth.getUser()
@@ -21,20 +21,46 @@ export const createOrder = async ({ buyer, lines, email = null, promoCode = null
     qty: item.qty,
   }))
 
-  // 8-arg place_order: промокод проверяется и применяется на сервере (trusted).
-  // Клиент не считает и не присылает скидку/итог — только код (или null).
+  const type = deliveryType === 'express' ? 'express' : 'standard'
+  const userNote = buyer.note?.trim() || null
+  const code = promoCode ? String(promoCode).trim() : null
+
+  // 9-арг place_order: промокод И тип доставки проверяются/считаются на сервере
+  // (trusted). Клиент присылает только код и тип — стоимость доставки, скидку и
+  // итог считает БД. delivery_type/delivery_fee/total сохраняются в заказе.
   const { data, error } = await supabase.rpc('place_order', {
     p_customer_name: buyer.name.trim(),
     p_phone: buyer.phone.trim(),
     p_phone_call: buyer.phoneCall?.trim() || null,
     p_email: email || buyer.email?.trim() || null,
     p_address: buyer.address.trim(),
-    p_note: buyer.note?.trim() || null,
+    p_note: userNote,
     p_items: items,
-    p_promo_code: promoCode ? String(promoCode).trim() : null,
+    p_promo_code: code,
+    p_delivery_type: type,
   })
 
   if (error) {
+    // ПЕРЕХОДНЫЙ период: если 9-арг сигнатура ещё не применена в БД, PostgREST
+    // вернёт PGRST202 («не найдена функция»). Не ломаем checkout — откатываемся к
+    // 8-арг версии, дополнив note строкой доставки (структурного поля ещё нет).
+    const missing = error.code === 'PGRST202'
+      || /Could not find the function|place_order\(.*p_delivery_type/i.test(error.message || '')
+    if (missing) {
+      const deliveryNote = type === 'express' ? 'Çatdırılma: Ekspress (+7 ₼)' : 'Çatdırılma: Standart'
+      const composedNote = [userNote, deliveryNote].filter(Boolean).join('\n')
+      const { data: d2, error: e2 } = await supabase.rpc('place_order', {
+        p_customer_name: buyer.name.trim(),
+        p_phone: buyer.phone.trim(),
+        p_phone_call: buyer.phoneCall?.trim() || null,
+        p_email: email || buyer.email?.trim() || null,
+        p_address: buyer.address.trim(),
+        p_note: composedNote,
+        p_items: items,
+        p_promo_code: code,
+      })
+      if (!e2) return Array.isArray(d2) ? d2[0] : d2
+    }
     void logSystemEvent({
       source: 'checkout',
       event: 'order_rpc_failed',

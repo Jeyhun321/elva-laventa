@@ -277,6 +277,29 @@ export const listOrderCustomers = async () => {
   return [...seen.values()]
 }
 
+// UUID v-agnostic формат (8-4-4-4-12 hex). Клиентская проверка — только для UX;
+// существование пользователя подтверждает сервер (admin_find_user, is_admin-gated).
+export const isUuid = (s) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s || '').trim())
+
+// Поиск пользователя по его User ID (UUID) для привязки индивидуального промокода.
+// Доверять фронту нельзя: реальную проверку (is_admin + существование) делает RPC
+// admin_find_user (SECURITY DEFINER). Бросает 'INVALID_USER_ID' / 'USER_NOT_FOUND'.
+export const findUserById = async (rawId) => {
+  const sb = need()
+  const id = String(rawId || '').trim()
+  if (!isUuid(id)) throw new Error('INVALID_USER_ID')
+  const { data, error } = await sb.rpc('admin_find_user', { p_id: id })
+  if (error) {
+    if (/INVALID_USER_ID/.test(error.message || '')) throw new Error('INVALID_USER_ID')
+    if (/USER_NOT_FOUND/.test(error.message || '')) throw new Error('USER_NOT_FOUND')
+    throw error
+  }
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row?.id) throw new Error('USER_NOT_FOUND')
+  return { id: row.id, email: row.email || '', name: row.full_name || '' }
+}
+
 // ============================================================
 //  Wheel of Fortune — конфигурация (singleton id=1, RLS: только is_admin)
 // ============================================================

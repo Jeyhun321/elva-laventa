@@ -31,7 +31,7 @@ export const railPromos = norm([
     isActive: true,
     sortOrder: 1,
     title: { az: 'Pulsuz çatdırılma', ru: 'Бесплатная доставка', en: 'Free delivery' },
-    subtitle: { az: '50 ₼-dən yuxarı', ru: 'От 50 ₼', en: 'Over 50 ₼' },
+    subtitle: { az: '100 ₼-dən yuxarı', ru: 'От 100 ₼', en: 'Over 100 ₼' },
   },
   {
     id: 'discounts',

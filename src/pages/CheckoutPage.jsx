@@ -12,12 +12,11 @@ import { getWheelStatus } from '../lib/wheel.js'
 import { logDiag } from '../lib/lifecycleDiag.js'
 import useMediaQuery from '../hooks/useMediaQuery.js'
 import { CURRENCY } from '../config.js'
+import { getDeliveryPrice, EXPRESS_FEE } from '../lib/delivery.js'
 import ProductImage from '../components/ProductImage.jsx'
 
 const BUYER_KEY = 'elva_buyer'
 const ORDER_REDIRECT_SECONDS = 10
-// Çatdırılma üsulları (TASK 6). Ekspress üçün əlavə haqq.
-const EXPRESS_FEE = 5
 
 const ORDER_ERROR_KEY_BY_CODE = {
   ORDER_FIELDS_REQUIRED: 'order_fields_required',
@@ -112,9 +111,12 @@ export default function CheckoutPage() {
   // Скидка — на merchandise subtotal (не на доставку). Показ = preview; сервер
   // при заказе пересчитывает авторитетно. Не ниже 0.
   const discount = appliedPromo ? Math.min(total, previewDiscount(appliedPromo, total)) : 0
-  // Çatdırılma haqqı və yekun (avtomatik yenilənir)
-  const deliveryFee = delivery === 'express' ? EXPRESS_FEE : 0
-  const grandTotal = Math.max(0, total - discount) + deliveryFee
+  // Çatdırılma haqqı — ЕДИНАЯ формула (src/lib/delivery.js). Порог 100 ₼ считается
+  // по стоимости ТОВАРОВ ПОСЛЕ скидки (доставка в порог не входит). Express всегда 7 ₼.
+  // Сервер (place_order) считает то же значение авторитетно.
+  const merchandiseAfterDiscount = Math.max(0, total - discount)
+  const deliveryFee = getDeliveryPrice(merchandiseAfterDiscount, delivery)
+  const grandTotal = merchandiseAfterDiscount + deliveryFee
 
   // Купон колеса доступен, только если он ещё не истёк (сервер уже отдаёт лишь
   // active/не-погашенные, но подстрахуемся на случай истечения прямо на странице).
@@ -302,20 +304,15 @@ export default function CheckoutPage() {
 
     setBusy(true)
     try {
-      // Seçilmiş çatdırılma üsulu sifariş qeydinə (note) yazılır — beləliklə həm
-      // bazadakı sifarişdə saxlanılır, həm də Telegram bildirişində görünür
-      // (place_order note-u "Qeyd:" kimi mesaja əlavə edir). DB sxemi dəyişmir.
-      const deliveryNote = delivery === 'express'
-        ? `Çatdırılma: Ekspress (+${EXPRESS_FEE} ₼)`
-        : 'Çatdırılma: Standart'
-      const composedNote = [g('note'), deliveryNote].filter(Boolean).join('\n')
-
+      // Çatdırılma üsulu серверу передаётся структурно (p_delivery_type). Сервер сам
+      // считает стоимость доставки (trusted) и пишет её в заказ (delivery_type/fee/total),
+      // а также добавляет строку доставки в Telegram. Note — только пользовательский.
       const order = await createOrder({
         buyer: {
           ...buyer,
           name: g('name'),
           address: g('address'),
-          note: composedNote,
+          note: g('note') || '',
           phone: normalizeWhatsApp(g('phone')),
           // Eynidirsə — WhatsApp nömrəsini zəng nömrəsi kimi yazırıq
           phoneCall: sameNumber
@@ -325,6 +322,7 @@ export default function CheckoutPage() {
         lines,
         email: user?.email ?? null,
         promoCode: appliedPromo?.code || null,
+        deliveryType: delivery,
       })
 
       if (remember) localStorage.setItem(BUYER_KEY, JSON.stringify(buyer))
@@ -467,7 +465,9 @@ export default function CheckoutPage() {
                 <b>{t('delivery_standard')}</b>
                 <small>{t('delivery_standard_time')}</small>
               </span>
-              <span className="delivery-card-price">{t('delivery_free')}</span>
+              <span className="delivery-card-price">
+                {merchandiseAfterDiscount >= 100 ? t('delivery_free') : `${getDeliveryPrice(merchandiseAfterDiscount, 'standard')} ₼`}
+              </span>
             </label>
 
             <label className={`delivery-card${delivery === 'express' ? ' active' : ''}`}>
@@ -483,7 +483,7 @@ export default function CheckoutPage() {
                 <b>{t('delivery_express')}</b>
                 <small>{t('delivery_express_time')}</small>
               </span>
-              <span className="delivery-card-price">+{EXPRESS_FEE} ₼</span>
+              <span className="delivery-card-price">{EXPRESS_FEE} ₼</span>
             </label>
           </div>
 

@@ -5,7 +5,7 @@ import { adminSupabase, isConfigured } from '../lib/supabase.js'
 import {
   loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin,
   listPromos, savePromo, deletePromo, generatePromoCode, listOrderCustomers, promoUsageCounts,
-  getWheelConfig, saveWheelConfig, listUsers, sendUserPasswordReset,
+  getWheelConfig, saveWheelConfig, listUsers, sendUserPasswordReset, findUserById, isUuid,
 } from '../admin/db.js'
 import { listOrders, setOrderStatus } from '../lib/orders.js'
 import { logDiag, idHint } from '../lib/lifecycleDiag.js'
@@ -593,6 +593,15 @@ function PromoPanel({ onNotify }) {
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(null)
   const [busy, setBusy] = useState(false)
+  // Поиск пользователя по User ID (UUID) для индивидуального промокода.
+  const [lookupId, setLookupId] = useState('')
+  const [lookupBusy, setLookupBusy] = useState(false)
+  const [lookupErr, setLookupErr] = useState('')
+  const [foundUser, setFoundUser] = useState(null)
+
+  const resetLookup = (seedId = '') => {
+    setLookupId(seedId); setLookupBusy(false); setLookupErr(''); setFoundUser(null)
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -610,13 +619,35 @@ function PromoPanel({ onNotify }) {
 
   useEffect(() => { load() }, [load])
 
-  const startEdit = (p) => setForm({
-    ...p,
-    starts_at: toLocalInput(p.starts_at),
-    expires_at: toLocalInput(p.expires_at),
-  })
+  const openNew = () => { resetLookup(''); setForm(emptyPromo()) }
+  const startEdit = (p) => {
+    resetLookup(p.type === 'individual' ? (p.assigned_account_id || '') : '')
+    setForm({
+      ...p,
+      starts_at: toLocalInput(p.starts_at),
+      expires_at: toLocalInput(p.expires_at),
+    })
+  }
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }))
+
+  const lookup = async () => {
+    setLookupBusy(true); setLookupErr(''); setFoundUser(null)
+    try {
+      const u = await findUserById(lookupId)
+      setFoundUser(u)
+      set({ assigned_account_id: u.id })
+    } catch (e) {
+      set({ assigned_account_id: '' })
+      setLookupErr(
+        e.message === 'INVALID_USER_ID' ? 'Некорректный User ID'
+          : e.message === 'USER_NOT_FOUND' ? 'Пользователь не найден'
+          : (e.message || 'Ошибка поиска'),
+      )
+    } finally {
+      setLookupBusy(false)
+    }
+  }
 
   const generate = async () => {
     try {
@@ -666,7 +697,7 @@ function PromoPanel({ onNotify }) {
   return (
     <div className="admin-promo">
       <div className="admin-head-actions" style={{ marginBottom: 12 }}>
-        <button className="btn btn-primary" onClick={() => setForm(emptyPromo())}>
+        <button className="btn btn-primary" onClick={openNew}>
           <IconPlus /> Новый промокод
         </button>
       </div>
@@ -689,6 +720,9 @@ function PromoPanel({ onNotify }) {
                   {!p.active && ' · выключен'}
                   {p.type === 'individual' && p.assigned_account_id ? ` · ${custLabel(p.assigned_account_id)}` : ''}
                 </span>
+                {p.type === 'individual' && p.assigned_account_id && (
+                  <span className="admin-row-meta promo-userid">User ID: {p.assigned_account_id}</span>
+                )}
               </div>
               <div className="admin-row-actions">
                 <button className="btn-ghost btn-sm" onClick={() => startEdit(p)}>Изменить</button>
@@ -737,14 +771,60 @@ function PromoPanel({ onNotify }) {
             </div>
 
             {form.type === 'individual' && (
-              <label className="fld"><span>Клиент</span>
-                <select value={form.assigned_account_id} onChange={(e) => set({ assigned_account_id: e.target.value })}>
-                  <option value="">— выберите клиента —</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name || '(без имени)'} · {c.email || c.id.slice(0, 8)}</option>
-                  ))}
-                </select>
-              </label>
+              <div className="promo-assign">
+                <label className="fld"><span>User ID пользователя</span>
+                  <div className="promo-row">
+                    <input
+                      value={lookupId}
+                      onChange={(e) => { setLookupId(e.target.value.trim()); setLookupErr('') }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); lookup() } }}
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      spellCheck={false} autoComplete="off"
+                      style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}
+                    />
+                    <button
+                      type="button" className="btn btn-ghost"
+                      onClick={lookup}
+                      disabled={lookupBusy || !isUuid(lookupId)}
+                    >
+                      {lookupBusy ? '…' : 'Найти'}
+                    </button>
+                  </div>
+                  <em className="fld-note">Пользователь видит свой User ID в «Настройки → Мой аккаунт».</em>
+                </label>
+
+                {lookupErr && <div className="admin-msg err" role="alert">{lookupErr}</div>}
+
+                {/* Подтверждение: admin видит найденного пользователя перед сохранением */}
+                {foundUser && form.assigned_account_id === foundUser.id && (
+                  <div className="promo-found" role="status">
+                    <b>{foundUser.name || '(без имени)'}</b>
+                    <span>{foundUser.email || '—'}</span>
+                    <code>User ID: {foundUser.id}</code>
+                  </div>
+                )}
+                {/* При редактировании — показываем уже привязанный UUID, даже если Найти не нажимали */}
+                {!foundUser && form.assigned_account_id && (
+                  <div className="promo-found" role="status">
+                    <b>{custLabel(form.assigned_account_id)}</b>
+                    <code>User ID: {form.assigned_account_id}</code>
+                  </div>
+                )}
+
+                {customers.length > 0 && (
+                  <label className="fld"><span>…или выбрать из клиентов с заказами</span>
+                    <select
+                      value={foundUser ? '' : form.assigned_account_id}
+                      onChange={(e) => { const id = e.target.value; setFoundUser(null); resetLookup(id); set({ assigned_account_id: id }) }}
+                    >
+                      <option value="">— выберите клиента —</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name || '(без имени)'} · {c.email || c.id.slice(0, 8)}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
             )}
 
             <div className="admin-form-grid2">
@@ -1213,6 +1293,16 @@ function OrdersPanel({ onNotify }) {
 
             <div className="order-customer">
               <div><b>{o.customer_name}</b> · итого {o.total} ₼</div>
+              <div className="order-row-meta">
+                {o.discount_amount > 0 && (
+                  <span>Скидка: −{o.discount_amount} ₼{o.promo_code ? ` (${o.promo_code})` : ''}</span>
+                )}
+                <span>
+                  Доставка: {o.delivery_type === 'express'
+                    ? `Экспресс · ${o.delivery_fee ?? 7} ₼`
+                    : (o.delivery_fee > 0 ? `Стандарт · ${o.delivery_fee} ₼` : 'Стандарт · бесплатно')}
+                </span>
+              </div>
               <div className="order-contacts">
                 <a href={`https://wa.me/${(o.phone || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer">
                   WhatsApp: {o.phone}

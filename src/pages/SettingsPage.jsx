@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../i18n/I18nContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import {
   IconSettings,
   IconUser,
@@ -15,6 +16,7 @@ import {
 // üçün UI-stub-dır (boş handler / toggle state). Backend sonra qoşulacaq.
 export default function SettingsPage() {
   const { t, lang, setLang, langs } = useI18n()
+  const { profile } = useAuth()
 
   // UI-stub state — hələ heç yerə yazılmır (yalnız görünüş üçün)
   const [notifications, setNotifications] = useState(true)
@@ -73,6 +75,24 @@ export default function SettingsPage() {
       {/* Hesab qısayolları — mövcud səhifələrə keçidlər */}
       <section className="settings-group" aria-labelledby="set-account">
         <h2 className="settings-group-title" id="set-account">{t('my_account')}</h2>
+
+        {/* Girişli istifadəçi — əsas məlumat + öz User ID-si (real immutable UUID,
+            yalnız oxunur, tam UUID kopyalanır). Fərdi promokod bu ID ilə bağlanır. */}
+        {profile && (
+          <div className="account-card">
+            <div className="account-card-head">
+              {profile.avatar
+                ? <img className="account-avatar" src={profile.avatar} alt="" referrerPolicy="no-referrer" />
+                : <span className="account-avatar account-avatar-fallback" aria-hidden="true"><IconUser /></span>}
+              <div className="account-card-id">
+                {profile.name && <b className="account-name">{profile.name}</b>}
+                {profile.email && <span className="account-email">{profile.email}</span>}
+              </div>
+            </div>
+            <UserIdRow id={profile.id} />
+          </div>
+        )}
+
         <ul className="settings-list">
           <LinkRow to="/favorites" Icon={IconHeart} label={t('favorites')} />
           <LinkRow to="/cart" Icon={IconBag} label={t('cart')} />
@@ -98,6 +118,45 @@ export default function SettingsPage() {
       <Link to="/" className="btn btn-primary settings-back">
         {t('home')} <IconArrow />
       </Link>
+    </div>
+  )
+}
+
+// İstifadəçinin öz User ID-si: yalnız oxunur, tam UUID kopyalanır (mobil-first —
+// uzun UUID sətri sığdırılır və sınıq göstərilir, amma kopyalananda tam olur).
+function UserIdRow({ id }) {
+  const { t } = useI18n()
+  const [copied, setCopied] = useState(false)
+
+  const copy = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(id)
+      } else {
+        // Köhnə brauzerlər üçün fallback
+        const ta = document.createElement('textarea')
+        ta.value = id
+        ta.style.position = 'fixed'; ta.style.opacity = '0'
+        document.body.appendChild(ta); ta.select()
+        document.execCommand('copy'); document.body.removeChild(ta)
+      }
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      // Kopyalama alınmadısa — sadəcə feedback göstərmirik
+    }
+  }
+
+  return (
+    <div className="account-userid">
+      <span className="account-userid-label">{t('profile_user_id')}</span>
+      <div className="account-userid-row">
+        <code className="account-userid-value" title={id}>{id}</code>
+        <button type="button" className="btn btn-ghost btn-sm account-userid-copy" onClick={copy}>
+          {copied ? t('profile_id_copied') : t('profile_id_copy')}
+        </button>
+      </div>
+      <span className="account-userid-hint">{t('profile_id_hint')}</span>
     </div>
   )
 }

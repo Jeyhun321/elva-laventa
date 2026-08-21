@@ -3297,6 +3297,7 @@ a.product-media {
 .order-contacts { display: flex; flex-wrap: wrap; gap: 14px; }
 .order-contacts a { color: var(--lavender-text); font-weight: 600; }
 .order-address { color: var(--ink-soft); }
+.order-row-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.82rem; color: var(--ink-soft); }
 .order-note { color: var(--ink); background: var(--bg-alt); padding: 7px 11px; border-radius: 8px; }
 
 /* Giriş / qeydiyyat səhifəsi */
@@ -3380,6 +3381,23 @@ a.product-media {
 .admin-row-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .admin-row-main b { color: var(--ink); font-size: 1rem; }
 .admin-row-meta { font-size: 0.82rem; color: var(--ink-soft); }
+.promo-userid {
+  display: block; margin-top: 2px;
+  font-family: ui-monospace, Menlo, monospace; font-size: 0.74rem;
+  overflow-wrap: anywhere; word-break: break-all;
+}
+.promo-assign { display: grid; gap: 10px; }
+.promo-found {
+  display: grid; gap: 2px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); padding: 10px 12px;
+}
+.promo-found b { color: var(--ink); }
+.promo-found span { font-size: 0.85rem; color: var(--ink-soft); word-break: break-all; }
+.promo-found code {
+  font-family: ui-monospace, Menlo, monospace; font-size: 0.76rem; color: var(--ink-soft);
+  overflow-wrap: anywhere; word-break: break-all;
+}
 .admin-row-price {
   text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
 }
@@ -5220,6 +5238,45 @@ a.product-media {
 .settings-lang span { font-size: 0.76rem; }
 .settings-lang.active { border-color: var(--plum); background: var(--lavender-mist); color: var(--plum); }
 .settings-lang.active b { color: var(--plum); }
+
+/* Girişli istifadəçi kartı + öz User ID-si (Parametrlər səhifəsi) */
+.account-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.account-card-head { display: flex; align-items: center; gap: 12px; }
+.account-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  object-fit: cover; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.account-avatar-fallback { background: var(--lavender-mist); color: var(--plum); }
+.account-card-id { display: grid; gap: 2px; min-width: 0; }
+.account-name { font-size: 0.98rem; color: var(--ink); }
+.account-email { font-size: 0.82rem; color: var(--ink-soft); word-break: break-all; }
+.account-userid { margin-top: 12px; display: grid; gap: 6px; }
+.account-userid-label {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--lavender-text);
+}
+.account-userid-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.account-userid-value {
+  flex: 1 1 auto; min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem; color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 10px;
+  /* Uzun UUID mobil-də səhifə enini sındırmasın — daxildə sınsın */
+  overflow-wrap: anywhere; word-break: break-all; line-height: 1.35;
+}
+.account-userid-copy { flex: none; white-space: nowrap; }
+.account-userid-hint { font-size: 0.76rem; color: var(--ink-soft); }
 
 .settings-list { display: grid; }
 .settings-row {

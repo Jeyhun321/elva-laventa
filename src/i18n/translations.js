@@ -36,6 +36,16 @@ export const ui = {
   settings_terms: { az: 'İstifadə şərtləri', ru: 'Условия использования', en: 'Terms of use' },
   settings_privacy: { az: 'Məxfilik siyasəti', ru: 'Политика конфиденциальности', en: 'Privacy policy' },
 
+  // Profil — istifadəçinin öz User ID-si (yalnız oxunur, kopyalana bilər)
+  profile_user_id: { az: 'İstifadəçi ID', ru: 'User ID', en: 'User ID' },
+  profile_id_copy: { az: 'Kopyala', ru: 'Копировать', en: 'Copy' },
+  profile_id_copied: { az: 'ID kopyalandı', ru: 'ID скопирован', en: 'ID copied' },
+  profile_id_hint: {
+    az: 'Fərdi promokod üçün bu ID-ni admin ilə paylaşa bilərsiniz.',
+    ru: 'Этот ID можно сообщить для получения персонального промокода.',
+    en: 'Share this ID to receive a personal promo code.',
+  },
+
   // Giriş / qeydiyyat
   sign_in: { az: 'Giriş', ru: 'Войти', en: 'Sign in' },
   sign_out: { az: 'Çıxış', ru: 'Выйти', en: 'Sign out' },
@@ -421,7 +431,7 @@ export const ui = {
   delivery_method: { az: 'Çatdırılma üsulu', ru: 'Способ доставки', en: 'Delivery method' },
   delivery_standard: { az: 'Standart çatdırılma', ru: 'Стандартная доставка', en: 'Standard delivery' },
   delivery_express: { az: 'Ekspress çatdırılma', ru: 'Экспресс-доставка', en: 'Express delivery' },
-  delivery_standard_time: { az: '1–3 iş günü', ru: '1–3 рабочих дня', en: '1–3 business days' },
+  delivery_standard_time: { az: '3 gün ərzində', ru: 'В течение 3 дней', en: 'Within 3 days' },
   delivery_express_time: { az: '6 saata qədər', ru: 'до 6 часов', en: 'up to 6 hours' },
   delivery_free: { az: 'Pulsuz', ru: 'Бесплатно', en: 'Free' },
   products_subtotal: { az: 'Məhsullar', ru: 'Товары', en: 'Products' },
@@ -436,7 +446,8 @@ export const ui = {
   share: { az: 'Paylaş', ru: 'Поделиться', en: 'Share' },
   link_copied: { az: 'Keçid kopyalandı', ru: 'Ссылка скопирована', en: 'Link copied' },
   // Məhsul şəkli üzərindəki İKİ nişan (lokallaşdırılmış — türk mətni yoxdur)
-  badge_free_delivery: { az: 'Pulsuz çatdırılma', ru: 'Бесплатная доставка', en: 'Free delivery' },
+  // Товарный бейдж: доставка бесплатна НЕ всегда, а от 100 ₼ — формулируем честно и компактно.
+  badge_free_delivery: { az: '100 ₼-dən pulsuz', ru: 'Бесплатно от 100 ₼', en: 'Free from 100 ₼' },
   badge_ships_fast: { az: 'Sabah göndərilir', ru: 'Отправка завтра', en: 'Ships tomorrow' },
   // Qalereya aria-etiketləri (əvvəllər kodda sabit AZ mətni idi → i18n-ə köçdü)
   image_prev: { az: 'Əvvəlki şəkil', ru: 'Предыдущее фото', en: 'Previous image' },

@@ -26,6 +26,8 @@
 
 Важно для пользователей или близкого релиза; заметно влияет на работу магазина.
 
+- [ ] **Доставка + индивидуальный промо по User ID (владелец, ОБЯЗАТЕЛЬНО):** выполнить `supabase/delivery-and-individual-promo.sql` — иначе (1) доставка не сохраняется в заказе и Admin→Orders не видит `delivery_type/fee` (фронт временно откатывается к 8-арг: доставка только в note), (2) в Admin→Промокоды кнопка «Найти» по User ID вернёт ошибку (нет `admin_find_user`). Бизнес-правила: **standard** < 100 ₼ = 3 ₼, ≥ 100 ₼ = бесплатно, ETA «в течение 3 календарных дней»; **express** = 7 ₼ всегда; порог 100 ₼ — по товарам ПОСЛЕ скидки. После Run: `select public.delivery_fee(95,'standard')`→3, `(100,'standard')`→0, `(250,'express')`→7; оформить тестовый заказ → проверить `delivery_type/delivery_fee/total` в Admin→Orders; создать персональный промо по User ID и проверить, что чужой аккаунт получает отказ. (см. FEATURES #F-015/#F-016, DECISIONS #D-008)
+
 - [x] **Phase 2 / Wheel FIX:** `supabase/wheel-spin-fix.sql` применён владельцем; LIVE-подтверждено (реальный spin 5%, auto-open, 7 секторов). (BUGS #LAV-BUG-054)
 - [ ] **Phase 2 / Promo FIX (владелец, ОБЯЗАТЕЛЬНО):** выполнить `supabase/promo-validate-fix.sql` — иначе применение ЛЮБОГО валидного промо/награды на checkout падает (42702 ambiguous `promo_id`). Клиентских изменений не нужно. После — LIVE-проверка checkout с wheel-наградой (окно не требуется). (см. BUGS #LAV-BUG-055)
 - [x] **Phase 2 / Stage 1 (владелец):** `supabase/promo-and-wheel.sql` выполнен в Supabase (подтверждено владельцем 2026-08-15).
