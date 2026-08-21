@@ -11,7 +11,6 @@ export const SUPABASE_URL = 'https://njvlvceqkjsvlfyajmee.supabase.co'
 export const SUPABASE_ANON_KEY = 'sb_publishable_btLK4kgQowu111Gu1NULtQ_eh2OudI6'
 
 export const isConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
-const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.endsWith('/admin')
 
 export const supabase = isConfigured
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -26,20 +25,19 @@ export const supabase = isConfigured
     })
   : null
 
-// Админка хранит авторизацию отдельно от авторизации витрины. Благодаря этому
-// владелец может быть в админке под одним Gmail, а на сайте — под другим.
-export const adminSupabase = isConfigured
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        // OAuth-код админки должен обрабатываться только на /admin.
-        // Иначе вход обычного покупателя мог бы случайно создать админ-сеанс.
-        detectSessionInUrl: isAdminRoute,
-        storageKey: 'elva-laventa-admin-auth',
-      },
-    })
-  : null
+// LAV-BUG (admin identity mismatch): админка использует ТУ ЖЕ сессию, что и
+// витрина — единая identity. Прежняя отдельная admin-сессия (storageKey
+// 'elva-laventa-admin-auth') была уязвимостью: устаревший owner-токен в ней
+// давал доступ к /admin, даже когда на сайте выбран ДРУГОЙ аккаунт. Теперь
+// owner-eligibility решает ТЕКУЩИЙ витринный аккаунт (его JWT в is_admin()),
+// а смена аккаунта на витрине мгновенно пересчитывает доступ.
+export const adminSupabase = supabase
+
+// Одноразовая очистка осиротевшего хранилища прежней admin-сессии, чтобы старый
+// owner-токен не «воскрешал» доступ. Витринную сессию/корзину НЕ трогаем.
+try {
+  if (typeof window !== 'undefined') window.localStorage.removeItem('elva-laventa-admin-auth')
+} catch { /* storage unavailable */ }
 
 // --- Kömkəçi funksiyalar ---
 

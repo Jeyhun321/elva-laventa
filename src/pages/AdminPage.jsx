@@ -7,6 +7,7 @@ import {
   getWheelConfig, saveWheelConfig, listUsers, sendUserPasswordReset,
 } from '../admin/db.js'
 import { listOrders, setOrderStatus } from '../lib/orders.js'
+import { logDiag, idHint } from '../lib/lifecycleDiag.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { extractColors } from '../admin/colors.js'
 import { IconTrash, IconPlus, IconClose, IconArrow, IconLock } from '../components/Icons.jsx'
@@ -102,6 +103,9 @@ export default function AdminPage() {
       .then(({ data, error }) => {
         if (!active) return
         const allowed = !error && data === true
+        // Диагностика: какой аккаунт (uid-хинт) видит admin-гейт и его результат.
+        // Единая identity с витриной — устаревшей admin-сессии больше нет.
+        logDiag('admin-gate', { uid: idHint(session.user.id), isAdmin: allowed })
         setIsAdmin(allowed)
         // OTP-разблокировка учитывается только если сервер подтвердил owner.
         setOtpVerified(allowed && hasAdminOtpVerification(session.user.id))
