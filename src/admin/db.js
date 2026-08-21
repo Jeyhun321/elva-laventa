@@ -1,4 +1,5 @@
 import { adminSupabase } from '../lib/supabase.js'
+import { logSystemEvent } from '../lib/systemLogs.js'
 
 // Этот модуль выполняет операции только из /admin, поэтому использует
 // отдельную сессию и не меняет аккаунт, которым клиент вошёл в магазин.
@@ -327,15 +328,33 @@ export const listUsers = async () => {
   }))
 }
 
+// Маскируем email для безопасного аудита (без полного PII в логах).
+const maskEmail = (e) => {
+  const [u, d] = String(e).split('@')
+  if (!d) return '***'
+  return `${u.slice(0, 2)}***@${d}`
+}
+
 // Безопасный сброс пароля: НЕ показывает и НЕ задаёт пароль. Отправляет
 // стандартное Supabase recovery-письмо на email пользователя — он сам ставит
 // новый пароль по ссылке (страница /reset). service_role НЕ используется.
+// UI показывает успех ТОЛЬКО при реальном успехе API (ошибка пробрасывается).
 export const sendUserPasswordReset = async (email) => {
   const sb = need()
   const clean = String(email || '').trim()
   if (!clean) throw new Error('EMAIL_REQUIRED')
   const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'reset'
   const { error } = await sb.auth.resetPasswordForEmail(clean, { redirectTo })
+  // Аудит в System Logs (без recovery-token): факт запроса, маскированный email,
+  // результат и безопасный код ошибки. ВНИМАНИЕ: успех здесь = «API принял запрос»,
+  // фактическая доставка письма зависит от Supabase Email/SMTP настроек.
+  void logSystemEvent({
+    level: error ? 'warning' : 'info',
+    source: 'auth',
+    event: error ? 'PASSWORD_RESET_FAILED' : 'PASSWORD_RESET_REQUESTED',
+    message: `Password recovery ${error ? 'failed' : 'requested'} for ${maskEmail(clean)}`,
+    details: { ok: !error, status: error?.status || null },
+  })
   if (error) throw error
   return true
 }

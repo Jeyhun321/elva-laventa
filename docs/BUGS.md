@@ -1717,3 +1717,20 @@
 - **Regression History:** 2026-08-21 — owner уточнён (alekberov); код+SQL согласованы; frontend build+bundle verified. Серверная часть NOT LIVE до применения SQL (окружение блокирует service_role/прямой SQL-write — sanctioned workflow: владелец запускает файл в SQL Editor).
 - **Changed files:** `supabase/fix-admin-owner.sql` (new), `src/pages/AdminPage.jsx`, `supabase/admin-lockdown.sql`, `supabase/admin-access-email.sql`.
 - **Remaining Risks:** до применения SQL is_admin() остаётся старой (email-only), но owner всё равно alekberov — доступ корректен. После миграции — усиленная тройная проверка. Если по какой-то причине владелец ещё не входил — миграция остановится с понятной ошибкой.
+
+## LAV-BUG-059 — Password reset: письмо не приходит пользователю (доставка Supabase Email, НЕ код)
+- **Module:** Supabase Auth email delivery (`resetPasswordForEmail`) — конфигурация проекта; клиент `src/admin/db.js` (`sendUserPasswordReset`) + `src/pages/ResetPasswordPage.jsx`
+- **Platform:** both · **Environment:** Production · **Priority:** P1 · **Severity:** S2
+- **Status:** ROOT CAUSE подтверждён — **OWNER ACTION REQUIRED (Supabase Dashboard: Custom SMTP)**; код корректен, добавлен аудит
+- **Found By:** Owner (report) · **Found Date:** 2026-08-21 · **Developer:** Claude Code
+- **Description:** Admin → Пользователи → «Сбросить пароль»: API запрос успешен, но пользователь не получает recovery-письмо на email.
+- **Диагностика (LIVE, production, anon-probe с production redirectTo):** `resetPasswordForEmail(dummy, {redirectTo:'https://jeyhun321.github.io/elva-laventa/reset'})` → **error: null** (~620мс). Значит: клиентский вызов, `redirectTo` и `/reset`-route корректны; **API принял запрос**, immediate rate-error нет. Проблема НЕ в коде и НЕ в redirect-конфиге, а на этапе **генерации/доставки письма** (Supabase Email provider).
+- **Root Cause:** используется **встроенный email-провайдер Supabase**, который не предназначен для продакшна: жёсткие rate-limits, ограниченная/нестабильная доставка, письма часто не доходят / уходят в спам с дефолтного sender'а. Отсюда «API success, но inbox пуст» — разные этапы (API accepted ≠ email generated ≠ SMTP accepted ≠ delivered).
+- **Fix (что возможно кодом):** клиент уже показывает успех ТОЛЬКО при реальном успехе API (ошибка пробрасывается и видна админу); `ResetPasswordPage` устойчив ко всем форматам ссылок (PKCE `code` / `token_hash&type=recovery` / hash) с «проверяю ссылку» (LAV-BUG-058/Task 2). Добавлен безопасный аудит в System Logs: `PASSWORD_RESET_REQUESTED/FAILED` (маскированный email + ok + safe status, БЕЗ recovery-token).
+- **OWNER ACTION REQUIRED (Supabase Dashboard → Authentication):**
+  1. **URL Configuration:** Site URL = `https://jeyhun321.github.io/elva-laventa/`; в **Redirect URLs** добавить `https://jeyhun321.github.io/elva-laventa/reset` (или `.../elva-laventa/**`).
+  2. **Email → SMTP Settings → Enable Custom SMTP** и заполнить sender/host/port/user/password реального SMTP-провайдера (например Resend/SendGrid/Mailgun/Postmark/Amazon SES). **Credentials только в Dashboard, НИКОГДА во фронте.**
+  3. **Rate Limits** (Auth → Rate Limits): поднять лимит на recovery/email при необходимости.
+  4. **Auth → Logs:** после «Сбросить пароль» проверить, что запрос принят и письмо отправлено провайдером; при custom SMTP — проверить дашборд провайдера (delivered/bounced/spam).
+- **Что реально протестировано:** LIVE — API принимает запрос (error:null) с production redirectTo; build + `npm test` 21/21. **Inbox delivery НЕ подтверждён программно** (нет доступа к почтовому ящику) — подтверждается владельцем после настройки Custom SMTP (проверить также «Спам»).
+- **Changed files:** `src/admin/db.js` (аудит-лог + комментарии). SQL/схема/RLS/OTP/impersonation не трогались.
