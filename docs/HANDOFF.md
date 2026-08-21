@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**🔴 LAV-BUG-058 (SECURITY, P0) — /admin был доступен чужому аккаунту. Исправлено в коде/SQL, СРОЧНО применить владельцу.** Прежняя `is_admin()` была захардкожена на `alekberov.ceyhun2002@gmail.com` (+ ему выставлен `profiles.role='admin'`), поэтому обычный аккаунт открывал админку. Настоящий владелец — `olegperov2002@gmail.com`. Фикс: `supabase/fix-admin-owner.sql` (снять admin у всех кроме owner; назначить olegperov; пересоздать `is_admin()` с вшитым immutable owner UUID + role + email). Frontend `ADMIN_OTP_EMAIL`→olegperov (в бандле alekberov нет). **OWNER ACTION REQUIRED (безотлагательно):** выполнить `supabase/fix-admin-owner.sql` — до этого alekberov сохраняет серверный доступ. Build+`npm test` 21/21. Живое подтверждение (olegperov=admin / alekberov=404+RPC denied) — после применения SQL, за владельцем (окружение блокирует service_role/SQL-write).
+**LAV-BUG-058 (Admin owner hardening) — owner УТОЧНЁН: единственный владелец = `alekberov.ceyhun2002@gmail.com`** (инфо про olegperov было ошибочным; откачено везде — olegperov не осталось нигде в src/supabase/docs). Реальной privilege-escalation не было (alekberov и есть owner). Полезное упрочнение: `is_admin()` переведён на тройную проверку `auth.uid()=OWNER_UUID (immutable) AND profiles.role='admin' AND jwt email=alekberov`, миграция снимает admin у всех прочих аккаунтов (не удаляя пользователей). Frontend `ADMIN_OTP_EMAIL`=alekberov. **OWNER ACTION REQUIRED:** выполнить `supabase/fix-admin-owner.sql` (owner = alekberov). Build+`npm test` 21/21. Живое подтверждение (alekberov=admin / другой=404+RPC denied) — после применения SQL (окружение блокирует service_role/SQL-write).
 
 **Admin → Пользователи + безопасный сброс пароля + hardening (F-013) — реализовано.** Новый раздел Admin со списком пользователей из security-definer RPC `admin_list_users()` (is_admin gate, whitelist полей, `auth.users` из браузера не читается, паролей/токенов нет); сброс пароля через стандартный recovery-email (`resetPasswordForEmail`, service_role не используется); гейт `/admin` server-trusted (RLS + 404 для не-owner + OTP). **OWNER ACTION REQUIRED:** выполнить `supabase/admin-users-module.sql` (иначе таб «Пользователи» → `AUTH_REQUIRED`/функция не найдена). Build OK; `npm test` 21/21 (13+8); guest `/admin` → login, admin-данные не утекают, 0 console errors; `service_role` в бандле НЕТ.
 
@@ -116,7 +116,7 @@ Recovery ID: R-20260821-003820
 Recovery format: v1
 Project: Elva LaVenta (React/Vite + Supabase + GitHub Pages)
 Branch: main
-Current task: 🔴 LAV-BUG-058 (SECURITY P0) — /admin был доступен чужому аккаунту (is_admin() захардкожен на alekberov). Fix: supabase/fix-admin-owner.sql (единственный owner olegperov2002@gmail.com, вшитый UUID + role + email) + frontend ADMIN_OTP_EMAIL→olegperov. OWNER: выполнить fix-admin-owner.sql БЕЗОТЛАГАТЕЛЬНО. Также ранее: admin-users-module.sql (F-013).
+Current task: LAV-BUG-058 — owner уточнён = alekberov.ceyhun2002@gmail.com (olegperov было ошибкой, откачено везде). Hardening: is_admin() = auth.uid()=OWNER_UUID(immutable)+role+email; supabase/fix-admin-owner.sql снимает admin у всех прочих. Frontend ADMIN_OTP_EMAIL=alekberov. OWNER: выполнить fix-admin-owner.sql. Также ранее: admin-users-module.sql (F-013).
 Expected modified files:
   - supabase/admin-users-module.sql (new)
   - src/admin/db.js (listUsers, sendUserPasswordReset)

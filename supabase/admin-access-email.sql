@@ -7,11 +7,11 @@ set role = 'admin'
 where id in (
   select id
   from auth.users
-  where lower(email) = 'olegperov2002@gmail.com'
+  where lower(email) = 'alekberov.ceyhun2002@gmail.com'
 );
 
 -- Проверка результата:
 select p.role, u.email
 from public.profiles p
 join auth.users u on u.id = p.id
-where lower(u.email) = 'olegperov2002@gmail.com';
+where lower(u.email) = 'alekberov.ceyhun2002@gmail.com';

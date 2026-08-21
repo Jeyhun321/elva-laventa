@@ -18,7 +18,7 @@
 
 Блокирует релиз, ломает продакшн, теряет данные или деньги, дыра в безопасности.
 
-- [ ] **🔴 SECURITY P0 (владелец, БЕЗОТЛАГАТЕЛЬНО):** выполнить `supabase/fix-admin-owner.sql` — сейчас чужой аккаунт `alekberov.ceyhun2002@gmail.com` проходит серверный `is_admin()` и открывает /admin. Миграция делает единственным админом `olegperov2002@gmail.com` (вшитый owner UUID). До применения дыра открыта. Проверка после: `select u.email,p.role from profiles p join auth.users u on u.id=p.id where p.role='admin'` → одна строка olegperov. (см. BUGS #LAV-BUG-058). Если olegperov ещё не входил — сначала вход через Google один раз.
+- [ ] **Admin owner hardening (владелец):** выполнить `supabase/fix-admin-owner.sql` — делает единственным админом владельца `alekberov.ceyhun2002@gmail.com` (вшитый immutable owner UUID + role + email) и снимает admin у всех прочих. Проверка после: `select u.email,p.role from profiles p join auth.users u on u.id=p.id where p.role='admin'` → одна строка alekberov. (см. BUGS #LAV-BUG-058). Примечание: ранняя версия ошибочно указывала olegperov — исправлено.
 
 ## High
 

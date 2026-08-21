@@ -1,21 +1,18 @@
 -- ============================================================
---  Elva LaVenta — SECURITY FIX: правильный единственный owner админки
+--  Elva LaVenta — ADMIN OWNER HARDENING: единственный owner админки
 --
 --  Запустить ЦЕЛИКОМ: Supabase → SQL Editor → New query → вставить → Run.
 --  ИДЕМПОТЕНТНО и безопасно (пользователей НЕ удаляет; только роли + is_admin()).
 --
---  ПРИЧИНА БАГА:
---  Прежняя is_admin() (supabase/admin-lockdown.sql) была привязана к чужому email
---  `alekberov.ceyhun2002@gmail.com`, и этому аккаунту был выставлен
---  profiles.role='admin'. Поэтому обычный пользователь проходил серверный гейт и
---  открывал /admin. Настоящий владелец `olegperov2002@gmail.com` не был назначен.
+--  ЕДИНСТВЕННЫЙ ВЛАДЕЛЕЦ: alekberov.ceyhun2002@gmail.com
 --
---  ЧТО ДЕЛАЕТ ЭТА МИГРАЦИЯ (SERVER-SIDE, единственный source of truth):
---   1) находит immutable UUID владельца olegperov2002@gmail.com в auth.users;
---   2) снимает role='admin' у ВСЕХ, кроме владельца (в т.ч. у alekberov*);
+--  ЧТО ДЕЛАЕТ (SERVER-SIDE, единственный source of truth админ-прав):
+--   1) находит immutable UUID владельца alekberov.ceyhun2002@gmail.com в auth.users;
+--   2) снимает role='admin' у ВСЕХ, кроме владельца;
 --   3) гарантирует role='admin' владельцу (создаёт профиль, если его нет);
---   4) пересоздаёт is_admin() с ВШИТЫМ owner UUID как основной identity
---      (+ profiles.role='admin' + email owner как defense-in-depth).
+--   4) пересоздаёт is_admin() с ВШИТЫМ owner UUID как ОСНОВНОЙ identity
+--      (auth.uid() == OWNER_UUID) + profiles.role='admin' + email владельца
+--      как defense-in-depth (тройная проверка).
 --
 --  Никакого service_role/секретов. RLS других таблиц не ослабляется — все
 --  admin-only политики/RPC (admin_list_users, promo, wheel, products, orders,
@@ -28,15 +25,15 @@ declare
 begin
   select id into v_owner
     from auth.users
-   where lower(email) = 'olegperov2002@gmail.com'
+   where lower(email) = 'alekberov.ceyhun2002@gmail.com'
    limit 1;
 
   if v_owner is null then
     raise exception
-      'OWNER olegperov2002@gmail.com не найден в auth.users. Пусть владелец войдёт (Google) хотя бы один раз, затем повторите эту миграцию.';
+      'OWNER alekberov.ceyhun2002@gmail.com не найден в auth.users. Пусть владелец войдёт (Google) хотя бы один раз, затем повторите эту миграцию.';
   end if;
 
-  -- (2) снять ошибочный admin у всех, кроме владельца
+  -- (2) снять admin у всех, кроме владельца
   update public.profiles
      set role = 'customer'
    where role = 'admin'
@@ -62,25 +59,25 @@ as $body$
        select 1 from public.profiles p
        where p.id = auth.uid() and p.role = 'admin'
      )
-     and lower(coalesce(auth.jwt() ->> 'email', '')) = 'olegperov2002@gmail.com';
+     and lower(coalesce(auth.jwt() ->> 'email', '')) = 'alekberov.ceyhun2002@gmail.com';
 $body$;
 $tmpl$, v_owner);
 
-  raise notice 'OK: owner=% (olegperov2002@gmail.com) назначен единственным админом; is_admin() пересоздан.', v_owner;
+  raise notice 'OK: owner=% (alekberov.ceyhun2002@gmail.com) назначен единственным админом; is_admin() пересоздан.', v_owner;
 end
 $do$;
 
 -- ============================================================
 --  ПРОВЕРКА (после Run):
---   -- ровно ОДНА строка, email = olegperov2002@gmail.com:
+--   -- ровно ОДНА строка, email = alekberov.ceyhun2002@gmail.com:
 --   select u.email, p.role
 --     from public.profiles p
 --     join auth.users u on u.id = p.id
 --    where p.role = 'admin';
 --
---   -- определение функции содержит вшитый UUID + olegperov:
+--   -- определение функции содержит вшитый UUID + alekberov:
 --   select pg_get_functiondef('public.is_admin()'::regprocedure);
 --
---   -- под обычным аккаунтом (alekberov*) is_admin() → false;
---   -- под owner (olegperov) is_admin() → true.
+--   -- под owner (alekberov) is_admin() → true;
+--   -- под любым другим аккаунтом is_admin() → false.
 -- ============================================================
