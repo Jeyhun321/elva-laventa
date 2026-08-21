@@ -29,24 +29,9 @@ const TAGS = [
   { value: 'sale', label: 'Скидка' },
 ]
 
-const ADMIN_OTP_TTL = 15 * 60 * 1000
-// Единственный владелец админки. Это лишь UX-гейт: настоящая проверка — серверная
-// is_admin() (RLS/RPC), которая пинит immutable owner UUID + role + этот email.
-const ADMIN_OTP_EMAIL = 'alekberov.ceyhun2002@gmail.com'
-const adminOtpStorageKey = (userId) => `elva-admin-otp-verified:${userId}`
-const isOwnerEmail = (email = '') => email.trim().toLowerCase() === ADMIN_OTP_EMAIL
-
-function hasAdminOtpVerification(userId) {
-  try { return Number(sessionStorage.getItem(adminOtpStorageKey(userId))) > Date.now() } catch { return false }
-}
-
-function saveAdminOtpVerification(userId) {
-  try { sessionStorage.setItem(adminOtpStorageKey(userId), String(Date.now() + ADMIN_OTP_TTL)) } catch { /* storage unavailable */ }
-}
-
-function clearAdminOtpVerification(userId) {
-  try { sessionStorage.removeItem(adminOtpStorageKey(userId)) } catch { /* storage unavailable */ }
-}
+// Доступ к админке решает ТОЛЬКО сервер: текущая Supabase-сессия + серверная
+// is_admin() (RLS/RPC, пинит immutable owner UUID + role + email). Никакой второй
+// OTP-системы и никаких client-side admin-unlock флагов больше нет.
 
 const emptyProduct = (catId) => ({
   id: null,
@@ -77,47 +62,35 @@ export default function AdminPage() {
   const [session, setSession] = useState(null)
   const [checking, setChecking] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [otpVerified, setOtpVerified] = useState(false)
 
   useEffect(() => {
-    if (!isConfigured || !adminSupabase) { setChecking(false); return }
+    if (!isConfigured || !adminSupabase) { setChecking(false); return undefined }
     adminSupabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
     })
+    // Смена аккаунта (в т.ч. на другой Google-аккаунт) меняет session → эффект
+    // ниже пересчитывает is_admin() заново и мгновенно закрывает панель.
     const { data: sub } = adminSupabase.auth.onAuthStateChange((_e, s) => setSession(s))
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  // Единственный источник истины — серверная is_admin() для ТЕКУЩЕЙ сессии.
+  // Фронт ничего не решает сам: спрашивает сервер и рендерит по ответу.
   useEffect(() => {
-    if (!session?.user || !adminSupabase) {
-      setIsAdmin(false)
-      setOtpVerified(false)
-      setChecking(false)
-      return
-    }
-    if (!isOwnerEmail(session.user.email || '')) {
-      setIsAdmin(false)
-      setOtpVerified(false)
-      setChecking(false)
-      return
-    }
-
+    if (!session?.user || !adminSupabase) { setIsAdmin(false); setChecking(false); return undefined }
     let active = true
     setChecking(true)
-    adminSupabase.from('profiles').select('role').eq('id', session.user.id).maybeSingle()
+    adminSupabase.rpc('is_admin')
       .then(({ data, error }) => {
         if (!active) return
-        const allowed = !error && data?.role === 'admin'
-        setIsAdmin(allowed)
-        setOtpVerified(allowed && hasAdminOtpVerification(session.user.id))
+        setIsAdmin(!error && data === true)
         setChecking(false)
       })
     return () => { active = false }
   }, [session])
 
   const leaveAdmin = async () => {
-    if (session?.user?.id) clearAdminOtpVerification(session.user.id)
-    setOtpVerified(false)
+    setIsAdmin(false)
     await signOutAdmin()
   }
 
@@ -138,10 +111,10 @@ export default function AdminPage() {
     )
   }
 
+  // Anon → обычный вход (Google / почта+пароль). После входа сервер решает admin/404.
   if (!session) return <LoginScreen />
-  if (!isOwnerEmail(session.user.email || '')) return <NotFoundScreen onExit={leaveAdmin} />
-  if (!isAdmin) return <AdminSetupRequired onExit={leaveAdmin} />
-  if (!otpVerified) return <EmailOtpScreen session={session} onVerified={() => setOtpVerified(true)} onExit={leaveAdmin} />
+  // Любой authenticated не-админ → обычный 404 (без OTP, без «нет прав»).
+  if (!isAdmin) return <NotFoundScreen onExit={leaveAdmin} />
 
   return <Dashboard session={session} onExit={leaveAdmin} />
 }
@@ -156,12 +129,10 @@ function LoginScreen() {
 
   const submit = async (e) => {
     e.preventDefault()
-    if (!isOwnerEmail(email)) {
-      setErr('404 — страница не найдена.')
-      return
-    }
     setBusy(true); setErr(''); setMsg('')
     try {
+      // Обычный вход. Права решает сервер (is_admin) уже после установления сессии:
+      // не-админ увидит 404, а не админку.
       await signIn(email.trim(), password)
     } catch (e2) {
       setErr(
@@ -177,7 +148,6 @@ function LoginScreen() {
   const forgot = async () => {
     setErr(''); setMsg('')
     if (!email.trim()) { setErr('Сначала впиши почту выше'); return }
-    if (!isOwnerEmail(email)) { setErr('404 — страница не найдена.'); return }
     setBusy(true)
     try {
       const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'reset'
@@ -197,7 +167,7 @@ function LoginScreen() {
       const redirectTo = window.location.origin + import.meta.env.BASE_URL + 'admin'
       const { error } = await adminSupabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo, queryParams: { prompt: 'select_account', login_hint: ADMIN_OTP_EMAIL } },
+        options: { redirectTo, queryParams: { prompt: 'select_account' } },
       })
       if (error) throw error
     } catch (e2) {
@@ -268,119 +238,6 @@ function NotFoundScreen({ onExit }) {
         <p className="admin-sub">Страница не найдена.</p>
         <button className="btn btn-primary full" onClick={onExit}>Выйти из другого аккаунта</button>
         <Link to="/" className="continue-link">← На сайт</Link>
-      </div>
-    </div>
-  )
-}
-
-function AdminSetupRequired({ onExit }) {
-  return (
-    <div className="container admin">
-      <div className="login-box admin-gate-box">
-        <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Доступ ещё не настроен</h1>
-        <p className="admin-sub">Для этого аккаунта нужно один раз выдать роль администратора в Supabase.</p>
-        <button className="btn btn-primary full" onClick={onExit}>Выйти</button>
-        <Link to="/" className="continue-link">← На сайт</Link>
-      </div>
-    </div>
-  )
-}
-
-const OTP_RESEND_COOLDOWN = 30 // секунд между отправками кода
-
-function EmailOtpScreen({ session, onVerified, onExit }) {
-  const [code, setCode] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [err, setErr] = useState('')
-  const [cooldown, setCooldown] = useState(0)
-  const email = ADMIN_OTP_EMAIL
-
-  // Обратный отсчёт до возможности повторной отправки.
-  useEffect(() => {
-    if (cooldown <= 0) return
-    const id = setInterval(() => setCooldown((s) => (s <= 1 ? 0 : s - 1)), 1000)
-    return () => clearInterval(id)
-  }, [cooldown])
-
-  // Отправка кода — ТОЛЬКО по явному действию пользователя (клик по кнопке).
-  // Никакого авто-запуска при монтировании/refresh/деплое.
-  const sendCode = useCallback(async () => {
-    if (busy || cooldown > 0) return // защита от повторных писем (быстрые клики / до истечения 30 с)
-    setBusy(true); setErr('')
-    try {
-      const { error } = await adminSupabase.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: false, emailRedirectTo: window.location.origin + import.meta.env.BASE_URL + 'admin' },
-      })
-      if (error) throw error
-      setSent(true)
-      setCooldown(OTP_RESEND_COOLDOWN) // блокируем повторную отправку на 30 секунд
-    } catch (e) {
-      setErr(e.message)
-    } finally {
-      setBusy(false)
-    }
-  }, [email, busy, cooldown])
-
-  const verify = async (e) => {
-    e.preventDefault()
-    const token = code.replace(/\s/g, '')
-    if (!/^\d{6}$/.test(token)) {
-      setErr('Введите 6-значный код из письма.')
-      return
-    }
-    setBusy(true); setErr('')
-    try {
-      const { error } = await adminSupabase.auth.verifyOtp({ email, token, type: 'email' })
-      if (error) throw error
-      saveAdminOtpVerification(session.user.id)
-      onVerified()
-    } catch {
-      setErr('Код неверный, устарел или уже использован. Запросите новый код.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const resendLabel = cooldown > 0
-    ? `Отправить код ещё раз через ${cooldown} с`
-    : (sent ? 'Отправить код ещё раз' : 'Отправить код на почту')
-
-  return (
-    <div className="container admin">
-      <div className="login-box admin-gate-box">
-        <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Подтвердите вход</h1>
-        <p className="admin-sub">
-          {sent
-            ? <>Одноразовый код отправлен на <strong>{email}</strong>. Действителен только последний код — введите его.</>
-            : <>Чтобы войти в панель, запросите одноразовый код на <strong>{email}</strong>.</>}
-        </p>
-
-        {!sent && (
-          <button type="button" className="btn btn-primary full" onClick={sendCode} disabled={busy || cooldown > 0}>
-            {busy ? 'Отправляю…' : resendLabel}
-          </button>
-        )}
-
-        {sent && (
-          <form onSubmit={verify} className="login-form">
-            <label className="fld">
-              <span>Код из письма</span>
-              <input className="otp-code" inputMode="numeric" autoComplete="one-time-code" maxLength="6" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus />
-            </label>
-            {err && <div className="admin-msg err">{err}</div>}
-            <div className="admin-msg ok">Письмо отправлено. Проверьте также папку «Спам».</div>
-            <button className="btn btn-primary full" disabled={busy}>{busy ? 'Проверяю…' : 'Подтвердить код'}</button>
-            <button type="button" className="link-btn forgot-link" onClick={sendCode} disabled={busy || cooldown > 0}>
-              {resendLabel}
-            </button>
-          </form>
-        )}
-
-        {!sent && err && <div className="admin-msg err">{err}</div>}
-
-        <button type="button" className="continue-link link-btn" onClick={onExit}>Выйти из учётной записи</button>
       </div>
     </div>
   )
