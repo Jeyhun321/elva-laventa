@@ -132,42 +132,64 @@ export const listProcurements = async (filters = {}) => {
   }))
 }
 
+// Сумма количества по вариантам (если варианты заданы — quantity считается из них).
+export const variantsTotalQty = (variants) =>
+  (Array.isArray(variants) ? variants : []).reduce(
+    (t, v) => t + (Array.isArray(v.sizes) ? v.sizes.reduce((s, x) => s + (Number(x.qty) || 0), 0) : 0),
+    0,
+  )
+
+// Нормализация вариантов к чистому виду для БД: [{color,colorHex,sizes:[{size,qty}]}].
+const cleanVariants = (variants) =>
+  (Array.isArray(variants) ? variants : [])
+    .map((v) => ({
+      color: (v.color || '').trim(),
+      colorHex: (v.colorHex || '').trim(),
+      sizes: (Array.isArray(v.sizes) ? v.sizes : [])
+        .map((s) => ({ size: (s.size || '').trim(), qty: Number(s.qty) || 0 }))
+        .filter((s) => s.size && s.qty > 0),
+    }))
+    .filter((v) => v.sizes.length > 0)
+
 // Только базовые поля идут в БД; денежные величины считает БД (generated).
 const procurementToRow = (p) => {
   const numOrNull = (v) => (v === '' || v == null ? null : Number(v))
+  const variants = cleanVariants(p.variants)
+  const images = [...new Set((p.images || []).map((s) => (s || '').trim()).filter(Boolean))]
+  // Если варианты заданы — количество вычисляется из них (source of truth);
+  // иначе берём ручное поле quantity.
+  const quantity = variants.length ? variantsTotalQty(variants) : Number(p.quantity)
   return {
     product_id: p.product_id ? Number(p.product_id) : null,
     product_code: p.product_code?.trim() || null,
     product_name: p.product_name?.trim() || null,
-    category: p.category?.trim() || null,
-    color: p.color?.trim() || null,
-    size: p.size?.trim() || null,
+    category: p.category?.trim() || null,      // хранит category_id (storefront), опционально
+    color: variants[0]?.color || p.color?.trim() || null,
+    size: variants[0]?.sizes?.[0]?.size || p.size?.trim() || null,
     supplier_id: p.supplier_id || null,
-    supplier_point_id: p.supplier_point_id || null,
+    supplier_point_id: p.supplier_point_id || null,   // опционально (точки остаются в модуле «Поставщики»)
     purchase_date: p.purchase_date || null,
     purchase_time: p.purchase_time || null,
-    quantity: Number(p.quantity),
-    quantity_sold: p.quantity_sold === '' || p.quantity_sold == null ? 0 : Number(p.quantity_sold),
+    quantity,
     purchase_unit_price: numOrNull(p.purchase_unit_price),
-    planned_sale_unit_price: numOrNull(p.planned_sale_unit_price),
-    payment_method: p.payment_method?.trim() || null,
-    status: p.status || 'purchased',
-    receipt_url: p.receipt_url?.trim() || null,
+    planned_sale_unit_price: numOrNull(p.planned_sale_unit_price), // опционально (цену задаёт «Товары»)
     notes: p.notes?.trim() || null,
+    images,
+    variants,
   }
 }
 
 export const saveProcurement = async (p) => {
   const sb = need()
   const row = procurementToRow(p)
-  // Клиентская валидация (UX); сервер (constraints/trigger) — авторитет.
+  // Клиентская валидация (UX); сервер (constraints) — авторитет.
   if (!row.supplier_id) throw new Error('SUPPLIER_REQUIRED')
-  if (!row.supplier_point_id) throw new Error('POINT_REQUIRED')
+  if (!row.product_code) throw new Error('SKU_REQUIRED')
+  if (!row.product_name) throw new Error('TITLE_REQUIRED')
   if (!row.purchase_date) throw new Error('DATE_REQUIRED')
   if (!(row.quantity > 0)) throw new Error('QUANTITY_INVALID')
   if (row.purchase_unit_price == null || row.purchase_unit_price < 0) throw new Error('PURCHASE_PRICE_INVALID')
-  if (row.planned_sale_unit_price == null || row.planned_sale_unit_price < 0) throw new Error('SALE_PRICE_INVALID')
-  if (row.quantity_sold < 0 || row.quantity_sold > row.quantity) throw new Error('SOLD_INVALID')
+  if (row.planned_sale_unit_price != null && row.planned_sale_unit_price < 0) throw new Error('SALE_PRICE_INVALID')
 
   const q = p.id
     ? sb.from('procurements').update(row).eq('id', p.id).select().single()
@@ -178,6 +200,19 @@ export const saveProcurement = async (p) => {
     `Закупка ${p.id ? 'обновлена' : 'создана'}: ${row.product_name || row.product_code || '—'} ×${row.quantity}`,
     { id: data.id, supplier_id: row.supplier_id, quantity: row.quantity })
   return data
+}
+
+// Перенос закупки в «Товары»: создаёт ЧЕРНОВИК товара или линкует к существующему
+// (идемпотентно, атомарно на сервере). Закупочная цена в товар НЕ попадает.
+export const promoteToProduct = async (procurementId) => {
+  const sb = need()
+  const { data, error } = await sb.rpc('promote_procurement_to_product', { p_id: procurementId })
+  if (error) throw error
+  const res = Array.isArray(data) ? data[0] : data
+  audit(res?.created ? 'PROCUREMENT_TO_PRODUCT' : 'PROCUREMENT_LINKED_EXISTING_PRODUCT',
+    `Закупка перенесена в товары (${res?.created ? 'создан черновик' : 'связан существующий'})`,
+    { procurement_id: procurementId, product_id: res?.product_id || null })
+  return res
 }
 
 // Архивирование (soft-delete) — предпочтительнее удаления, т.к. закупка может

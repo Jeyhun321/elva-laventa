@@ -11,6 +11,9 @@ const PRESETS = [
   { id: '90', label: 'Квартал', from: () => daysAgoStr(89) },
 ]
 
+// ВАЖНО: это ТОЛЬКО аналитика ЗАКУПОК. Продажи/orders/revenue магазина сюда НЕ
+// подмешиваются — Sales Analytics и Combined Profit Analytics будут отдельными
+// модулями (см. docs/DECISIONS.md D-010 и docs/TODO.md).
 export default function AnalyticsPanel({ onNotify }) {
   const [from, setFrom] = useState(daysAgoStr(29))
   const [to, setTo] = useState(todayStr())
@@ -28,7 +31,7 @@ export default function AnalyticsPanel({ onNotify }) {
       setSum(s); setRows(pr)
     } catch (e) {
       onNotify('err', /procurement_analytics|does not exist|function/i.test(e.message || '')
-        ? 'Аналитика закупок не подключена — выполните supabase/procurement-module.sql.'
+        ? 'Аналитика закупок не подключена — выполните supabase/procurement-module.sql и procurement-product-flow.sql.'
         : (e.message || 'Не удалось загрузить аналитику'))
       setSum(null); setRows([])
     } finally {
@@ -42,6 +45,7 @@ export default function AnalyticsPanel({ onNotify }) {
   const byProduct = useMemo(() => aggregate(rows, (r) => r.product_name || r.product_code || '—'), [rows])
 
   const preset = (p) => { setFrom(p.from()); setTo(todayStr()) }
+  const hasSale = sum?.has_sale_price
 
   return (
     <div className="admin-analytics">
@@ -60,27 +64,25 @@ export default function AnalyticsPanel({ onNotify }) {
       ) : (
         <>
           <div className="proc-cards analytics-cards">
-            <Metric label="Закуплено (партий)" value={sum.batches || 0} />
-            <Metric label="Единиц куплено" value={`${sum.quantity_purchased || 0} шт.`} />
-            <Metric label="Расходы на закупки" value={fmtAzn(sum.purchase_total || 0)} />
-            <Metric label="Ожидаемая выручка" value={fmtAzn(sum.expected_revenue || 0)} />
-            <Metric label="Ожидаемая прибыль" value={fmtAzn(sum.expected_profit || 0)} accent />
-            <Metric label="Средняя маржа" value={`${round2(sum.avg_margin_percent || 0)}%`} />
-            <Metric label="Продано (единиц)" value={`${sum.quantity_sold || 0} шт.`} />
-            <Metric label="Остаток (единиц)" value={`${sum.quantity_remaining || 0} шт.`} />
-            <Metric label="Фактическая прибыль" value={fmtAzn(sum.actual_profit || 0)} note="по отмеченным продажам" />
-            <Metric label="Товаров в пути" value={`${sum.in_transit_qty || 0} шт.`} note={fmtAzn(sum.in_transit_amount || 0)} />
+            <Metric label="Закуплено партий" value={sum.batches || 0} />
+            <Metric label="Единиц закуплено" value={`${sum.quantity_purchased || 0} шт.`} />
+            <Metric label="Расходы на закупки" value={fmtAzn(sum.purchase_total || 0)} accent />
+            <Metric label="Средняя закуп. цена" value={fmtAzn(sum.avg_purchase_price || 0)} />
+            <Metric label="Ожидаемая выручка" value={hasSale ? fmtAzn(sum.expected_revenue || 0) : '—'} note={hasSale ? '' : 'задайте цену продажи'} />
+            <Metric label="Ожидаемая прибыль" value={hasSale ? fmtAzn(sum.expected_profit || 0) : '—'} note="expected / planned" />
+            <Metric label="Средняя маржа" value={hasSale ? `${round2(sum.avg_margin_percent || 0)}%` : '—'} />
           </div>
 
           <p className="admin-sub analytics-note">
-            «Ожидаемая» прибыль — по плановой цене продажи всех закупленных единиц. «Фактическая» —
-            только по вручную отмеченным проданным единицам (поле «Продано» в закупке). Автосписание
-            по заказам магазина (FIFO) в этом этапе не реализовано.
+            Это <b>аналитика закупок</b> (сколько закуплено и потрачено). «Ожидаемая» прибыль — по плановой
+            цене продажи, только там, где она задана; это НЕ фактическая прибыль. Продажи магазина, выручка
+            заказов и реальная прибыль здесь НЕ учитываются — Sales Analytics и объединённая Profit Analytics
+            будут отдельными модулями.
           </p>
 
           <div className="analytics-breakdowns">
-            <BreakdownTable title="По поставщику" rows={bySupplier} firstCol="Поставщик" />
-            <BreakdownTable title="По товару" rows={byProduct} firstCol="Товар" />
+            <BreakdownTable title="Закупки по поставщику" rows={bySupplier} firstCol="Поставщик" hasSale={hasSale} />
+            <BreakdownTable title="Закупки по товару" rows={byProduct} firstCol="Товар" hasSale={hasSale} />
           </div>
         </>
       )}
@@ -92,17 +94,14 @@ function aggregate(rows, keyFn) {
   const m = new Map()
   for (const r of rows) {
     const k = keyFn(r)
-    const a = m.get(k) || { key: k, qty: 0, sold: 0, cost: 0, revenue: 0, expProfit: 0, actProfit: 0, remaining: 0 }
+    const a = m.get(k) || { key: k, qty: 0, cost: 0, expProfit: 0, hasSale: false }
     a.qty += Number(r.quantity) || 0
-    a.sold += Number(r.quantity_sold) || 0
-    a.remaining += Number(r.quantity_remaining) || 0
     a.cost = round2(a.cost + (Number(r.purchase_total) || 0))
-    a.revenue = round2(a.revenue + (Number(r.expected_revenue) || 0))
     a.expProfit = round2(a.expProfit + (Number(r.expected_profit) || 0))
-    a.actProfit = round2(a.actProfit + (Number(r.actual_profit) || 0))
+    if (r.planned_sale_unit_price != null) a.hasSale = true
     m.set(k, a)
   }
-  return [...m.values()].sort((x, y) => y.expProfit - x.expProfit)
+  return [...m.values()].sort((x, y) => y.cost - x.cost)
 }
 
 function Metric({ label, value, note, accent }) {
@@ -115,7 +114,7 @@ function Metric({ label, value, note, accent }) {
   )
 }
 
-function BreakdownTable({ title, rows, firstCol }) {
+function BreakdownTable({ title, rows, firstCol, hasSale }) {
   return (
     <div className="analytics-breakdown">
       <h3 className="checkout-h3">{title}</h3>
@@ -125,7 +124,7 @@ function BreakdownTable({ title, rows, firstCol }) {
             <thead>
               <tr>
                 <th>{firstCol}</th><th className="num">Кол-во</th><th className="num">Расход</th>
-                <th className="num">Ожид. приб.</th><th className="num">Продано</th><th className="num">Остаток</th>
+                <th className="num">Ожид. приб.</th>
               </tr>
             </thead>
             <tbody>
@@ -134,9 +133,7 @@ function BreakdownTable({ title, rows, firstCol }) {
                   <td data-l={firstCol}><b>{r.key}</b></td>
                   <td data-l="Кол-во" className="num">{r.qty}</td>
                   <td data-l="Расход" className="num">{fmtAzn(r.cost)}</td>
-                  <td data-l="Ожид. приб." className="num">{fmtAzn(r.expProfit)}</td>
-                  <td data-l="Продано" className="num">{r.sold}</td>
-                  <td data-l="Остаток" className="num">{r.remaining}</td>
+                  <td data-l="Ожид. приб." className="num">{r.hasSale ? fmtAzn(r.expProfit) : '—'}</td>
                 </tr>
               ))}
             </tbody>

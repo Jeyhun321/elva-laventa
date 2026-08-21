@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useImpersonation } from '../context/ImpersonationContext.jsx'
 import { adminSupabase, isConfigured } from '../lib/supabase.js'
@@ -29,7 +29,7 @@ const ADMIN_MODULES = [
   { id: 'promo', label: 'Промокоды', sub: 'Скидки и купоны', Icon: IconPercent },
   { id: 'wheel', label: 'Колесо фортуны', sub: 'Награды и окна', Icon: IconSparkle },
   { id: 'users', label: 'Пользователи', sub: 'Аккаунты и доступ', Icon: IconUser },
-  { id: 'procurement', label: 'Закупки', sub: 'Управление закупками товаров у поставщиков и торговых точек', Icon: IconTruck },
+  { id: 'procurement', label: 'Закупки', sub: 'Управление закупками товаров у поставщиков', Icon: IconTruck },
   { id: 'suppliers', label: 'Поставщики', sub: 'Поставщики и торговые точки', Icon: IconTag },
   { id: 'analytics', label: 'Аналитика', sub: 'Закупки, прибыль, маржа', Icon: IconSliders },
   { id: 'logs', label: 'Системные логи', sub: 'События системы', Icon: IconLayers },
@@ -401,6 +401,7 @@ function Dashboard({ session, onExit }) {
   const { reload: reloadSite } = useCatalog()
   const [tab, setTab] = useState('products')
   const [navOpen, setNavOpen] = useState(false) // мобильный drawer sidebar
+  const procAddRef = useRef(() => {}) // открыть модал «Добавить закупку» из шапки секции
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [form, setForm] = useState(null)
@@ -515,6 +516,11 @@ function Dashboard({ session, onExit }) {
                 <IconPlus /> Добавить товар
               </button>
             )}
+            {tab === 'procurement' && (
+              <button className="btn btn-primary" onClick={() => procAddRef.current?.()}>
+                <IconPlus /> Добавить закупку
+              </button>
+            )}
           </div>
 
           {msg && <div className={`admin-msg ${msg.type}`}>{msg.text}</div>}
@@ -530,7 +536,13 @@ function Dashboard({ session, onExit }) {
           ) : tab === 'users' ? (
             <UsersPanel onNotify={say} />
           ) : tab === 'procurement' ? (
-            <ProcurementPanel onNotify={say} products={products} categories={categories} />
+            <ProcurementPanel
+              onNotify={say}
+              products={products}
+              categories={categories}
+              onOpenProduct={() => { setTab('products'); refresh() }}
+              onRegisterAdd={(fn) => { procAddRef.current = fn }}
+            />
           ) : tab === 'suppliers' ? (
             <SuppliersPanel onNotify={say} />
           ) : tab === 'analytics' ? (

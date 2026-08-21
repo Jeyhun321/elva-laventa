@@ -50,5 +50,20 @@ t('procurementCalc safe on empty input', () => {
   assert.equal(c.margin_percent, 0)
 })
 
+// --- Procurement analytics reference case (owner spec, Part 15) ---
+// Supplier A: 5×20 + 10×15 ; Supplier B: 4×30. Uses ONLY purchase prices (no sales).
+t('analytics: total spent = 370 ₼', () => {
+  const spent = round2(purchaseTotal(20, 5) + purchaseTotal(15, 10) + purchaseTotal(30, 4))
+  assert.equal(spent, 370)
+})
+t('analytics: units purchased = 19', () => assert.equal(5 + 10 + 4, 19))
+t('analytics: Supplier A spent = 250 ₼', () => {
+  assert.equal(round2(purchaseTotal(20, 5) + purchaseTotal(15, 10)), 250)
+})
+t('analytics: Supplier B spent = 120 ₼', () => assert.equal(purchaseTotal(30, 4), 120))
+t('analytics: avg purchase price = spent/units', () => {
+  assert.equal(round2(370 / 19), 19.47)
+})
+
 console.log(`\n${p}/${n} passed`)
 if (p !== n) process.exit(1)

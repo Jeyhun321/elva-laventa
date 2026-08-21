@@ -5776,3 +5776,24 @@ a.product-media {
 @media (max-width: 380px) {
   .proc-cards, .analytics-cards { grid-template-columns: 1fr; }
 }
+
+/* ---- Procurement: centered modal (wider) + variants editor + thumbs ---- */
+.admin-modal-box.proc-modal { max-width: 800px; }
+.proc-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; display: block; }
+.proc-thumb-empty { display: inline-flex; align-items: center; justify-content: center; background: var(--bg-alt); color: var(--ink-soft); }
+.proc-variants { display: grid; gap: 10px; }
+.proc-variant {
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  background: var(--bg); display: grid; gap: 10px;
+}
+.proc-variant-head { display: flex; gap: 8px; align-items: center; }
+.proc-variant-color { flex: 1 1 auto; min-width: 0; }
+.proc-variant-hex { width: 42px; height: 38px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); cursor: pointer; flex: none; }
+.proc-variant-sizes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.proc-size-cell { display: inline-flex; align-items: center; gap: 5px; }
+.proc-size-qty { width: 58px; padding: 6px 8px; text-align: center; }
+
+@media (max-width: 560px) {
+  .proc-variant-sizes { gap: 8px; }
+  .proc-size-qty { width: 52px; }
+}
