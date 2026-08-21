@@ -104,14 +104,19 @@ export const deleteSupplierPoint = async (id) => {
 //  ЗАКУПКИ
 // ============================================================
 // Список с именами поставщика/точки (join). Фильтры применяются на сервере.
+// filters.archived: 'active' (по умолчанию) | 'archived' | 'all'.
 export const listProcurements = async (filters = {}) => {
   const sb = need()
   let q = sb
     .from('procurements')
     .select('*, suppliers(name), supplier_points(name, market_name)')
-    .eq('archived', false)
     .order('purchase_date', { ascending: false })
     .order('created_at', { ascending: false })
+
+  const arch = filters.archived || 'active'
+  if (arch === 'active') q = q.eq('archived', false)
+  else if (arch === 'archived') q = q.eq('archived', true)
+  // 'all' — без фильтра по archived
 
   if (filters.supplier_id) q = q.eq('supplier_id', filters.supplier_id)
   if (filters.supplier_point_id) q = q.eq('supplier_point_id', filters.supplier_point_id)
@@ -215,13 +220,52 @@ export const promoteToProduct = async (procurementId) => {
   return res
 }
 
-// Архивирование (soft-delete) — предпочтительнее удаления, т.к. закупка может
-// быть связана с продажами/аналитикой. archived=true скрывает из списков/сумм.
+const missingFn = (error) => error?.code === 'PGRST202'
+  || /Could not find the function|does not exist/i.test(error?.message || '')
+
+// Архивирование (soft-delete): факт закупки сохраняется, история цела. Через
+// server RPC (is_admin + аудит). Fallback на прямой update — на случай, если
+// procurement-archive-delete.sql ещё не применён (чтобы архив продолжал работать).
 export const archiveProcurement = async (id) => {
   const sb = need()
-  const { error } = await sb.from('procurements').update({ archived: true }).eq('id', id)
-  if (error) throw error
-  audit('PROCUREMENT_ARCHIVED', 'Закупка перенесена в архив', { id })
+  const { error } = await sb.rpc('archive_procurement', { p_id: id })
+  if (error) {
+    if (missingFn(error)) {
+      const { error: e2 } = await sb.from('procurements').update({ archived: true }).eq('id', id)
+      if (e2) throw e2
+      audit('PROCUREMENT_ARCHIVED', 'Закупка перенесена в архив', { id })
+      return
+    }
+    throw error
+  }
+}
+
+// Восстановление из архива (archived=false). Данные/связи не меняются.
+export const restoreProcurement = async (id) => {
+  const sb = need()
+  const { error } = await sb.rpc('restore_procurement', { p_id: id })
+  if (error) {
+    if (missingFn(error)) {
+      const { error: e2 } = await sb.from('procurements').update({ archived: false }).eq('id', id)
+      if (e2) throw e2
+      audit('PROCUREMENT_RESTORED', 'Закупка восстановлена из архива', { id })
+      return
+    }
+    throw error
+  }
+}
+
+// Физическое удаление — ТОЛЬКО через server RPC (сервер сам проверяет связи и
+// is_admin; фронт не решает). Связанную с товаром закупку сервер отклонит
+// (PROCUREMENT_LINKED). Без миграции — понятная ошибка (не «тихий» прямой delete).
+export const deleteProcurement = async (id) => {
+  const sb = need()
+  const { error } = await sb.rpc('delete_procurement', { p_id: id })
+  if (error) {
+    if (/PROCUREMENT_LINKED/.test(error.message || '')) throw new Error('PROCUREMENT_LINKED')
+    if (missingFn(error)) throw new Error('DELETE_RPC_MISSING')
+    throw error
+  }
 }
 
 // Аналитика за период — server-trusted RPC (реальные суммы, без фейка).

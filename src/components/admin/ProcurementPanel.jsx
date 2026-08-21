@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  listProcurements, saveProcurement, archiveProcurement, promoteToProduct,
-  listSuppliers, variantsTotalQty,
+  listProcurements, saveProcurement, archiveProcurement, restoreProcurement,
+  deleteProcurement, promoteToProduct, listSuppliers, variantsTotalQty,
 } from '../../admin/procurement.js'
 import { uploadImage } from '../../admin/db.js'
 import { procurementCalc, fmtAzn, round2 } from '../../lib/money.js'
@@ -27,11 +27,14 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [promoting, setPromoting] = useState(null)
+  const [confirmDel, setConfirmDel] = useState(null) // {row, linked} — модалка удаления
+  const [delBusy, setDelBusy] = useState(false)
 
   const [from, setFrom] = useState(monthStartStr())
   const [to, setTo] = useState(todayStr())
   const [fSupplier, setFSupplier] = useState('')
   const [fCategory, setFCategory] = useState('')
+  const [view, setView] = useState('active') // active | archived | all
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('date_desc')
   const [page, setPage] = useState(1)
@@ -42,8 +45,10 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
   const load = useCallback(async () => {
     setLoading(true)
     try {
+      // Загружаем ВСЕ записи периода (active+archived) — карточки/история считают их
+      // все (архив ≠ отмена факта закупки); таблица делит по режиму просмотра.
       const [pr, s] = await Promise.all([
-        listProcurements({ from, to, supplier_id: fSupplier || undefined, category: fCategory || undefined }),
+        listProcurements({ from, to, supplier_id: fSupplier || undefined, category: fCategory || undefined, archived: 'all' }),
         listSuppliers(),
       ])
       setRows(pr); setSuppliers(s)
@@ -57,11 +62,17 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
   }, [from, to, fSupplier, fCategory, onNotify])
 
   useEffect(() => { load() }, [load])
-  useEffect(() => { setPage(1) }, [from, to, fSupplier, fCategory, search, sort])
+  useEffect(() => { setPage(1) }, [from, to, fSupplier, fCategory, view, search, sort])
+
+  const activeCount = useMemo(() => rows.filter((r) => !r.archived).length, [rows])
+  const archivedCount = useMemo(() => rows.filter((r) => r.archived).length, [rows])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     let out = rows
+    // Режим просмотра: активные / архив / все
+    if (view === 'active') out = out.filter((r) => !r.archived)
+    else if (view === 'archived') out = out.filter((r) => r.archived)
     if (q) out = out.filter((r) => [r.product_name, r.product_code, r.supplier_name]
       .some((v) => String(v || '').toLowerCase().includes(q)))
     const by = {
@@ -71,12 +82,13 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
       qty_desc: (a, b) => (b.quantity || 0) - (a.quantity || 0),
     }
     return [...out].sort(by[sort] || by.date_desc)
-  }, [rows, search, sort])
+  }, [rows, view, search, sort])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  // Summary cards — только закупочные метрики (без продаж).
+  // Summary cards — историческая закупка (active + archived), только закупочные
+  // метрики (без продаж). Архивирование НЕ обнуляет исторические суммы.
   const cards = useMemo(() => {
     const today = todayStr()
     const todayBatches = rows.filter((r) => r.purchase_date === today).length
@@ -178,9 +190,39 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
   }
 
   const archive = async (r) => {
-    if (!window.confirm(`Архивировать закупку «${r.product_name || r.product_code || r.id}»? Запись скроется из списков и сумм, но не удалится безвозвратно.`)) return
-    try { await archiveProcurement(r.id); onNotify('ok', 'Закупка в архиве'); await load() }
+    try { await archiveProcurement(r.id); onNotify('ok', 'Закупка перенесена в архив'); await load() }
     catch (e) { onNotify('err', e.message || 'Не удалось архивировать') }
+  }
+
+  const restore = async (r) => {
+    try { await restoreProcurement(r.id); onNotify('ok', 'Закупка восстановлена'); await load() }
+    catch (e) { onNotify('err', e.message || 'Не удалось восстановить') }
+  }
+
+  // Клик «Удалить»: если закупка связана с товаром — модалка-предупреждение
+  // (удалять нельзя, только архив); иначе — destructive-подтверждение.
+  const askDelete = (r) => setConfirmDel({ row: r, linked: !!r.product_id })
+
+  const doDelete = async () => {
+    const r = confirmDel?.row
+    if (!r) return
+    setDelBusy(true)
+    try {
+      await deleteProcurement(r.id)
+      onNotify('ok', 'Закупка удалена безвозвратно')
+      setConfirmDel(null)
+      await load()
+    } catch (e) {
+      const m = e.message === 'PROCUREMENT_LINKED'
+        ? 'Эта закупка уже связана с товаром и не может быть удалена. Переместите её в архив.'
+        : e.message === 'DELETE_RPC_MISSING'
+          ? 'Удаление не подключено — выполните supabase/procurement-archive-delete.sql.'
+          : (e.message || 'Не удалось удалить')
+      onNotify('err', m)
+      // Сервер — авторитет: если он отклонил как связанную, показываем это в модалке.
+      if (e.message === 'PROCUREMENT_LINKED') setConfirmDel({ row: r, linked: true })
+      else setConfirmDel(null)
+    } finally { setDelBusy(false) }
   }
 
   const promote = async (r) => {
@@ -213,6 +255,11 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по товару, коду, поставщику…" />
         </div>
         <div className="proc-filters">
+          <select value={view} onChange={(e) => setView(e.target.value)} aria-label="Показывать">
+            <option value="active">Активные ({activeCount})</option>
+            <option value="archived">Архив ({archivedCount})</option>
+            <option value="all">Все ({rows.length})</option>
+          </select>
           <label>С <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
           <label>По <input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
           <select value={fSupplier} onChange={(e) => setFSupplier(e.target.value)} aria-label="Поставщик">
@@ -253,7 +300,11 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
                         ? <img className="proc-thumb" src={r.images[0]} alt="" />
                         : <span className="proc-thumb proc-thumb-empty">—</span>}
                     </td>
-                    <td data-l="Товар"><b>{r.product_name || '—'}</b>{r.variants?.length ? <small> · {r.variants.map((v) => v.color).filter(Boolean).join(', ')}</small> : ''}</td>
+                    <td data-l="Товар">
+                      <b>{r.product_name || '—'}</b>
+                      {r.variants?.length ? <small> · {r.variants.map((v) => v.color).filter(Boolean).join(', ')}</small> : ''}
+                      {r.archived && <span className="proc-badge-archived">В архиве</span>}
+                    </td>
                     <td data-l="SKU">{r.product_code || '—'}</td>
                     <td data-l="Поставщик">{r.supplier_name || '—'}</td>
                     <td data-l="Дата">{r.purchase_date ? new Date(r.purchase_date).toLocaleDateString('ru-RU') : '—'}</td>
@@ -266,15 +317,16 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
                         : <span className="proc-status s-cancelled">Не добавлен</span>}
                     </td>
                     <td className="proc-actions">
-                      <button className="btn-ghost btn-sm" onClick={() => setForm(toFormModel(r))}>Изм.</button>
-                      {r.product_id ? (
-                        <button className="btn-ghost btn-sm" onClick={() => onOpenProduct?.(r.product_id)}>Открыть товар</button>
-                      ) : (
-                        <button className="btn-ghost btn-sm" disabled={promoting === r.id} onClick={() => promote(r)}>
-                          {promoting === r.id ? '…' : 'Добавить в Товары'}
-                        </button>
-                      )}
-                      <button className="btn-ghost btn-sm" onClick={() => archive(r)}>Архив</button>
+                      <RowMenu
+                        row={r}
+                        promoting={promoting === r.id}
+                        onEdit={() => setForm(toFormModel(r))}
+                        onOpenProduct={() => onOpenProduct?.(r.product_id)}
+                        onPromote={() => promote(r)}
+                        onArchive={() => archive(r)}
+                        onRestore={() => restore(r)}
+                        onDelete={() => askDelete(r)}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -448,6 +500,71 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
               <button className="btn btn-primary" onClick={save} disabled={busy || uploading}>{busy ? '…' : 'Сохранить закупку'}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Delete: связанную с товаром удалять нельзя (только архив); иначе — danger-подтверждение */}
+      {confirmDel && (
+        <div className="admin-modal" role="dialog" aria-modal="true" onClick={() => !delBusy && setConfirmDel(null)}>
+          <div className="admin-modal-box proc-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-modal-head">
+              <h3>{confirmDel.linked ? 'Удаление недоступно' : 'Удалить закупку?'}</h3>
+              <button className="icon-btn" onClick={() => setConfirmDel(null)} aria-label="Закрыть"><IconClose /></button>
+            </div>
+            <div className="admin-modal-body">
+              {confirmDel.linked ? (
+                <p>Эта закупка уже связана с товаром и не может быть удалена. Переместите её в архив, чтобы сохранить историю себестоимости и связь с товаром.</p>
+              ) : (
+                <p>Закупка <b>«{confirmDel.row.product_name || confirmDel.row.product_code || confirmDel.row.id}»</b> будет удалена <b>без возможности восстановления</b>.</p>
+              )}
+            </div>
+            <div className="admin-modal-foot">
+              <button className="btn btn-ghost" onClick={() => setConfirmDel(null)} disabled={delBusy}>Отмена</button>
+              {confirmDel.linked ? (
+                <button className="btn btn-primary" disabled={delBusy || confirmDel.row.archived}
+                  onClick={() => { const r = confirmDel.row; setConfirmDel(null); archive(r) }}>
+                  {confirmDel.row.archived ? 'Уже в архиве' : 'В архив'}
+                </button>
+              ) : (
+                <button className="btn btn-danger" onClick={doDelete} disabled={delBusy}>
+                  {delBusy ? '…' : 'Удалить'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Компактное меню действий строки (⋯) — не перегружает таблицу, удобно на мобильном.
+function RowMenu({ row, promoting, onEdit, onOpenProduct, onPromote, onArchive, onRestore, onDelete }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+
+  const run = (fn) => { setOpen(false); fn() }
+
+  return (
+    <div className="proc-menu" ref={ref}>
+      <button className="proc-menu-btn" onClick={() => setOpen((o) => !o)} aria-label="Действия" aria-expanded={open}>⋯</button>
+      {open && (
+        <div className="proc-menu-list" role="menu">
+          <button role="menuitem" onClick={() => run(onEdit)}>Изменить</button>
+          {!row.archived && (row.product_id
+            ? <button role="menuitem" onClick={() => run(onOpenProduct)}>Открыть товар</button>
+            : <button role="menuitem" disabled={promoting} onClick={() => run(onPromote)}>{promoting ? '…' : 'Добавить в Товары'}</button>
+          )}
+          {row.archived
+            ? <button role="menuitem" onClick={() => run(onRestore)}>Восстановить</button>
+            : <button role="menuitem" onClick={() => run(onArchive)}>Архивировать</button>}
+          <button role="menuitem" className="proc-menu-danger" onClick={() => run(onDelete)}>Удалить</button>
         </div>
       )}
     </div>

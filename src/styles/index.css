@@ -5797,3 +5797,42 @@ a.product-media {
   .proc-variant-sizes { gap: 8px; }
   .proc-size-qty { width: 52px; }
 }
+
+/* ---- Procurement: archive badge, row actions menu, delete confirm, danger btn ---- */
+.proc-badge-archived {
+  display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+  font-size: 0.68rem; font-weight: 700; background: var(--bg-alt); color: var(--ink-soft);
+  vertical-align: middle;
+}
+.proc-menu { position: relative; display: inline-block; }
+.proc-menu-btn {
+  width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line);
+  background: var(--white); color: var(--ink); cursor: pointer; font-size: 1.2rem; line-height: 1;
+}
+.proc-menu-btn:hover { background: var(--bg); }
+.proc-menu-list {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 40;
+  min-width: 190px; background: var(--white); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: var(--shadow-md); padding: 6px; display: grid; gap: 2px;
+}
+.proc-menu-list button {
+  display: block; width: 100%; text-align: left; padding: 9px 12px; border: none;
+  background: transparent; border-radius: 8px; color: var(--ink); font-size: 0.88rem; cursor: pointer;
+}
+.proc-menu-list button:hover { background: var(--bg); }
+.proc-menu-list button:disabled { color: var(--ink-soft); cursor: default; }
+.proc-menu-danger { color: var(--sale) !important; }
+.proc-menu-danger:hover { background: #ffe9f1 !important; }
+
+.btn-danger { background: var(--sale); color: #fff; border: 1px solid var(--sale); }
+.btn-danger:hover { filter: brightness(0.95); }
+.btn-danger:disabled { opacity: 0.6; cursor: default; }
+
+.admin-modal-box.proc-confirm { max-width: 440px; }
+.admin-modal-box.proc-confirm .admin-modal-body { font-size: 0.92rem; color: var(--ink); }
+
+/* На мобильном меню действий не должно уезжать за край карточки */
+@media (max-width: 900px) {
+  .proc-table td.proc-actions { justify-content: flex-end; }
+  .proc-menu-list { right: 0; }
+}

@@ -26,7 +26,7 @@ export default function AnalyticsPanel({ onNotify }) {
     try {
       const [s, pr] = await Promise.all([
         procurementAnalytics(from, to),
-        listProcurements({ from, to }),
+        listProcurements({ from, to, archived: 'all' }),
       ])
       setSum(s); setRows(pr)
     } catch (e) {

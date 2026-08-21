@@ -19,6 +19,11 @@
 
 ---
 
+## 2026-08-22
+
+**Что сделано** — Закупки: добавлено действие **Удалить** и наведён порядок в жизненном цикле записи (F-019). Действия строки собраны в overflow-меню **⋯**. Фильтр **Активные / Архив / Все** со счётчиками (по умолчанию Активные), badge «В архиве». Архив = soft-delete (`archived=true` + `archived_at/by`, история цела); **Восстановить** возвращает в активные (тот же UUID, связи не пересоздаются). **Удаление** — с модалкой проекта (не браузерный `confirm`): сервер source of truth — несвязанную закупку owner удаляет физически, связанную с товаром сервер отклоняет (`PROCUREMENT_LINKED`) → UI предлагает архив. Новая идемпотентная миграция `supabase/procurement-archive-delete.sql`: `archive_/restore_/delete_procurement` (SECURITY DEFINER + is_admin, аудит в той же транзакции, для delete — ДО удаления), а `procurement_analytics` теперь ВКЛЮЧАЕТ архивные закупки (архив ≠ отмена факта закупки → исторические суммы не обнуляются). Frontend delete — только через RPC; архив/restore имеют fallback на прямой update, если миграция не применена. `npm run build` OK; `npm test` зелёные (delivery 16/16, money 19/19). См. FEATURES [F-019].
+**Что осталось** — OWNER: применить `supabase/procurement-archive-delete.sql`; затем под owner-сессией живой прогон Archive→Restore→Safe delete→Protected delete и проверка RLS (обычный/anon → denied). Живой UI-прогон под owner — вне окружения (нет owner-аутентификации/применения SQL).
+
 ## 2026-08-20
 
 **Что сделано** — Wheel of Fortune: полная админ-конфигурация секторов. Каждый reward расширен явными полями `status` (ACTIVE/DISPLAY ONLY) и `show_lock`. Admin WheelPanel: select статуса, toggle замка (disabled для ACTIVE), кнопка «Добавить скидку», валидация (percent 1..100, вес ≥0, без дублей, ACTIVE→weight>0, ≥1 ACTIVE). Витрина строит сектора из серверного конфига, замок = SVG `IconLock` (не emoji), конфиг перечитывается 60с+visibility (правки Admin без ручного refresh). Новая idempotent-миграция `supabase/wheel-config-status-lock.sql`: `spin_wheel` выбирает только active+weight>0 (display_only исключён всегда), `get_wheel_public_config.sectors` отдаёт `{percent,active,show_lock}`. Build OK; storefront boot (playwright-mobile 390px) — console 0 errors. См. FEATURES [F-011].

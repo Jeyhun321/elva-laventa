@@ -25,7 +25,7 @@ export default function SuppliersPanel({ onNotify }) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [s, p, pr] = await Promise.all([listSuppliers(), listSupplierPoints(), listProcurements()])
+      const [s, p, pr] = await Promise.all([listSuppliers(), listSupplierPoints(), listProcurements({ archived: 'all' })])
       setSuppliers(s); setPoints(p); setProcs(pr)
     } catch (e) {
       onNotify('err', e.message || 'Не удалось загрузить поставщиков')
