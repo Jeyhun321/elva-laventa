@@ -29,9 +29,25 @@ const TAGS = [
   { value: 'sale', label: 'Скидка' },
 ]
 
-// Доступ к админке решает ТОЛЬКО сервер: текущая Supabase-сессия + серверная
-// is_admin() (RLS/RPC, пинит immutable owner UUID + role + email). Никакой второй
-// OTP-системы и никаких client-side admin-unlock флагов больше нет.
+// Основная авторизация — ТОЛЬКО сервер: текущая Supabase-сессия + серверная
+// is_admin() (RLS/RPC, пинит immutable owner UUID + role + email). OTP ниже —
+// дополнительный слой, который видит ТОЛЬКО подтверждённый сервером owner
+// (не-owner получает 404 ещё ДО OTP и никогда не может инициировать OTP).
+const ADMIN_OTP_TTL = 15 * 60 * 1000
+const ADMIN_OTP_EMAIL = 'alekberov.ceyhun2002@gmail.com'
+const adminOtpStorageKey = (userId) => `elva-admin-otp-verified:${userId}`
+
+function hasAdminOtpVerification(userId) {
+  try { return Number(sessionStorage.getItem(adminOtpStorageKey(userId))) > Date.now() } catch { return false }
+}
+
+function saveAdminOtpVerification(userId) {
+  try { sessionStorage.setItem(adminOtpStorageKey(userId), String(Date.now() + ADMIN_OTP_TTL)) } catch { /* storage unavailable */ }
+}
+
+function clearAdminOtpVerification(userId) {
+  try { sessionStorage.removeItem(adminOtpStorageKey(userId)) } catch { /* storage unavailable */ }
+}
 
 const emptyProduct = (catId) => ({
   id: null,
@@ -62,6 +78,7 @@ export default function AdminPage() {
   const [session, setSession] = useState(null)
   const [checking, setChecking] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(false)
 
   useEffect(() => {
     if (!isConfigured || !adminSupabase) { setChecking(false); return undefined }
@@ -74,23 +91,29 @@ export default function AdminPage() {
     return () => sub.subscription.unsubscribe()
   }, [])
 
-  // Единственный источник истины — серверная is_admin() для ТЕКУЩЕЙ сессии.
-  // Фронт ничего не решает сам: спрашивает сервер и рендерит по ответу.
+  // ГЛАВНАЯ проверка — серверная is_admin() для ТЕКУЩЕЙ сессии (owner identity:
+  // immutable auth.uid() + role + email). Фронт не решает сам — спрашивает сервер.
+  // OTP-статус выводится ТОЛЬКО для подтверждённого owner (не-owner до OTP не доходит).
   useEffect(() => {
-    if (!session?.user || !adminSupabase) { setIsAdmin(false); setChecking(false); return undefined }
+    if (!session?.user || !adminSupabase) { setIsAdmin(false); setOtpVerified(false); setChecking(false); return undefined }
     let active = true
     setChecking(true)
     adminSupabase.rpc('is_admin')
       .then(({ data, error }) => {
         if (!active) return
-        setIsAdmin(!error && data === true)
+        const allowed = !error && data === true
+        setIsAdmin(allowed)
+        // OTP-разблокировка учитывается только если сервер подтвердил owner.
+        setOtpVerified(allowed && hasAdminOtpVerification(session.user.id))
         setChecking(false)
       })
     return () => { active = false }
   }, [session])
 
   const leaveAdmin = async () => {
+    if (session?.user?.id) clearAdminOtpVerification(session.user.id)
     setIsAdmin(false)
+    setOtpVerified(false)
     await signOutAdmin()
   }
 
@@ -113,8 +136,11 @@ export default function AdminPage() {
 
   // Anon → обычный вход (Google / почта+пароль). После входа сервер решает admin/404.
   if (!session) return <LoginScreen />
-  // Любой authenticated не-админ → обычный 404 (без OTP, без «нет прав»).
+  // СНАЧАЛА серверная owner-проверка. Любой authenticated не-owner → обычный 404,
+  // БЕЗ OTP, без email владельца, без admin-формы, без загрузки admin-данных.
   if (!isAdmin) return <NotFoundScreen onExit={leaveAdmin} />
+  // Только подтверждённый сервером owner доходит до OTP-слоя.
+  if (!otpVerified) return <EmailOtpScreen session={session} onVerified={() => setOtpVerified(true)} onExit={leaveAdmin} />
 
   return <Dashboard session={session} onExit={leaveAdmin} />
 }
@@ -238,6 +264,108 @@ function NotFoundScreen({ onExit }) {
         <p className="admin-sub">Страница не найдена.</p>
         <button className="btn btn-primary full" onClick={onExit}>Выйти из другого аккаунта</button>
         <Link to="/" className="continue-link">← На сайт</Link>
+      </div>
+    </div>
+  )
+}
+
+const OTP_RESEND_COOLDOWN = 30 // секунд между отправками кода
+
+// OTP-слой доступен ТОЛЬКО подтверждённому сервером owner (проверка is_admin()
+// в AdminPage выполняется ДО этого экрана). Дополнительный фактор поверх сессии;
+// не-owner сюда не попадает и не может инициировать отправку кода.
+function EmailOtpScreen({ session, onVerified, onExit }) {
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [err, setErr] = useState('')
+  const [cooldown, setCooldown] = useState(0)
+  const email = ADMIN_OTP_EMAIL
+
+  // Обратный отсчёт до возможности повторной отправки.
+  useEffect(() => {
+    if (cooldown <= 0) return undefined
+    const id = setInterval(() => setCooldown((s) => (s <= 1 ? 0 : s - 1)), 1000)
+    return () => clearInterval(id)
+  }, [cooldown])
+
+  // Отправка кода — ТОЛЬКО по явному действию пользователя (клик по кнопке).
+  const sendCode = useCallback(async () => {
+    if (busy || cooldown > 0) return // защита от повторных писем (быстрые клики / до истечения 30 с)
+    setBusy(true); setErr('')
+    try {
+      const { error } = await adminSupabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false, emailRedirectTo: window.location.origin + import.meta.env.BASE_URL + 'admin' },
+      })
+      if (error) throw error
+      setSent(true)
+      setCooldown(OTP_RESEND_COOLDOWN)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }, [email, busy, cooldown])
+
+  const verify = async (e) => {
+    e.preventDefault()
+    const token = code.replace(/\s/g, '')
+    if (!/^\d{6}$/.test(token)) {
+      setErr('Введите 6-значный код из письма.')
+      return
+    }
+    setBusy(true); setErr('')
+    try {
+      const { error } = await adminSupabase.auth.verifyOtp({ email, token, type: 'email' })
+      if (error) throw error
+      saveAdminOtpVerification(session.user.id)
+      onVerified()
+    } catch {
+      setErr('Код неверный, устарел или уже использован. Запросите новый код.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const resendLabel = cooldown > 0
+    ? `Отправить код ещё раз через ${cooldown} с`
+    : (sent ? 'Отправить код ещё раз' : 'Отправить код на почту')
+
+  return (
+    <div className="container admin">
+      <div className="login-box admin-gate-box">
+        <h1 className="page-title" style={{ fontSize: '1.9rem' }}>Подтвердите вход</h1>
+        <p className="admin-sub">
+          {sent
+            ? <>Одноразовый код отправлен на <strong>{email}</strong>. Действителен только последний код — введите его.</>
+            : <>Чтобы войти в панель, запросите одноразовый код на <strong>{email}</strong>.</>}
+        </p>
+
+        {!sent && (
+          <button type="button" className="btn btn-primary full" onClick={sendCode} disabled={busy || cooldown > 0}>
+            {busy ? 'Отправляю…' : resendLabel}
+          </button>
+        )}
+
+        {sent && (
+          <form onSubmit={verify} className="login-form">
+            <label className="fld">
+              <span>Код из письма</span>
+              <input className="otp-code" inputMode="numeric" autoComplete="one-time-code" maxLength="6" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="000000" autoFocus />
+            </label>
+            {err && <div className="admin-msg err">{err}</div>}
+            <div className="admin-msg ok">Письмо отправлено. Проверьте также папку «Спам».</div>
+            <button className="btn btn-primary full" disabled={busy}>{busy ? 'Проверяю…' : 'Подтвердить код'}</button>
+            <button type="button" className="link-btn forgot-link" onClick={sendCode} disabled={busy || cooldown > 0}>
+              {resendLabel}
+            </button>
+          </form>
+        )}
+
+        {!sent && err && <div className="admin-msg err">{err}</div>}
+
+        <button type="button" className="continue-link link-btn" onClick={onExit}>Выйти из учётной записи</button>
       </div>
     </div>
   )
