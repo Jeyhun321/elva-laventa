@@ -1,7 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './AuthContext.jsx'
 import { useCatalog } from './CatalogContext.jsx'
+import { useImpersonation } from './ImpersonationContext.jsx'
 import { supabase } from '../lib/supabase.js'
+import {
+  impGetCart, impCartUpsert, impCartRemove, impCartClear,
+  impGetFavorites, impFavToggle,
+} from '../lib/impersonation.js'
 import { logDiag, idHint } from '../lib/lifecycleDiag.js'
 
 const ShopContext = createContext(null)
@@ -73,7 +78,12 @@ const normaliseFavorites = (items = []) => (Array.isArray(items) ? items : [])
 export function ShopProvider({ children }) {
   const { user, isSignedIn, loading } = useAuth()
   const { products, getProduct } = useCatalog()
-  const accountId = isSignedIn ? user?.id : null
+  const { impersonation, isImpersonating } = useImpersonation()
+  // effectiveAccount: чьи данные показываем/меняем. Обычный пользователь → auth.uid();
+  // owner в режиме имперсонации → реальный UUID выбранного пользователя. Actor (owner)
+  // остаётся аутентифицированным; в этом режиме чтения/записи идут через is_admin-gated
+  // server RPC (admin_imp_*), RLS обычных таблиц не ослабляется.
+  const accountId = isImpersonating ? impersonation.targetId : (isSignedIn ? user?.id : null)
   // An account may be switched A → B → A while an earlier request is still
   // pending. The user id alone is not enough to identify the current session:
   // give each activation its own token so stale A responses cannot overwrite
@@ -112,14 +122,18 @@ export function ShopProvider({ children }) {
   const storageId = accountId || GUEST_ID
 
   const cacheCart = useCallback((next, id = storageId) => {
+    // В режиме имперсонации НЕ персистим данные чужого аккаунта в localStorage owner'а.
+    if (isImpersonating) return
     save(accountKey(CART_KEY_PREFIX, id), { accountId: id, items: next })
-  }, [storageId])
+  }, [storageId, isImpersonating])
 
   const refreshCart = useCallback(async (accountSession, cartRequest) => {
-    const { data, error } = await supabase
-      .from('customer_cart_items')
-      .select('product_id, size, quantity')
-      .eq('user_id', accountId)
+    const { data, error } = isImpersonating
+      ? await impGetCart(accountId)
+      : await supabase
+          .from('customer_cart_items')
+          .select('product_id, size, quantity')
+          .eq('user_id', accountId)
 
     if (
       error
@@ -131,7 +145,7 @@ export function ShopProvider({ children }) {
     setCart(next)
     cacheCart(next, accountId)
     return true
-  }, [accountId, cacheCart])
+  }, [accountId, cacheCart, isImpersonating])
 
   // Köhnə qonaq açarlarını bir dəfə silirik (bax: clearLegacyGuestData)
   useEffect(() => { clearLegacyGuestData() }, [])
@@ -159,7 +173,10 @@ export function ShopProvider({ children }) {
       return undefined
     }
 
-    const cachedCart = normaliseCart(loadOwnedCache(accountKey(CART_KEY_PREFIX, accountId), accountId, []))
+    // Имперсонация: НЕ читаем localStorage-кэш чужого аккаунта — грузим только с сервера.
+    const cachedCart = isImpersonating
+      ? []
+      : normaliseCart(loadOwnedCache(accountKey(CART_KEY_PREFIX, accountId), accountId, []))
 
     setCart(cachedCart)
 
@@ -171,14 +188,12 @@ export function ShopProvider({ children }) {
       }
 
       const [cartResult, favoritesResult] = await Promise.all([
-        supabase
-          .from('customer_cart_items')
-          .select('product_id, size, quantity')
-          .eq('user_id', accountId),
-        supabase
-          .from('customer_favorites')
-          .select('product_id')
-          .eq('user_id', accountId),
+        isImpersonating
+          ? impGetCart(accountId)
+          : supabase.from('customer_cart_items').select('product_id, size, quantity').eq('user_id', accountId),
+        isImpersonating
+          ? impGetFavorites(accountId)
+          : supabase.from('customer_favorites').select('product_id').eq('user_id', accountId),
       ])
 
       let nextCart = cachedCart
@@ -245,18 +260,17 @@ export function ShopProvider({ children }) {
     const amount = Math.max(1, Math.min(20, Number(qty) || 1))
     const index = cart.findIndex((item) => item.id === productId && item.size === size)
     const quantity = index === -1 ? amount : Math.min(20, cart[index].qty + amount)
-    const { error } = await supabase.from('customer_cart_items').upsert({
-      user_id: accountId,
-      product_id: productId,
-      size: size || '',
-      quantity,
-    }, { onConflict: 'user_id,product_id,size' })
+    const { error } = isImpersonating
+      ? await impCartUpsert(accountId, productId, size, quantity)
+      : await supabase.from('customer_cart_items').upsert({
+          user_id: accountId, product_id: productId, size: size || '', quantity,
+        }, { onConflict: 'user_id,product_id,size' })
     if (error) return false
     // Yeni məhsul əlavə edilirsə — "sifariş verildi" işarəsi artıq aktual deyil
     // (tələb 5: sifarişdən sonra yeni məhsul → sonra əl ilə silmə → yenə "başla").
     setOrderJustCompleted(false)
     return refreshCart(accountSession, cartRequest)
-  }, [accountId, canChangeShop, cart, getProduct, isSignedIn, refreshCart, syncsToDatabase])
+  }, [accountId, canChangeShop, cart, getProduct, isSignedIn, refreshCart, syncsToDatabase, isImpersonating])
 
   const removeFromCart = useCallback(async (id, size = null) => {
     if (!canChangeShop) return false
@@ -264,14 +278,13 @@ export function ShopProvider({ children }) {
     const accountSession = accountSessionRef.current
     const cartRequest = ++cartRequestRef.current
     const productId = Number(id)
-    const { error } = await supabase.from('customer_cart_items')
-      .delete()
-      .eq('user_id', accountId)
-      .eq('product_id', productId)
-      .eq('size', size || '')
+    const { error } = isImpersonating
+      ? await impCartRemove(accountId, productId, size)
+      : await supabase.from('customer_cart_items')
+          .delete().eq('user_id', accountId).eq('product_id', productId).eq('size', size || '')
     if (error) return false
     return refreshCart(accountSession, cartRequest)
-  }, [accountId, canChangeShop, refreshCart, syncsToDatabase])
+  }, [accountId, canChangeShop, refreshCart, syncsToDatabase, isImpersonating])
 
   const setQty = useCallback(async (id, size, qty) => {
     const amount = Number(qty)
@@ -290,25 +303,26 @@ export function ShopProvider({ children }) {
     const accountSession = accountSessionRef.current
     const cartRequest = ++cartRequestRef.current
     const safeQty = Math.min(20, amount)
-    const { error } = await supabase.from('customer_cart_items').upsert({
-      user_id: accountId,
-      product_id: productId,
-      size: size || '',
-      quantity: safeQty,
-    }, { onConflict: 'user_id,product_id,size' })
+    const { error } = isImpersonating
+      ? await impCartUpsert(accountId, productId, size, safeQty)
+      : await supabase.from('customer_cart_items').upsert({
+          user_id: accountId, product_id: productId, size: size || '', quantity: safeQty,
+        }, { onConflict: 'user_id,product_id,size' })
     if (error) return false
     return refreshCart(accountSession, cartRequest)
-  }, [accountId, canChangeShop, cart, getProduct, refreshCart, removeFromCart, syncsToDatabase])
+  }, [accountId, canChangeShop, cart, getProduct, refreshCart, removeFromCart, syncsToDatabase, isImpersonating])
 
   const clearCart = useCallback(async () => {
     if (!canChangeShop) return false
     if (!syncsToDatabase) return false
     const accountSession = accountSessionRef.current
     const cartRequest = ++cartRequestRef.current
-    const { error } = await supabase.from('customer_cart_items').delete().eq('user_id', accountId)
+    const { error } = isImpersonating
+      ? await impCartClear(accountId)
+      : await supabase.from('customer_cart_items').delete().eq('user_id', accountId)
     if (error) return false
     return refreshCart(accountSession, cartRequest)
-  }, [accountId, canChangeShop, refreshCart, syncsToDatabase])
+  }, [accountId, canChangeShop, refreshCart, syncsToDatabase, isImpersonating])
 
   const toggleFavorite = useCallback(async (id) => {
     // TƏK YOXLAMA NÖQTƏSİ — sevimlilər üçün
@@ -325,7 +339,9 @@ export function ShopProvider({ children }) {
     if (!syncsToDatabase) return false
 
     let error
-    if (isNowFavorite) {
+    if (isImpersonating) {
+      ({ error } = await impFavToggle(accountId, productId))
+    } else if (isNowFavorite) {
       ({ error } = await supabase.from('customer_favorites').upsert(
         { user_id: accountId, product_id: productId },
         { onConflict: 'user_id,product_id' }
@@ -344,10 +360,9 @@ export function ShopProvider({ children }) {
 
     // A mutation is never allowed to rebuild the UI from a closure or cache.
     // Read the current account's authoritative list after a successful write.
-    const { data, error: selectError } = await supabase
-      .from('customer_favorites')
-      .select('product_id')
-      .eq('user_id', accountId)
+    const { data, error: selectError } = isImpersonating
+      ? await impGetFavorites(accountId)
+      : await supabase.from('customer_favorites').select('product_id').eq('user_id', accountId)
 
     if (
       selectError
@@ -356,7 +371,7 @@ export function ShopProvider({ children }) {
     ) return false
     setFavorites(normaliseFavorites(data || []))
     return true
-  }, [accountId, canChangeShop, favorites, isSignedIn, syncsToDatabase])
+  }, [accountId, canChangeShop, favorites, isSignedIn, syncsToDatabase, isImpersonating])
 
   const visibleFavoriteIds = useMemo(
     () => visibleFavorites.filter((id) => products.some((product) => product.id === id)),

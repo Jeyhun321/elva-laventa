@@ -1,12 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useImpersonation } from '../context/ImpersonationContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { IconUser, IconGoogle } from './Icons.jsx'
 
 export default function UserMenu() {
   const { profile, accounts, loading, loginWithGoogle, switchToSavedAccount, logout } = useAuth()
+  const { impersonation, isImpersonating } = useImpersonation()
   const { t } = useI18n()
+  // В режиме имперсонации шапка показывает выбранного пользователя (display-only).
+  const displayName = isImpersonating ? (impersonation.name || impersonation.email || '') : (profile?.name || '')
+  const displayEmail = isImpersonating ? impersonation.email : profile?.email
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -128,7 +133,7 @@ export default function UserMenu() {
         {profile.avatar
           ? <img className="user-avatar" src={profile.avatar} alt="" referrerPolicy="no-referrer" />
           : <IconUser />}
-        <em>{profile.name.split(' ')[0]}</em>
+        <em>{(displayName || '').split(' ')[0]}</em>
       </button>
 
       {open && (
@@ -138,8 +143,8 @@ export default function UserMenu() {
               <img className="user-avatar lg" src={profile.avatar} alt="" referrerPolicy="no-referrer" />
             )}
             <div>
-              <b>{profile.name}</b>
-              <span>{profile.email}</span>
+              <b>{displayName}</b>
+              <span>{displayEmail}</span>
             </div>
           </div>
           {accounts.length > 0 && (

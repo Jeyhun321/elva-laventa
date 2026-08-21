@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useI18n } from '../i18n/I18nContext.jsx'
 import { useShop } from '../context/ShopContext.jsx'
 import { createOrder } from '../lib/orders.js'
+import { useImpersonation } from '../context/ImpersonationContext.jsx'
+import { impGetWheelStatus } from '../lib/impersonation.js'
 import { validatePromo, previewDiscount, promoErrorKey } from '../lib/promo.js'
 import { getWheelStatus } from '../lib/wheel.js'
 import { logDiag } from '../lib/lifecycleDiag.js'
@@ -64,6 +66,7 @@ export default function CheckoutPage() {
   const { getProduct, loading: catalogLoading } = useCatalog()
   const { user, profile, isSignedIn, loading } = useAuth()
   const { cart, clearCart, markOrderCompleted } = useShop()
+  const { impersonation, isImpersonating } = useImpersonation()
   const navigate = useNavigate()
   const formRef = useRef(null)
   const isMobile = useMediaQuery('(max-width: 900px)')
@@ -169,12 +172,19 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (loading || !isSignedIn || !isMobile) { setWheelReward(null); return undefined }
     let alive = true
-    const refresh = () => { getWheelStatus().then((s) => { if (alive) setWheelReward(s?.active_reward || null) }).catch(() => {}) }
+    // В режиме имперсонации купон/награда берутся у ВЫБРАННОГО пользователя (target),
+    // через is_admin-gated RPC; иначе — у текущего аккаунта.
+    const refresh = () => {
+      const p = isImpersonating
+        ? impGetWheelStatus(impersonation.targetId).then(({ data }) => data)
+        : getWheelStatus()
+      p.then((s) => { if (alive) setWheelReward(s?.active_reward || null) }).catch(() => {})
+    }
     refresh()
     const onVis = () => { if (document.visibilityState === 'visible') refresh() }
     document.addEventListener('visibilitychange', onVis)
     return () => { alive = false; document.removeEventListener('visibilitychange', onVis) }
-  }, [isSignedIn, loading, isMobile])
+  }, [isSignedIn, loading, isMobile, isImpersonating, impersonation])
 
   // Если купон истёк прямо на странице, а он был применён — снимаем скидку и
   // показываем понятное сообщение (сервер тоже отклонит его при заказе).
@@ -224,12 +234,14 @@ export default function CheckoutPage() {
     }
   }, [done, navigate])
 
-  // Hesaba girmişsə, adı avtomatik dolsun
+  // Hesaba girmişsə, adı avtomatik dolsun. В режиме имперсонации — имя выбранного
+  // пользователя (target), а не owner.
+  const prefillName = isImpersonating ? (impersonation.name || '') : (profile?.name || '')
   useEffect(() => {
-    if (profile?.name) {
-      setBuyer((b) => (b.name.trim() ? b : { ...b, name: profile.name }))
+    if (prefillName) {
+      setBuyer((b) => (b.name.trim() ? b : { ...b, name: prefillName }))
     }
-  }, [profile?.name])
+  }, [prefillName])
 
   const set = (k, v) => {
     setBuyer((b) => ({ ...b, [k]: v }))
@@ -258,6 +270,13 @@ export default function CheckoutPage() {
     e.preventDefault()
     setTouched({ name: true, phone: true, phoneCall: true, address: true })
     setErr('')
+    // Этап 1 имперсонации: оформление реального заказа заблокировано. Owner может
+    // проверить профиль/корзину/избранное/купоны/checkout UI, но НЕ создавать заказ
+    // от имени пользователя. (place_order обычных пользователей не затронут.)
+    if (isImpersonating) {
+      setErr('Оформление заказа недоступно в режиме входа в аккаунт пользователя (admin).')
+      return
+    }
     // Stokda olmayan məhsul varsa — serverə heç getmirik, aydın mesaj veririk.
     if (hasUnavailable) {
       setErr(t('cart_unavailable_notice'))

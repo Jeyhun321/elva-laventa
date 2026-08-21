@@ -5,6 +5,7 @@ import Footer from './components/Footer.jsx'
 import TabBar from './components/TabBar.jsx'
 import ShopAuthGate from './components/ShopAuthGate.jsx'
 import WheelOfFortune from './components/WheelOfFortune.jsx'
+import ImpersonationBanner from './components/ImpersonationBanner.jsx'
 import SystemLogReporter from './components/SystemLogReporter.jsx'
 import { useI18n } from './i18n/I18nContext.jsx'
 import { useCatalog } from './context/CatalogContext.jsx'
@@ -143,6 +144,7 @@ export default function App() {
       <ScrollManager />
       <AccountHomeRedirect />
       <SystemLogReporter />
+      <ImpersonationBanner />
       <Header />
       <main>
         {catalogLoading && !showHomeWhileCatalogLoads ? <RouteLoading /> : (

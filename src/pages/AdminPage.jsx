@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useImpersonation } from '../context/ImpersonationContext.jsx'
 import { adminSupabase, isConfigured } from '../lib/supabase.js'
 import {
   loadAll, saveProduct, deleteProduct, uploadImage, signIn, signOutAdmin,
@@ -987,12 +988,28 @@ function WheelPanel({ onNotify }) {
 
 /* ---------------- Пользователи ---------------- */
 function UsersPanel({ onNotify }) {
+  const navigate = useNavigate()
+  const { startImpersonation } = useImpersonation()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [confirmId, setConfirmId] = useState(null) // id пользователя в режиме подтверждения сброса
   const [resetBusy, setResetBusy] = useState(null) // id пользователя, которому сейчас отправляем письмо
   const [resetSent, setResetSent] = useState(() => new Set())
+  const [impBusy, setImpBusy] = useState(null) // id пользователя, в аккаунт которого входим
+
+  // «Войти как пользователь»: сервер (is_admin) создаёт grant с TTL, затем
+  // переходим в обычную витрину — она начинает работать с РЕАЛЬНЫМИ данными target.
+  const enterAsUser = async (u) => {
+    setImpBusy(u.id)
+    try {
+      await startImpersonation(u.id)
+      navigate('/', { replace: true })
+    } catch (e) {
+      onNotify('err', `Не удалось войти как пользователь: ${e.message}`)
+      setImpBusy(null)
+    }
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -1068,6 +1085,18 @@ function UsersPanel({ onNotify }) {
                 </span>
               </div>
               <div className="admin-user-actions">
+                {u.role === 'admin' ? (
+                  <span className="admin-sub" style={{ alignSelf: 'center' }}>Текущий аккаунт</span>
+                ) : (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => enterAsUser(u)}
+                    disabled={impBusy === u.id}
+                    title="Войти в реальный аккаунт этого пользователя"
+                  >
+                    {impBusy === u.id ? 'Вхожу…' : 'Войти как пользователь'}
+                  </button>
+                )}
                 {confirmId === u.id ? (
                   <div className="admin-user-confirm">
                     <span className="admin-sub">Отправить ссылку для сброса пароля на {u.email}?</span>

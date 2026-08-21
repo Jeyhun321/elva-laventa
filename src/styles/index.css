@@ -5427,3 +5427,20 @@ a.product-media {
   .nf-decor { width: 82vw; opacity: 0.9; }
   .nf-text { font-size: 0.95rem; }
 }
+
+/* Баннер режима имперсонации (owner работает в аккаунте пользователя) */
+.imp-banner {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; flex-wrap: wrap;
+  background: var(--plum); color: #fff;
+  padding: 9px 16px; font-size: 0.9rem; line-height: 1.35; text-align: center;
+}
+.imp-banner-text b { font-weight: 800; }
+.imp-banner-exit {
+  background: #fff; color: var(--plum); border: 0; border-radius: 999px;
+  padding: 6px 14px; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+.imp-banner-exit:hover { opacity: 0.92; }
+@media (max-width: 480px) {
+  .imp-banner { font-size: 0.82rem; padding: 8px 10px; gap: 8px; }
+}
