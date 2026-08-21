@@ -12,6 +12,7 @@ import { useCatalog } from '../context/CatalogContext.jsx'
 import { extractColors } from '../admin/colors.js'
 import { IconTrash, IconPlus, IconClose, IconArrow, IconLock } from '../components/Icons.jsx'
 import SystemLogsPanel from '../components/SystemLogsPanel.jsx'
+import NotFoundPage from '../components/NotFoundPage.jsx'
 
 const ORDER_STATUSES = [
   { value: 'new', label: 'Новый' },
@@ -140,9 +141,10 @@ export default function AdminPage() {
 
   // Anon → обычный вход (Google / почта+пароль). После входа сервер решает admin/404.
   if (!session) return <LoginScreen />
-  // СНАЧАЛА серверная owner-проверка. Любой authenticated не-owner → обычный 404,
-  // БЕЗ OTP, без email владельца, без admin-формы, без загрузки admin-данных.
-  if (!isAdmin) return <NotFoundScreen onExit={leaveAdmin} />
+  // СНАЧАЛА серверная owner-проверка. Любой authenticated не-owner → полноэкранная
+  // 404 (без OTP, без email владельца, без admin-формы, без загрузки admin-данных,
+  // без storefront header/footer). Не раскрывает существование админки.
+  if (!isAdmin) return <NotFoundPage />
   // Только подтверждённый сервером owner доходит до OTP-слоя.
   if (!otpVerified) return <EmailOtpScreen session={session} onVerified={() => setOtpVerified(true)} onExit={leaveAdmin} />
 
@@ -260,19 +262,6 @@ function LoginScreen() {
 }
 
 /* ---------------- Панель ---------------- */
-function NotFoundScreen({ onExit }) {
-  return (
-    <div className="container admin">
-      <div className="login-box admin-gate-box">
-        <h1 className="page-title" style={{ fontSize: '2.5rem' }}>404</h1>
-        <p className="admin-sub">Страница не найдена.</p>
-        <button className="btn btn-primary full" onClick={onExit}>Выйти из другого аккаунта</button>
-        <Link to="/" className="continue-link">← На сайт</Link>
-      </div>
-    </div>
-  )
-}
-
 const OTP_RESEND_COOLDOWN = 30 // секунд между отправками кода
 
 // OTP-слой доступен ТОЛЬКО подтверждённому сервером owner (проверка is_admin()

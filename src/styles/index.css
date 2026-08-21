@@ -5353,3 +5353,77 @@ a.product-media {
   .header-actions .header-icon svg,
   .user-menu > .header-icon svg { width: 20px; height: 20px; }
 }
+
+/* ============================================================
+   Полноэкранная страница 404 (Elva LaVenta)
+   ============================================================ */
+.nf-page {
+  position: fixed;
+  inset: 0;
+  z-index: 3000; /* поверх header/footer/tabbar — отдельный error-screen */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 24px;
+  text-align: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #fdf6f3 0%, #fbeef1 60%, #fbe9ee 100%);
+}
+.nf-brand {
+  position: absolute;
+  top: 22px;
+  left: 26px;
+  display: inline-flex;
+  align-items: center;
+  z-index: 2;
+}
+.nf-brand-logo { height: 34px; width: auto; display: block; }
+.nf-decor {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: min(52vw, 640px);
+  height: auto;
+  pointer-events: none;
+  z-index: 0;
+}
+.nf-content { position: relative; z-index: 1; max-width: 620px; }
+.nf-code {
+  font-family: var(--serif);
+  color: var(--plum);
+  font-weight: 700;
+  line-height: 0.86;
+  font-size: clamp(6rem, 17vw, 12rem);
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+.nf-heading {
+  font-weight: 800;
+  color: var(--ink);
+  font-size: clamp(1.4rem, 4.4vw, 2rem);
+  margin: 6px 0 12px;
+}
+.nf-text {
+  color: var(--ink-soft);
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0 auto 28px;
+  max-width: 34ch;
+}
+.nf-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.nf-home svg { width: 18px; height: 18px; }
+
+@media (max-width: 640px) {
+  .nf-brand { top: 16px; left: 18px; }
+  .nf-brand-logo { height: 28px; }
+  .nf-decor { width: 82vw; opacity: 0.9; }
+  .nf-text { font-size: 0.95rem; }
+}

@@ -390,6 +390,15 @@ export const ui = {
     en: 'Try another keyword or browse the catalog.',
   },
 
+  // --- Полноэкранная страница 404 ---
+  nf_heading: { az: 'Tapılmadı', ru: 'Страница не найдена', en: 'Not Found' },
+  nf_text: {
+    az: 'Axtarılan səhifə bu serverdə tapılmadı.',
+    ru: 'Запрошенный ресурс не найден на этом сервере.',
+    en: 'The resource requested could not be found on this server!',
+  },
+  nf_home: { az: 'Ana səhifəyə', ru: 'На главную', en: 'Back to Homepage' },
+
   // Product card / page
   add_to_cart: { az: 'Səbətə əlavə et', ru: 'В корзину', en: 'Add to cart' },
   in_cart: { az: 'Səbətdə', ru: 'В корзине', en: 'In cart' },
