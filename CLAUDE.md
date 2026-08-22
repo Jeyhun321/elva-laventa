@@ -129,6 +129,20 @@ Documentation integrity (hard rules — never violate):
 
 Reading rule (saves usage limit): at session start read **only** `docs/HANDOFF.md` plus `git log -3` and `git status`. Do not open `DAILY.md`/`HISTORY.md` unless explicitly asked.
 
+## SQL owner-action workflow (постоянное правило проекта)
+
+Всякий раз, когда создаётся **любой новый `.sql` файл**, который owner должен вручную выполнить в Supabase SQL Editor (migrations / cleanup scripts / RPC / RLS changes — что угодно), финальный отчёт **ОБЯЗАН** содержать блок:
+
+**OWNER ACTION REQUIRED**
+
+и сразу под ним, по порядку:
+1. точное имя SQL-файла;
+2. готовую команду открытия файла в Windows Notepad (абсолютный путь):
+   `notepad "C:\Users\alekb\Desktop\Website-Laventa\supabase\<имя-файла>.sql"`
+3. короткую инструкцию: `Ctrl+A → Ctrl+C → Supabase SQL Editor → Ctrl+V → Run`.
+
+`notepad "..."` (абсолютный путь) — **основной и обязательный** способ передачи SQL владельцу. **НЕ использовать `Get-Content ... | Set-Clipboard`** как основной способ (относительный путь и отсутствие `-Raw` приводят к пустому/битому буферу). Правило применяется ко всем будущим SQL-файлам без напоминаний.
+
 ## Budget Management & Safe Handoff Protocol
 
 Это обязательный протокол работы.
