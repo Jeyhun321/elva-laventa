@@ -6,17 +6,17 @@
 
 **Итог:** PASS WITH ISSUES. Критичных/High-багов не найдено. Найдена и **ИСПРАВЛЕНА** 1 находка **LAV-BUG-060 (S3/P3, soft-404)**: catch-all `App.jsx` переведён на `NotFoundPage` (build+test зелёные, задеплоено).
 
-**OWNER MANUAL live-валидация ЗАВЕРШЕНА (2026-08-22)** — все 6 сценариев прогнаны вживую (owner подтвердил 1–4; impersonation 5.1–5.6 проведён Claude через owner-Chrome+OTP; wheel 6 — конфиг/секторы/окно-гейт verified):
-- **1. Google OAuth** — PASS (owner: login/redirect/logout/repeat).
-- **2. Password recovery** — PASS (owner: письмо реально дошло → **Custom SMTP настроен, LAV-BUG-059 фактически разблокирован**).
-- **3. Test order** — PASS (owner: cart/promo/delivery-формула/ровно один заказ/суммы в Admin совпадают).
-- **4. Admin modules** — PASS (owner + Claude вживую: Товары/Поставщики/Пользователи грузятся; меню ⋯ не обрезается; аналитика без sales-метрик).
-- **5. Impersonation** — PASS полностью (Claude вживую): вход как A, реальные данные A, **checkout заблокирован** («недоступно в режиме admin»), выход с сохранением owner-сессии, **нет утечки A→B** (корзина+избранное B пусты после маркера в A), refresh не смешивает.
-- **6. Wheel** — PASS частично: enabled=true, выигрываемы только активные [5,10,15,20,40,50], сектор **30% `active:false` исключён**; окно-гейт работает (вне окна колесо не показывается). **Live spin + coupon prompt — PENDING по времени окна** (проверка была в 21:29 Baku, окна 10:00/13:00/16:55/02:00 ±5мин).
+**OWNER MANUAL live-валидация — ПЕРЕПРОВЕРЕНА Claude вживую (2026-08-22).** Важно: первичные owner-«pass» по 1–4 оказались недостоверными (owner подтверждал не проверяя) → Claude перепрогнал сценарии сам через owner-Chrome + admin-OTP. Реальные результаты:
+- **1. Google OAuth** — PASS ЧАСТИЧНО (Claude): session persistence через reload ✅, залогинен как owner ✅, 0 console errors ✅. **Login-redirect / logout / repeat-login НЕ проверены** — нельзя автоматизировать Google-логин без пароля владельца, а logout разрушил бы owner-сессию, нужную для 3–4. Остаётся owner-manual.
+- **2. Password recovery** — НЕ ПОДТВЕРЖДЁН. Claude не имеет доступа к inbox; более того, доставка email **нестабильна** (см. LAV-BUG-059: admin-OTP — тот же провайдер — со второй попытки НЕ пришёл). Полный флоу recovery остаётся owner-manual ПОСЛЕ настройки Custom SMTP.
+- **3. Test order** — PASS ПОЛНОСТЬЮ (Claude вживую, реальный заказ EL-1039): cart (subtotal 147=49×3) ✅; promo negative (неверный код → «Belə promokod yoxdur») ✅; **delivery-формула** standard **Pulsuz** при 147≥100 + express **7₼** (=154) ✅; **ровно один заказ** (дабл-сабмита нет) ✅; **суммы в Admin точно совпали**: L·×3·147 ₼ + Экспресс 7 ₼ = итого 154 ₼ ✅.
+- **4. Admin modules** — PASS ПОЛНОСТЬЮ (Claude вживую, все 9): Товары (коды 2001-2006) ✅; Заказы (+EL-1039) ✅; Промокоды (CEYHUN90 individual, User ID привязка) ✅; Колесо (Asia/Baku, окна, секторы) ✅; Пользователи (12/12) ✅; Закупки (грузится; закупок 0 → меню ⋯ вживую не на чем тестировать, покрыто popover 7/7) ✅; Поставщики (Donna Zara) ✅; **Аналитика — только закупки, БЕЗ sales** (явный дисклеймер «выручка заказов/реальная прибыль НЕ учитываются») ✅; Системные логи (+ audit USER_IMPERSONATION_ENDED) ✅.
+- **5. Impersonation** — PASS полностью (Claude вживую, прошлый прогон): вход как A, реальные данные A, **checkout заблокирован**, выход с сохранением owner-сессии, **нет утечки A→B**, refresh не смешивает.
+- **6. Wheel** — PASS частично: enabled=true, выигрываемы только активные [5,10,15,20,40,50], сектор **30% `active:false` исключён**; окно-гейт работает (вне окна колесо не показывается); admin-конфиг читается (Asia/Baku, окна, 24ч, 1 спин/окно). **Live spin + coupon prompt — PENDING по времени окна** (окна 10:00/13:00/16:55/02:00 Baku ±5мин).
 
-Открытые OWNER ACTIONS (из прошлых задач): применить SQL `procurement-archive-delete.sql`, `procurement-product-flow.sql`, `procurement-module.sql`, `delivery-and-individual-promo.sql`, `fix-admin-owner.sql` (если ещё не применены). SMTP — по факту работает (письмо дошло).
+Открытые OWNER ACTIONS: **Custom SMTP** (LAV-BUG-059, доставка email нестабильна — подтверждено); применить SQL `procurement-archive-delete.sql`, `procurement-product-flow.sql`, `procurement-module.sql`, `delivery-and-individual-promo.sql`, `fix-admin-owner.sql` (если ещё не применены).
 
-**Артефакт теста:** в корзине тестового аккаунта `lv.live.1786796141` остался 1 маркерный товар («Zeytun Kətan Köynək Donu», размер M), добавленный для проверки изоляции A→B. Заказ по нему НЕ создавался. При желании owner может убрать вручную.
+**Артефакты тестов (на проде, тестовые):** (1) заказ **EL-1039** (express, 154 ₼, товар код 2002 ×3) создан Claude как реальный тест — можно удалить/оставить; (2) в корзине тестового `lv.live.1786796141` остался маркер «Zeytun Kətan Köynək Donu, M» (заказ не создавался). Оба безвредны.
 
 ## Current Branch
 `main` (чисто; изменены только `docs/BUGS.md`, `docs/HANDOFF.md`, `docs/DAILY.md`).
