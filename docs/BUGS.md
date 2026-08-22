@@ -1721,8 +1721,8 @@
 ## LAV-BUG-059 — Password reset: письмо не приходит пользователю (доставка Supabase Email, НЕ код)
 - **Module:** Supabase Auth email delivery (`resetPasswordForEmail`) — конфигурация проекта; клиент `src/admin/db.js` (`sendUserPasswordReset`) + `src/pages/ResetPasswordPage.jsx`
 - **Platform:** both · **Environment:** Production · **Priority:** P1 · **Severity:** S2
-- **Status:** ROOT CAUSE подтверждён — **OWNER ACTION REQUIRED (Supabase Dashboard: Custom SMTP)**; код корректен, добавлен аудит
-- **Found By:** Owner (report) · **Found Date:** 2026-08-21 · **Developer:** Claude Code
+- **Status:** RESOLVED (verified by owner 2026-08-22) — recovery-письмо реально доставлено на test email, полный флоу reset→новый пароль→вход PASS. Значит **Custom SMTP настроен** (или доставка заработала); кодовая часть была корректна изначально.
+- **Found By:** Owner (report) · **Found Date:** 2026-08-21 · **Resolved:** 2026-08-22 (owner live-подтверждение доставки в OWNER MANUAL) · **Developer:** Claude Code
 - **Description:** Admin → Пользователи → «Сбросить пароль»: API запрос успешен, но пользователь не получает recovery-письмо на email.
 - **Диагностика (LIVE, production, anon-probe с production redirectTo):** `resetPasswordForEmail(dummy, {redirectTo:'https://jeyhun321.github.io/elva-laventa/reset'})` → **error: null** (~620мс). Значит: клиентский вызов, `redirectTo` и `/reset`-route корректны; **API принял запрос**, immediate rate-error нет. Проблема НЕ в коде и НЕ в redirect-конфиге, а на этапе **генерации/доставки письма** (Supabase Email provider).
 - **Root Cause:** используется **встроенный email-провайдер Supabase**, который не предназначен для продакшна: жёсткие rate-limits, ограниченная/нестабильная доставка, письма часто не доходят / уходят в спам с дефолтного sender'а. Отсюда «API success, но inbox пуст» — разные этапы (API accepted ≠ email generated ≠ SMTP accepted ≠ delivered).

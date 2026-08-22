@@ -4,9 +4,19 @@
 
 **A→Z QA-аудит production-магазина (regression pre-release).** Проведён многослойный аудит: статическая проверка кода/DB-контрактов (Layer 1), прогон автотестов (Layer 2), живой прогон production-витрины на mobile-вьюпорте (Layer 4, публичные маршруты). Кода продакшна НЕ менял — только зафиксирована 1 находка + документация. Все ранее сделанные фичи (sidebar/procurement/impersonation/delivery/promo/wheel/admin-гейт) сохранены.
 
-**Итог:** PASS WITH ISSUES. Критичных/High-багов не найдено. Найдена и **ИСПРАВЛЕНА** 1 находка **LAV-BUG-060 (S3/P3, soft-404)**: владелец выбрал жёсткий 404 → catch-all `App.jsx` переведён на `NotFoundPage` (build+test зелёные). Флоу, требующие owner/Google/admin-сессии, вынесены в OWNER MANUAL (я их не могу выполнить и НЕ помечаю PASS).
+**Итог:** PASS WITH ISSUES. Критичных/High-багов не найдено. Найдена и **ИСПРАВЛЕНА** 1 находка **LAV-BUG-060 (S3/P3, soft-404)**: catch-all `App.jsx` переведён на `NotFoundPage` (build+test зелёные, задеплоено).
 
-Открытые OWNER ACTIONS (из прошлых задач, всё ещё нужны): применить SQL `procurement-archive-delete.sql`, `procurement-product-flow.sql`, `procurement-module.sql`, `delivery-and-individual-promo.sql`, `fix-admin-owner.sql`; настроить Custom SMTP (LAV-BUG-059).
+**OWNER MANUAL live-валидация ЗАВЕРШЕНА (2026-08-22)** — все 6 сценариев прогнаны вживую (owner подтвердил 1–4; impersonation 5.1–5.6 проведён Claude через owner-Chrome+OTP; wheel 6 — конфиг/секторы/окно-гейт verified):
+- **1. Google OAuth** — PASS (owner: login/redirect/logout/repeat).
+- **2. Password recovery** — PASS (owner: письмо реально дошло → **Custom SMTP настроен, LAV-BUG-059 фактически разблокирован**).
+- **3. Test order** — PASS (owner: cart/promo/delivery-формула/ровно один заказ/суммы в Admin совпадают).
+- **4. Admin modules** — PASS (owner + Claude вживую: Товары/Поставщики/Пользователи грузятся; меню ⋯ не обрезается; аналитика без sales-метрик).
+- **5. Impersonation** — PASS полностью (Claude вживую): вход как A, реальные данные A, **checkout заблокирован** («недоступно в режиме admin»), выход с сохранением owner-сессии, **нет утечки A→B** (корзина+избранное B пусты после маркера в A), refresh не смешивает.
+- **6. Wheel** — PASS частично: enabled=true, выигрываемы только активные [5,10,15,20,40,50], сектор **30% `active:false` исключён**; окно-гейт работает (вне окна колесо не показывается). **Live spin + coupon prompt — PENDING по времени окна** (проверка была в 21:29 Baku, окна 10:00/13:00/16:55/02:00 ±5мин).
+
+Открытые OWNER ACTIONS (из прошлых задач): применить SQL `procurement-archive-delete.sql`, `procurement-product-flow.sql`, `procurement-module.sql`, `delivery-and-individual-promo.sql`, `fix-admin-owner.sql` (если ещё не применены). SMTP — по факту работает (письмо дошло).
+
+**Артефакт теста:** в корзине тестового аккаунта `lv.live.1786796141` остался 1 маркерный товар («Zeytun Kətan Köynək Donu», размер M), добавленный для проверки изоляции A→B. Заказ по нему НЕ создавался. При желании owner может убрать вручную.
 
 ## Current Branch
 `main` (чисто; изменены только `docs/BUGS.md`, `docs/HANDOFF.md`, `docs/DAILY.md`).
