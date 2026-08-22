@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   listProcurements, saveProcurement, archiveProcurement, restoreProcurement,
   deleteProcurement, promoteToProduct, listSuppliers, variantsTotalQty,
 } from '../../admin/procurement.js'
 import { uploadImage } from '../../admin/db.js'
 import { procurementCalc, fmtAzn, round2 } from '../../lib/money.js'
+import { popoverPosition } from '../../lib/popover.js'
 import { IconPlus, IconClose, IconSearch, IconTruck, IconBox, IconPercent, IconArrow, IconTrash } from '../Icons.jsx'
 
 const SIZE_PRESETS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One size']
@@ -538,24 +540,66 @@ export default function ProcurementPanel({ onNotify, products = [], categories =
   )
 }
 
-// Компактное меню действий строки (⋯) — не перегружает таблицу, удобно на мобильном.
+// Компактное меню действий строки (⋯). Список рендерится в ПОРТАЛ (document.body)
+// с fixed-координатами, поэтому не обрезается overflow-контейнером таблицы и не
+// плодит внутренний скролл. Позиция считается popoverPosition (флип вверх/вниз,
+// клэмп по краям viewport); пересчитывается на scroll/resize, пока меню открыто.
 function RowMenu({ row, promoting, onEdit, onOpenProduct, onPromote, onArchive, onRestore, onDelete }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [pos, setPos] = useState(null) // { left, top, placeUp }
+  const btnRef = useRef(null)
+  const menuRef = useRef(null)
+
+  // Число пунктов (для оценки высоты до первого измерения реального меню).
+  const itemCount = row.archived ? 3 : 4
+
+  const place = useCallback(() => {
+    const btn = btnRef.current
+    if (!btn) return
+    const rect = btn.getBoundingClientRect()
+    const menuH = menuRef.current?.offsetHeight || itemCount * 40 + 14
+    setPos(popoverPosition({
+      btn: rect,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      menuW: 200,
+      menuH,
+    }))
+  }, [itemCount])
+
+  // Первичный расчёт при открытии — layout-эффект, чтобы позиция была готова
+  // до отрисовки (без «прыжка»).
+  useLayoutEffect(() => { if (open) place() }, [open, place])
+
   useEffect(() => {
     if (!open) return undefined
-    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const onDoc = (e) => {
+      if (btnRef.current?.contains(e.target)) return
+      if (menuRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    const onReflow = () => place()
     document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
+    document.addEventListener('keydown', onKey)
+    window.addEventListener('resize', onReflow)
+    window.addEventListener('scroll', onReflow, true) // capture: любой скролл-контейнер
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+      window.removeEventListener('resize', onReflow)
+      window.removeEventListener('scroll', onReflow, true)
+    }
+  }, [open, place])
 
   const run = (fn) => { setOpen(false); fn() }
 
   return (
-    <div className="proc-menu" ref={ref}>
-      <button className="proc-menu-btn" onClick={() => setOpen((o) => !o)} aria-label="Действия" aria-expanded={open}>⋯</button>
-      {open && (
-        <div className="proc-menu-list" role="menu">
+    <div className="proc-menu">
+      <button ref={btnRef} className="proc-menu-btn" onClick={() => setOpen((o) => !o)}
+        aria-label="Действия" aria-haspopup="menu" aria-expanded={open}>⋯</button>
+      {open && pos && createPortal(
+        <div ref={menuRef} className={`proc-menu-list${pos.placeUp ? ' up' : ''}`} role="menu"
+          style={{ position: 'fixed', top: pos.top, left: pos.left }}>
           <button role="menuitem" onClick={() => run(onEdit)}>Изменить</button>
           {!row.archived && (row.product_id
             ? <button role="menuitem" onClick={() => run(onOpenProduct)}>Открыть товар</button>
@@ -565,7 +609,8 @@ function RowMenu({ row, promoting, onEdit, onOpenProduct, onPromote, onArchive, 
             ? <button role="menuitem" onClick={() => run(onRestore)}>Восстановить</button>
             : <button role="menuitem" onClick={() => run(onArchive)}>Архивировать</button>}
           <button role="menuitem" className="proc-menu-danger" onClick={() => run(onDelete)}>Удалить</button>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

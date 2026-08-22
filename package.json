@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/auth-recovery.test.mjs && node tests/inactivity.test.mjs && node tests/delivery.test.mjs && node tests/money.test.mjs",
+    "test": "node tests/auth-recovery.test.mjs && node tests/inactivity.test.mjs && node tests/delivery.test.mjs && node tests/money.test.mjs && node tests/popover.test.mjs",
     "logs": "node tools/log-tail.mjs"
   },
   "dependencies": {
