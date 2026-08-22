@@ -1734,3 +1734,18 @@
   4. **Auth → Logs:** после «Сбросить пароль» проверить, что запрос принят и письмо отправлено провайдером; при custom SMTP — проверить дашборд провайдера (delivered/bounced/spam).
 - **Что реально протестировано:** LIVE — API принимает запрос (error:null) с production redirectTo; build + `npm test` 21/21. **Inbox delivery НЕ подтверждён программно** (нет доступа к почтовому ящику) — подтверждается владельцем после настройки Custom SMTP (проверить также «Спам»).
 - **Changed files:** `src/admin/db.js` (аудит-лог + комментарии). SQL/схема/RLS/OTP/impersonation не трогались.
+
+## LAV-BUG-060 — Storefront: неизвестный маршрут показывает Главную вместо 404 (soft-404)
+- **Module:** роутинг витрины — `src/App.jsx` (catch-all `<Route path="*">`)
+- **Platform:** both · **Environment:** Production (`https://jeyhun321.github.io/elva-laventa/`)
+- **Priority:** P3 · **Severity:** S3 · **Status:** FIXED (код) — владелец выбрал жёсткий 404; build+test зелёные; ждёт деплоя/post-release проверки
+- **Found By:** Claude Code (A→Z QA audit) · **Found Date:** 2026-08-22 · **Developer:** Claude Code
+- **Description:** Любой несуществующий URL витрины (например `/no-such-page-xyz`) молча рендерит контент **Главной страницы**, а не 404-страницу. В проекте уже есть готовый брендированный `src/components/NotFoundPage.jsx` (используется для admin-гейта), но для витрины он не подключён.
+- **Steps to Reproduce:** открыть `https://jeyhun321.github.io/elva-laventa/no-such-page-xyz` (mobile/desktop) → загружается контент Главной (секции «Üslubunuza görə seçin», товарные подборки, sale-баннер).
+- **Expected Result:** брендированная 404-страница (`NotFoundPage`) с ссылкой на главную/каталог — как решит владелец.
+- **Actual Result:** silent soft-404 — показывается Главная; URL остаётся `/no-such-page-xyz`.
+- **Root Cause:** `src/App.jsx:168` — `<Route path="*" element={<HomePage />} />`. Catch-all указывает на `HomePage`, а не на `NotFoundPage`.
+- **Fix Summary:** ПРИМЕНЕНО — в `src/App.jsx` добавлен `import NotFoundPage`, catch-all `<Route path="*">` переведён с `<HomePage/>` на `<NotFoundPage/>` (владелец выбрал жёсткий 404). SPA-fallback GitHub Pages не трогался (корректен: `dist/404.html = index.html`). `npm run build` OK (5.15s), `npm test` зелёные (7/7 popover + delivery/money/auth-recovery/inactivity).
+- **Regression Checklist:** после фикса — `/<любой-несуществующий>` → NotFoundPage; `/`, `/catalog`, `/product/:id`, `/cart`, `/checkout`, `/favorites`, `/auth`, `/reset`, `/settings`, `/admin` — работают как прежде; прямой reload глубокого маршрута (SPA-fallback) по-прежнему рендерит нужную страницу.
+- **Regression History:** 2026-08-22 — reproduced LIVE (production, mobile viewport 390×844): unknown route → Home content, HTTP 404 (GitHub Pages fallback), 0 JS-ошибок консоли (единственная запись — сам 404-статус документа, безвредно).
+- **Notes:** SPA-fallback и in-app роутинг проверены и корректны; проблема только в выборе элемента для `*`. Не смешивать с admin-404 (там NotFoundPage уже используется и работает).

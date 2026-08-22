@@ -11,6 +11,7 @@ import { useI18n } from './i18n/I18nContext.jsx'
 import { useCatalog } from './context/CatalogContext.jsx'
 import { useAuth } from './context/AuthContext.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import NotFoundPage from './components/NotFoundPage.jsx'
 import { lazyWithRetry } from './lib/recovery.js'
 import { logDiag, idHint } from './lib/lifecycleDiag.js'
 import useInactivityRedirect from './hooks/useInactivityRedirect.js'
@@ -165,7 +166,7 @@ export default function App() {
               <Route path="/settings" element={<SettingsPage />} />
               {/* Gizli idarə paneli — menyuda göstərilmir */}
               <Route path="/admin" element={<AdminPage />} />
-              <Route path="*" element={<HomePage />} />
+              <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </ErrorBoundary>
           </Suspense>
