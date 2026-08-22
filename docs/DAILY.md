@@ -19,6 +19,11 @@
 
 ---
 
+## 2026-08-23
+
+**Что сделано** — Финальная очистка тестовых QA-артефактов + фиксация завершения A→Z QA. **Cart marker** в корзине тестового `lv.live.1786796141@example.com` (товар «Zeytun Kətan Köynək Donu, M») — удалён вживую через имперсонацию (verified: example.com seed-аккаунт, не реальный клиент; корзина пуста). **Test order EL-1039** — удалить через UI нельзя (админка не поддерживает удаление заказов, только смену статуса; deleteOrder в коде нет) → создан безопасный owner-SQL `supabase/cleanup-test-order-el1039.sql` (тройная верификация order_no+email+total, order_items каскадом). Никакие другие orders/carts/users/promos/procurement не тронуты.
+**Что осталось** — OWNER: запустить `cleanup-test-order-el1039.sql` (удалить EL-1039); Custom SMTP (known limitation, LAV-BUG-059); manual-only: Google OAuth logout/repeat, Wheel live spin, password recovery inbox.
+
 ## 2026-08-22
 
 **Что сделано** — Проведён **A→Z QA-аудит** production-магазина (pre-release regression). Слои: статическая проверка кода/DB-контрактов, автотесты (`npm test` зелёные: delivery 16/16, money 19/19, popover 7/7, auth-recovery, inactivity), живой прогон production-витрины на mobile (390×844). Проверено и подтверждено корректным: server-side delivery (совпадает с клиентом), server-enforced промо (individual → `PROMO_ACCOUNT_MISMATCH`), изоляция аккаунтов в ShopContext (owned-cache + session-токены), защита checkout от дабл-сабмита, admin-гейт (fail-closed, `is_admin()` авторитет, не-owner → 404 до OTP/данных), отсутствие секретов в бандле (только publishable anon-key), SPA-fallback (`404.html=index.html`), 0 JS-ошибок консоли, RPC/REST 200. Production-код НЕ менялся.

@@ -2,6 +2,14 @@
 
 ## Current Status
 
+**A→Z QA-АУДИТ ЗАВЕРШЁН.** Все проверяемые сценарии пройдены; выполнена финальная очистка тестовых артефактов. Остаток — manual-only pending (за владельцем) + 1 known limitation (SMTP).
+
+**Финальная очистка тестовых QA-артефактов (2026-08-23):**
+- **Cart marker** в корзине тестового `lv.live.1786796141@example.com` (товар «Zeytun Kətan Köynək Donu, M») — **УДАЛЁН** (Claude вживую через имперсонацию, verified: example.com = seed-аккаунт, не реальный клиент; корзина теперь пуста). ✅
+- **Test order `EL-1039`** (email owner alekberov..., товар код 2002 ×3, express, total 154 ₼) — **НЕ удалён через UI**: админка не поддерживает удаление заказов (только смена статуса), функции deleteOrder в коде нет. Создан безопасный owner-action SQL `supabase/cleanup-test-order-el1039.sql` (тройная верификация order_no+email+total, order_items каскадом). **OWNER ACTION REQUIRED** — запустить файл в Supabase SQL Editor.
+
+---
+
 **A→Z QA-аудит production-магазина (regression pre-release).** Проведён многослойный аудит: статическая проверка кода/DB-контрактов (Layer 1), прогон автотестов (Layer 2), живой прогон production-витрины на mobile-вьюпорте (Layer 4, публичные маршруты). Кода продакшна НЕ менял — только зафиксирована 1 находка + документация. Все ранее сделанные фичи (sidebar/procurement/impersonation/delivery/promo/wheel/admin-гейт) сохранены.
 
 **Итог:** PASS WITH ISSUES. Критичных/High-багов не найдено. Найдена и **ИСПРАВЛЕНА** 1 находка **LAV-BUG-060 (S3/P3, soft-404)**: catch-all `App.jsx` переведён на `NotFoundPage` (build+test зелёные, задеплоено).
@@ -14,9 +22,11 @@
 - **5. Impersonation** — PASS полностью (Claude вживую, прошлый прогон): вход как A, реальные данные A, **checkout заблокирован**, выход с сохранением owner-сессии, **нет утечки A→B**, refresh не смешивает.
 - **6. Wheel** — PASS частично: enabled=true, выигрываемы только активные [5,10,15,20,40,50], сектор **30% `active:false` исключён**; окно-гейт работает (вне окна колесо не показывается); admin-конфиг читается (Asia/Baku, окна, 24ч, 1 спин/окно). **Live spin + coupon prompt — PENDING по времени окна** (окна 10:00/13:00/16:55/02:00 Baku ±5мин).
 
-Открытые OWNER ACTIONS: **Custom SMTP** (LAV-BUG-059, доставка email нестабильна — подтверждено); применить SQL `procurement-archive-delete.sql`, `procurement-product-flow.sql`, `procurement-module.sql`, `delivery-and-individual-promo.sql`, `fix-admin-owner.sql` (если ещё не применены).
+Открытые OWNER ACTIONS: **`cleanup-test-order-el1039.sql`** (удалить тестовый заказ EL-1039 — UI не умеет); **Custom SMTP** (LAV-BUG-059, доставка email нестабильна — подтверждено); применить SQL `procurement-archive-delete.sql`, `procurement-product-flow.sql`, `procurement-module.sql`, `delivery-and-individual-promo.sql`, `fix-admin-owner.sql` (если ещё не применены).
 
-**Артефакты тестов (на проде, тестовые):** (1) заказ **EL-1039** (express, 154 ₼, товар код 2002 ×3) создан Claude как реальный тест — можно удалить/оставить; (2) в корзине тестового `lv.live.1786796141` остался маркер «Zeytun Kətan Köynək Donu, M» (заказ не создавался). Оба безвредны.
+**Manual-only pending (за владельцем, не автоматизируется):** Google OAuth login-redirect / logout / repeat-login; Wheel live spin (в окне 10:00/13:00/16:55/02:00 Baku ±5мин); Password recovery inbox (после Custom SMTP).
+
+**Артефакты тестов — статус очистки (2026-08-23):** (1) cart marker в `lv.live.1786796141` — **УДАЛЁН** ✅; (2) заказ **EL-1039** — ожидает owner-SQL `supabase/cleanup-test-order-el1039.sql` (UI не умеет удалять заказы).
 
 ## Current Branch
 `main` (чисто; изменены только `docs/BUGS.md`, `docs/HANDOFF.md`, `docs/DAILY.md`).
